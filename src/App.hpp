@@ -1,4 +1,7 @@
+#include <vector>
+
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
 
 class App {
     SDL_Window* window_;
@@ -13,6 +16,8 @@ public:
     }
 
     bool init(int window_width, int window_height);
+
+    std::vector<const char*> enum_extensions();
 
     template<typename F>
     void main_loop(F func) {
