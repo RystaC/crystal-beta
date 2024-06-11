@@ -2,34 +2,30 @@
 
 namespace vkw {
 
-bool Device::init(const VkPhysicalDevice& physical_device, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
-    uint32_t queue_prop_count{};
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_prop_count, nullptr);
-    std::vector<VkQueueFamilyProperties> queue_props(queue_prop_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_prop_count, queue_props.data());
+bool Device::init(const std::vector<QueueTarget>& queue_targets, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+    if(queue_targets.empty()) return false;
 
-    uint32_t queue_family_index = std::numeric_limits<uint32_t>::max();
-    for(size_t i = 0; i < queue_props.size(); ++i) {
-        if((queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
-            queue_family_index = i;
-            break;
-        }
+    default_family_index_ = queue_targets[0].family_index;
+
+    std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_targets.size());
+    queues_.resize(queue_targets.size());
+    for(size_t i = 0; i < queue_targets.size(); ++i) {
+        if(queue_targets[i].priorities.empty()) return false;
+
+        queues_[i].resize(queue_targets[i].priorities.size());
+
+        queue_infos[i] = {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = queue_targets[i].family_index,
+            .queueCount = size_u32(queue_targets[i].priorities.size()),
+            .pQueuePriorities = queue_targets[i].priorities.data(),
+        };
     }
-    if(queue_family_index == std::numeric_limits<uint32_t>::max()) return false;
-
-    float queue_priorities[] = { 0.0f };
-
-    VkDeviceQueueCreateInfo queue_info {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = queue_family_index,
-        .queueCount = 1,
-        .pQueuePriorities = queue_priorities,
-    };
 
     VkDeviceCreateInfo device_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = 1,
-        .pQueueCreateInfos = &queue_info,
+        .queueCreateInfoCount = size_u32(queue_infos.size()),
+        .pQueueCreateInfos = queue_infos.data(),
         .enabledLayerCount = size_u32(layers.size()),
         .ppEnabledLayerNames = layers.data(),
         .enabledExtensionCount = size_u32(extensions.size()),
@@ -37,9 +33,15 @@ bool Device::init(const VkPhysicalDevice& physical_device, const std::vector<con
     };
 
     VkDevice device{};
-    CHECK_VK_RESULT(vkCreateDevice(physical_device, &device_info, nullptr, &device), return false;);
+    CHECK_VK_RESULT(vkCreateDevice(physical_device_, &device_info, nullptr, &device), return false;);
     
     device_ = std::make_shared<DeviceEntity>(std::move(device));
+
+    for(size_t i = 0; i < queues_.size(); ++i) {
+        for(size_t j = 0; j < queues_[i].size(); ++j) {
+            vkGetDeviceQueue(*device_, queue_targets[i].family_index, size_u32(j), &queues_[i][j]);
+        }
+    }
 
     return true;
 }
