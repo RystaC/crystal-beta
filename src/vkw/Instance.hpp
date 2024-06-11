@@ -1,19 +1,9 @@
-#include <memory>
-#include <vector>
+#pragma once
 
 #include "common.hpp"
+#include "Surface.hpp"
 
 namespace vkw {
-
-class InstanceEntity {
-    VkInstance instance_;
-
-public:
-    InstanceEntity(VkInstance&& instance) noexcept : instance_(instance) {}
-    ~InstanceEntity() noexcept {
-        vkDestroyInstance(instance_, nullptr);
-    }
-};
 
 class Instance {
     std::shared_ptr<InstanceEntity> instance_;
@@ -22,7 +12,11 @@ public:
     Instance() noexcept : instance_() {}
     ~Instance() noexcept {}
 
-    VkResult init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+    bool init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+
+    std::vector<VkPhysicalDevice> enum_physical_devices() const;
+
+    std::unique_ptr<Surface> create_surface_SDL(SDL_Window* window) const;
 };
 
 }

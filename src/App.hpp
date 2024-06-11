@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 
 #include <SDL2/SDL.h>
@@ -14,6 +16,8 @@ public:
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
+
+    auto window() const noexcept { return window_; }
 
     bool init(int window_width, int window_height);
 

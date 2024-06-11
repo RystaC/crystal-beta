@@ -2,7 +2,7 @@
 
 namespace vkw {
 
-VkResult Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+bool Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
     VkApplicationInfo application_info {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "crystal-beta demo",
@@ -22,12 +22,29 @@ VkResult Instance::init(const std::vector<const char*>& extensions, const std::v
     };
 
     VkInstance instance{};
-    auto result = vkCreateInstance(&instance_info, nullptr, &instance);
-    if(result != VK_SUCCESS) return result;
+    CHECK_VK_RESULT(vkCreateInstance(&instance_info, nullptr, &instance), return false;);
 
     instance_ = std::make_shared<InstanceEntity>(std::move(instance));
 
-    return result;
+    return true;
+}
+
+std::vector<VkPhysicalDevice> Instance::enum_physical_devices() const {
+    uint32_t device_count{};
+
+    CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, nullptr), return {};);
+    std::vector<VkPhysicalDevice> devices(device_count);
+    CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, devices.data()), return {};);
+
+    return devices;
+}
+
+std::unique_ptr<Surface> Instance::create_surface_SDL(SDL_Window* window) const {
+    VkSurfaceKHR surface{};
+    auto result = SDL_Vulkan_CreateSurface(window, *instance_, &surface);
+    if(result != SDL_TRUE) return {};
+
+    return std::make_unique<Surface>(instance_, std::move(surface));
 }
 
 }

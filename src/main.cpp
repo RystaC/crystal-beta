@@ -25,11 +25,14 @@ int main(int, char**) {
         auto layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
 
         auto res = instance->init(extensions, layers);
-        if(res != VK_SUCCESS) {
+        if(!res) {
             std::cerr << "[crystal-beta] ERROR: failed to initialize Vulkan instance. exit." << std::endl;
             std::exit(EXIT_FAILURE);
         }
     }
+
+    auto surface = instance->create_surface_SDL(app->window());
+    std::cout << std::boolalpha << bool(surface) << std::endl;
 
     app->main_loop([](){});
 
