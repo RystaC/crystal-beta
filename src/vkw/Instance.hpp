@@ -9,7 +9,7 @@ class Instance {
     std::shared_ptr<InstanceEntity> instance_;
 
 public:
-    Instance() noexcept : instance_() {}
+    Instance() noexcept : instance_(nullptr) {}
     ~Instance() noexcept {}
 
     bool init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
