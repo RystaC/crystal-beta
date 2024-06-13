@@ -12,7 +12,7 @@
 constexpr size_t WINDOW_WIDTH = 640;
 constexpr size_t WINDOW_HEIGHT = 480;
 
-int main(int, char**) {
+int main(int argc, char** argv) {
     auto app = std::make_unique<App>();
     auto result = app->init(WINDOW_WIDTH, WINDOW_HEIGHT);
     if(!result) {
@@ -33,9 +33,9 @@ int main(int, char**) {
     }
 
     auto surface = instance->create_surface_SDL(app->window());
-    auto physical_device = std::make_unique<vkw::PhysicalDevice>(std::move(instance->enum_physical_devices()[0]));
+    auto physical_device = std::make_shared<vkw::PhysicalDevice>(std::move(instance->enum_physical_devices()[0]));
 
-    auto device = std::make_unique<vkw::Device>(*physical_device);
+    auto device = std::make_unique<vkw::Device>(physical_device);
     {
         auto queue_family = physical_device->find_queue_family(VK_QUEUE_GRAPHICS_BIT);
         if(queue_family < 0) {
@@ -54,6 +54,24 @@ int main(int, char**) {
             std::cerr << "[crystal-beta] ERROR: failed to initialize Vulkan device. exit." << std::endl;
             std::exit(EXIT_FAILURE);
         }
+    }
+
+    auto command_pool = device->create_command_pool();
+    if(!command_pool) {
+        std::cerr << "[crystal-beta] ERROR: failed to create command pool. exit." << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
+    auto swapchain = device->create_swapchain(*surface, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, WINDOW_WIDTH, WINDOW_HEIGHT);
+    if(!swapchain) {
+        std::cerr << "[crystal-beta] ERROR: failed to create swapchain. exit." << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+
+    auto swapchain_images = swapchain->get_images();
+    if(!swapchain_images) {
+        std::cerr << "[crystal-beta] ERROR: failed to aquire images from swapchain. exit." << std::endl;
+        std::exit(EXIT_FAILURE);
     }
 
     app->main_loop([](){});
