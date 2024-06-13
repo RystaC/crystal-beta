@@ -8,8 +8,6 @@ std::unique_ptr<SwapchainImages> Swapchain::get_images() {
     std::vector<VkImage> images(image_count);
     CHECK_VK_RESULT(vkGetSwapchainImagesKHR(*device_, swapchain_, &image_count, images.data()), return {};);
 
-    std::vector<std::pair<VkImage, VkImageView>> swapchain_images(image_count);
-
     std::vector<VkImageView> image_views(image_count);
     for(size_t i = 0; i < images.size(); ++i) {
         VkImageViewCreateInfo view_info {
@@ -24,11 +22,9 @@ std::unique_ptr<SwapchainImages> Swapchain::get_images() {
         };
 
         CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]), return {};);
-
-        swapchain_images[i] = { images[i], image_views[i] };
     }
 
-    return std::make_unique<SwapchainImages>(device_, swapchain_images);
+    return std::make_unique<SwapchainImages>(device_, std::move(images), std::move(image_views));
 }
 
 }

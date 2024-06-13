@@ -101,4 +101,39 @@ std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
     return std::make_shared<Swapchain>(device_, std::move(swapchain), desired_format);
 }
 
+std::unique_ptr<RenderPass> Device::create_render_pass() {
+    VkAttachmentDescription attachment_desc {
+        .format = VK_FORMAT_B8G8R8A8_UNORM,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    };
+
+    VkAttachmentReference attachment_ref {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+
+    VkSubpassDescription subpass_desc {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &attachment_ref,
+    };
+
+    VkRenderPassCreateInfo render_pass_info {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachment_desc,
+        .subpassCount = 1,
+        .pSubpasses = &subpass_desc,
+    };
+
+    VkRenderPass render_pass{};
+    CHECK_VK_RESULT(vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass), return {};);
+
+    return std::make_unique<RenderPass>(device_, std::move(render_pass));
+}
+
 }

@@ -7,13 +7,14 @@ namespace vkw {
 
 class SwapchainImages {
     std::shared_ptr<DeviceEntity> device_;
-    std::vector<std::pair<VkImage, VkImageView>> images_;
+    std::vector<VkImage> images_;
+    std::vector<VkImageView> image_views_;
 
 public:
-    SwapchainImages(std::shared_ptr<DeviceEntity> device, std::vector<std::pair<VkImage, VkImageView>> images) noexcept : device_(device), images_(images) {}
+    SwapchainImages(std::shared_ptr<DeviceEntity> device, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views) noexcept : device_(device), images_(images), image_views_(image_views) {}
     ~SwapchainImages() noexcept {
         for(size_t i = 0; i < images_.size(); ++i) {
-            vkDestroyImageView(*device_, images_[i].second, nullptr);
+            vkDestroyImageView(*device_, image_views_[i], nullptr);
         }
     }
 };
