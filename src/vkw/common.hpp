@@ -43,4 +43,23 @@ public:
     operator VkDevice() const noexcept { return device_; }
 };
 
+class CommandPool;
+class CommandBuffer;
+
+class CommandPoolEntity {
+    std::shared_ptr<DeviceEntity> device_;
+    VkCommandPool command_pool_;
+
+    friend CommandPool;
+    friend CommandBuffer;
+
+public:
+    CommandPoolEntity(std::shared_ptr<DeviceEntity> device_, VkCommandPool&& command_pool) noexcept : command_pool_(command_pool) {}
+    ~CommandPoolEntity() noexcept {
+        vkDestroyCommandPool(*device_, command_pool_, nullptr);
+    }
+
+    operator VkCommandPool() const noexcept { return command_pool_; }
+};
+
 }

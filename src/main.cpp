@@ -68,12 +68,6 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    auto swapchain_images = swapchain->get_images();
-    if(!swapchain_images) {
-        std::cerr << "[crystal-beta] ERROR: failed to aquire images from swapchain. exit." << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-
     app->main_loop([](){});
 
     return 0;
