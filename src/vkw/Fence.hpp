@@ -10,6 +10,16 @@ class Fence {
 
 public:
     Fence(std::shared_ptr<DeviceEntity> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
+
+    operator VkFence() const noexcept { return fence_; }
+
+    auto wait(uint64_t timeout) {
+        return vkWaitForFences(*device_, 1u, &fence_, VK_TRUE, timeout);
+    }
+
+    auto reset() {
+        return vkResetFences(*device_, 1u, &fence_);
+    }
 };
 
 }
