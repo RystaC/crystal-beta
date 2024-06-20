@@ -1,17 +1,18 @@
 #pragma once
 
 #include "common.hpp"
-#include "Pipeline.hpp"
 
 namespace vkw {
 
+class Device;
+
 class ComputePipelineStates {
-    std::shared_ptr<DeviceEntity> device_;
     VkPipelineShaderStageCreateInfo shader_stage_;
 
 public:
-    ComputePipelineStates(std::shared_ptr<DeviceEntity> device) noexcept :
-        device_(device),
+    friend Device;
+    
+    ComputePipelineStates() noexcept :
         shader_stage_{.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO}
     {}
 
@@ -26,18 +27,18 @@ public:
         return *this;
     }
 
-    std::unique_ptr<Pipeline> create_pipeline(VkPipelineLayout layout) {
-        VkComputePipelineCreateInfo pipeline_info {
-            .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-            .stage = shader_stage_,
-            .layout = layout,
-        };
+    // std::unique_ptr<Pipeline> create_pipeline(VkPipelineLayout layout) {
+    //     VkComputePipelineCreateInfo pipeline_info {
+    //         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+    //         .stage = shader_stage_,
+    //         .layout = layout,
+    //     };
 
-        VkPipeline pipeline{};
-        CHECK_VK_RESULT(vkCreateComputePipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {};);
+    //     VkPipeline pipeline{};
+    //     CHECK_VK_RESULT(vkCreateComputePipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {};);
 
-        return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
-    }
+    //     return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
+    // }
 
 };
 

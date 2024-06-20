@@ -1,12 +1,12 @@
 #pragma once
 
 #include "common.hpp"
-#include "Pipeline.hpp"
 
 namespace vkw {
 
+class Device;
+
 class GraphicsPipelineStates{
-    std::shared_ptr<DeviceEntity> device_;
     std::vector<VkPipelineShaderStageCreateInfo> shader_stages_;
     VkPipelineVertexInputStateCreateInfo vertex_input_state_;
     VkPipelineInputAssemblyStateCreateInfo input_assembly_state_;
@@ -20,8 +20,9 @@ class GraphicsPipelineStates{
     VkPipelineDynamicStateCreateInfo dynamic_state_;
 
 public:
-    GraphicsPipelineStates(std::shared_ptr<DeviceEntity> device) noexcept :
-        device_(device),
+    friend Device;
+
+    GraphicsPipelineStates() noexcept :
         shader_stages_(),
         vertex_input_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO},
         input_assembly_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO},
@@ -104,19 +105,13 @@ public:
         return *this;
     }
 
-    auto& add_blend_attachment(VkColorComponentFlags write_mask) {
-        blend_attachment_states_.emplace_back(VkPipelineColorBlendAttachmentState {
-            .blendEnable = VK_FALSE,
-            .colorWriteMask = write_mask,
-        });
-
-        return *this;
-    }
-
-    auto& color_blend_state() {
+    auto& color_blend_state(uint32_t attachment_count) {
+        blend_attachment_states_.resize(attachment_count, {.blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_R_BIT,});
         color_blend_state_ = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .logicOpEnable = VK_FALSE,
+            .attachmentCount = attachment_count,
+            .pAttachments = blend_attachment_states_.data(),
         };
 
         return *this;
@@ -132,31 +127,31 @@ public:
         return *this;
     }
 
-    std::unique_ptr<Pipeline> create_pipeline(VkRenderPass render_pass, uint32_t subpass_index, VkPipelineLayout layout) {
-        color_blend_state_.attachmentCount = size_u32(blend_attachment_states_.size());
-        color_blend_state_.pAttachments = blend_attachment_states_.data();
+    // std::unique_ptr<Pipeline> create_pipeline(VkRenderPass render_pass, uint32_t subpass_index, VkPipelineLayout layout) {
+    //     color_blend_state_.attachmentCount = size_u32(blend_attachment_states_.size());
+    //     color_blend_state_.pAttachments = blend_attachment_states_.data();
 
-        VkGraphicsPipelineCreateInfo pipeline_info {
-            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = size_u32(shader_stages_.size()),
-            .pStages = shader_stages_.data(),
-            .pVertexInputState = &vertex_input_state_,
-            .pInputAssemblyState = &input_assembly_state_,
-            .pViewportState = &viewport_state_,
-            .pRasterizationState = &rasterization_state_,
-            .pMultisampleState = &multisample_state_,
-            .pColorBlendState = &color_blend_state_,
-            .pDynamicState = &dynamic_state_,
-            .layout = layout,
-            .renderPass = render_pass,
-            .subpass = subpass_index,
-        };
+    //     VkGraphicsPipelineCreateInfo pipeline_info {
+    //         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+    //         .stageCount = size_u32(shader_stages_.size()),
+    //         .pStages = shader_stages_.data(),
+    //         .pVertexInputState = &vertex_input_state_,
+    //         .pInputAssemblyState = &input_assembly_state_,
+    //         .pViewportState = &viewport_state_,
+    //         .pRasterizationState = &rasterization_state_,
+    //         .pMultisampleState = &multisample_state_,
+    //         .pColorBlendState = &color_blend_state_,
+    //         .pDynamicState = &dynamic_state_,
+    //         .layout = layout,
+    //         .renderPass = render_pass,
+    //         .subpass = subpass_index,
+    //     };
 
-        VkPipeline pipeline{};
-        CHECK_VK_RESULT(vkCreateGraphicsPipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {}; );
+    //     VkPipeline pipeline{};
+    //     CHECK_VK_RESULT(vkCreateGraphicsPipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {}; );
         
-        return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
-    }
+    //     return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
+    // }
 };
 
 }

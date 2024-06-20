@@ -2,32 +2,43 @@
 
 namespace vkw {
 
-bool Device::init(const std::vector<QueueTarget>& queue_targets, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
-    if(queue_targets.empty()) return false;
+bool Device::init(uint32_t queue_family_index, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+    // if(queue_targets.empty()) return false;
 
-    queues_.resize(queue_targets.size());
-    queue_family_indices_.resize(queue_targets.size());
+    // queues_.resize(queue_targets.size());
+    // queue_family_indices_.resize(queue_targets.size());
 
-    std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_targets.size());
-    for(size_t i = 0; i < queue_targets.size(); ++i) {
-        if(queue_targets[i].priorities.empty()) return false;
+    // std::vector<VkDeviceQueueCreateInfo> queue_infos(queue_targets.size());
+    // for(size_t i = 0; i < queue_targets.size(); ++i) {
+    //     if(queue_targets[i].priorities.empty()) return false;
 
-        queues_[i].resize(queue_targets[i].priorities.size());
+    //     queues_[i].resize(queue_targets[i].priorities.size());
 
-        queue_infos[i] = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = queue_targets[i].family_index,
-            .queueCount = size_u32(queue_targets[i].priorities.size()),
-            .pQueuePriorities = queue_targets[i].priorities.data(),
-        };
+    //     queue_infos[i] = {
+    //         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+    //         .queueFamilyIndex = queue_targets[i].family_index,
+    //         .queueCount = size_u32(queue_targets[i].priorities.size()),
+    //         .pQueuePriorities = queue_targets[i].priorities.data(),
+    //     };
 
-        queue_family_indices_.push_back(queue_targets[i].family_index);
-    }
+    //     queue_family_indices_.push_back(queue_targets[i].family_index);
+    // }
+
+    queue_family_index_ = queue_family_index;
+
+    float priority = 0.0f;
+
+    VkDeviceQueueCreateInfo queue_info {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queue_family_index_,
+        .queueCount = 1u,
+        .pQueuePriorities = &priority,
+    };
 
     VkDeviceCreateInfo device_info {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = size_u32(queue_infos.size()),
-        .pQueueCreateInfos = queue_infos.data(),
+        .queueCreateInfoCount = 1u,
+        .pQueueCreateInfos = &queue_info,
         .enabledLayerCount = size_u32(layers.size()),
         .ppEnabledLayerNames = layers.data(),
         .enabledExtensionCount = size_u32(extensions.size()),
@@ -39,20 +50,22 @@ bool Device::init(const std::vector<QueueTarget>& queue_targets, const std::vect
     
     device_ = std::make_shared<DeviceEntity>(std::move(device));
 
-    for(size_t i = 0; i < queues_.size(); ++i) {
-        for(size_t j = 0; j < queues_[i].size(); ++j) {
-            vkGetDeviceQueue(*device_, queue_targets[i].family_index, size_u32(j), &queues_[i][j]);
-        }
-    }
+    // for(size_t i = 0; i < queues_.size(); ++i) {
+    //     for(size_t j = 0; j < queues_[i].size(); ++j) {
+    //         vkGetDeviceQueue(*device_, queue_targets[i].family_index, size_u32(j), &queues_[i][j]);
+    //     }
+    // }
+
+    vkGetDeviceQueue(*device_, queue_family_index_, 0, &queue_);
 
     return true;
 }
 
-std::shared_ptr<CommandPool> Device::create_command_pool(uint32_t queue_family_index) {
+std::shared_ptr<CommandPool> Device::create_command_pool() {
     VkCommandPoolCreateInfo pool_info {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = queue_family_indices_[queue_family_index],
+        .queueFamilyIndex = queue_family_index_,
     };
 
     VkCommandPool command_pool{};
@@ -61,9 +74,9 @@ std::shared_ptr<CommandPool> Device::create_command_pool(uint32_t queue_family_i
     return std::make_shared<CommandPool>(device_, std::move(command_pool));
 }
 
-std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height, uint32_t queue_family_index) {
+std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height) {
     VkBool32 is_supported{};
-    vkGetPhysicalDeviceSurfaceSupportKHR(*physical_device_, queue_family_indices_[queue_family_index], surface, &is_supported);
+    vkGetPhysicalDeviceSurfaceSupportKHR(*physical_device_, queue_family_index_, surface, &is_supported);
     if(!is_supported) return {};
 
     VkSurfaceCapabilitiesKHR capabilities{};
@@ -119,7 +132,7 @@ std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
         CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]), return {};);
     }
 
-    return std::make_shared<Swapchain>(device_, std::move(swapchain), std::move(image_views));
+    return std::make_shared<Swapchain>(device_, std::move(swapchain), std::move(image_views), width, height);
 }
 
 std::unique_ptr<RenderPass> Device::create_render_pass() {
@@ -155,6 +168,80 @@ std::unique_ptr<RenderPass> Device::create_render_pass() {
     CHECK_VK_RESULT(vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass), return {};);
 
     return std::make_unique<RenderPass>(device_, std::move(render_pass));
+}
+
+std::unique_ptr<Framebuffer> Device::create_framebuffer(const RenderPass& render_pass, const std::vector<VkImageView>& image_views, uint32_t width, uint32_t height) {
+    VkFramebufferCreateInfo framebuffer_info {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = render_pass,
+        .attachmentCount = size_u32(image_views.size()),
+        .pAttachments = image_views.data(),
+        .width = width,
+        .height = height,
+        .layers = 1u,
+    };
+
+    VkFramebuffer framebuffer{};
+    CHECK_VK_RESULT(vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer), return {};);
+
+    return std::make_unique<Framebuffer>(device_, std::move(framebuffer));
+}
+
+std::unique_ptr<ShaderModule> Device::create_shader_module(const std::filesystem::path& spirv_path) {
+    std::ifstream ifs(spirv_path, std::ios::binary | std::ios::ate);
+    if(ifs.fail()) {
+        std::cerr << "[vkw::Device::create_shader_module] ERROR: could not read file: " << spirv_path << std::endl;
+        return {};
+    }
+
+    auto bin_size = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+
+    std::vector<char> bin_data(bin_size);
+    ifs.read(bin_data.data(), bin_size);
+    ifs.close();
+
+    VkShaderModuleCreateInfo module_info {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = bin_size,
+        .pCode = reinterpret_cast<uint32_t*>(bin_data.data()),
+    };
+
+    VkShaderModule shader_module{};
+    CHECK_VK_RESULT(vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module), return {};);
+
+    return std::make_unique<ShaderModule>(device_, std::move(shader_module));
+}
+
+std::unique_ptr<Pipeline> Device::create_graphics_pipeline(const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index) {
+    VkPipelineLayoutCreateInfo layout_info {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    };
+
+    VkPipelineLayout pipeline_layout{};
+    CHECK_VK_RESULT(vkCreatePipelineLayout(*device_, &layout_info, nullptr, &pipeline_layout), return {};);
+
+    VkGraphicsPipelineCreateInfo pipeline_info {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = size_u32(pipeline_states.shader_stages_.size()),
+        .pStages = pipeline_states.shader_stages_.data(),
+        .pVertexInputState = &pipeline_states.vertex_input_state_,
+        .pInputAssemblyState = &pipeline_states.input_assembly_state_,
+        .pViewportState = &pipeline_states.viewport_state_,
+        .pRasterizationState = &pipeline_states.rasterization_state_,
+        .pMultisampleState = &pipeline_states.multisample_state_,
+        .pColorBlendState = &pipeline_states.color_blend_state_,
+        .pDynamicState = &pipeline_states.dynamic_state_,
+        .layout = pipeline_layout,
+        .renderPass = render_pass,
+        .subpass = subpass_index,
+    };
+
+    VkPipeline pipeline{};
+
+    CHECK_VK_RESULT(vkCreateGraphicsPipelines(*device_, VK_NULL_HANDLE, 1u, &pipeline_info, nullptr, &pipeline), return {};);
+
+    return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(pipeline_layout));
 }
 
 }
