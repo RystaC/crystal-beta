@@ -33,40 +33,42 @@ int main(int argc, char** argv) {
     }
 
     auto surface = instance->create_surface_SDL(app->window());
-    auto physical_device = std::make_shared<vkw::PhysicalDevice>(std::move(instance->enum_physical_devices()[0]));
+    auto physical_device = instance->enum_physical_devices();
 
-    auto device = std::make_unique<vkw::Device>(physical_device);
-    {
-        auto queue_family = physical_device->find_queue_family(VK_QUEUE_GRAPHICS_BIT);
-        if(queue_family < 0) {
-            std::cerr << "[crystal-beta] ERROR: failed to find queue family. exit." << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
+    for(const auto& pd : physical_device) std::cout << "physical device: " << pd.name() << std::endl;
 
-        std::vector<vkw::QueueTarget> targets {
-            { static_cast<uint32_t>(queue_family), { 0.0f } },
-        };
-        auto extensions = std::vector<const char*>{ "VK_KHR_swapchain" };
-        auto layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
+    // auto device = std::make_unique<vkw::Device>(physical_device);
+    // {
+    //     auto queue_family = physical_device->find_queue_family(VK_QUEUE_GRAPHICS_BIT);
+    //     if(queue_family < 0) {
+    //         std::cerr << "[crystal-beta] ERROR: failed to find queue family. exit." << std::endl;
+    //         std::exit(EXIT_FAILURE);
+    //     }
 
-        auto res = device->init(targets, extensions, layers);
-        if(!res) {
-            std::cerr << "[crystal-beta] ERROR: failed to initialize Vulkan device. exit." << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-    }
+    //     std::vector<vkw::QueueTarget> targets {
+    //         { static_cast<uint32_t>(queue_family), { 0.0f } },
+    //     };
+    //     auto extensions = std::vector<const char*>{ "VK_KHR_swapchain" };
+    //     auto layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
 
-    auto command_pool = device->create_command_pool();
-    if(!command_pool) {
-        std::cerr << "[crystal-beta] ERROR: failed to create command pool. exit." << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    //     auto res = device->init(targets, extensions, layers);
+    //     if(!res) {
+    //         std::cerr << "[crystal-beta] ERROR: failed to initialize Vulkan device. exit." << std::endl;
+    //         std::exit(EXIT_FAILURE);
+    //     }
+    // }
 
-    auto swapchain = device->create_swapchain(*surface, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, WINDOW_WIDTH, WINDOW_HEIGHT);
-    if(!swapchain) {
-        std::cerr << "[crystal-beta] ERROR: failed to create swapchain. exit." << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    // auto command_pool = device->create_command_pool();
+    // if(!command_pool) {
+    //     std::cerr << "[crystal-beta] ERROR: failed to create command pool. exit." << std::endl;
+    //     std::exit(EXIT_FAILURE);
+    // }
+
+    // auto swapchain = device->create_swapchain(*surface, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, WINDOW_WIDTH, WINDOW_HEIGHT);
+    // if(!swapchain) {
+    //     std::cerr << "[crystal-beta] ERROR: failed to create swapchain. exit." << std::endl;
+    //     std::exit(EXIT_FAILURE);
+    // }
 
     app->main_loop([](){});
 

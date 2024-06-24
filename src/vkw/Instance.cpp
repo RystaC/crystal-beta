@@ -29,14 +29,18 @@ bool Instance::init(const std::vector<const char*>& extensions, const std::vecto
     return true;
 }
 
-std::vector<VkPhysicalDevice> Instance::enum_physical_devices() const {
+std::vector<PhysicalDevice> Instance::enum_physical_devices() const {
     uint32_t device_count{};
 
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, nullptr), return {};);
     std::vector<VkPhysicalDevice> devices(device_count);
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, devices.data()), return {};);
 
-    return devices;
+    std::vector<PhysicalDevice> device_wrappers(devices.size());
+
+    std::transform(devices.begin(), devices.end(), device_wrappers.begin(), [](auto& d) { return PhysicalDevice(std::move(d)); });
+
+    return device_wrappers;
 }
 
 std::unique_ptr<Surface> Instance::create_surface_SDL(SDL_Window* window) const {

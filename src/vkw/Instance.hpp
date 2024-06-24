@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "Surface.hpp"
+#include "PhysicalDevice.hpp"
 
 namespace vkw {
 
@@ -14,7 +15,7 @@ public:
 
     bool init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
 
-    std::vector<VkPhysicalDevice> enum_physical_devices() const;
+    std::vector<PhysicalDevice> enum_physical_devices() const;
 
     std::unique_ptr<Surface> create_surface_SDL(SDL_Window* window) const;
 };

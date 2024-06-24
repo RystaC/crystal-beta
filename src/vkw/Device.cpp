@@ -2,7 +2,7 @@
 
 namespace vkw {
 
-bool Device::init(uint32_t queue_family_index, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+bool Device::init(PhysicalDevice&& physical_device, uint32_t queue_family_index, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
     // if(queue_targets.empty()) return false;
 
     // queues_.resize(queue_targets.size());
@@ -23,6 +23,8 @@ bool Device::init(uint32_t queue_family_index, const std::vector<const char*>& e
 
     //     queue_family_indices_.push_back(queue_targets[i].family_index);
     // }
+
+    physical_device_ = std::make_unique<PhysicalDevice>(physical_device);
 
     queue_family_index_ = queue_family_index;
 
@@ -71,7 +73,9 @@ std::shared_ptr<CommandPool> Device::create_command_pool() {
     VkCommandPool command_pool{};
     CHECK_VK_RESULT(vkCreateCommandPool(*device_, &pool_info, nullptr, &command_pool), return {};);
 
-    return std::make_shared<CommandPool>(device_, std::move(command_pool));
+    auto command_pool_entity = std::make_shared<CommandPoolEntity>(device_, std::move(command_pool));
+
+    return std::make_shared<CommandPool>(std::move(command_pool_entity));
 }
 
 std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height) {
@@ -194,7 +198,7 @@ std::unique_ptr<ShaderModule> Device::create_shader_module(const std::filesystem
         return {};
     }
 
-    auto bin_size = ifs.tellg();
+    auto bin_size = static_cast<size_t>(ifs.tellg());
     ifs.seekg(0, std::ios::beg);
 
     std::vector<char> bin_data(bin_size);
@@ -242,6 +246,29 @@ std::unique_ptr<Pipeline> Device::create_graphics_pipeline(const GraphicsPipelin
     CHECK_VK_RESULT(vkCreateGraphicsPipelines(*device_, VK_NULL_HANDLE, 1u, &pipeline_info, nullptr, &pipeline), return {};);
 
     return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(pipeline_layout));
+}
+
+VkDeviceMemory Device::allocate_device_memory(const VkMemoryRequirements& requirements) {
+    uint32_t memory_index = UINT32_MAX;
+    auto& memory_properties = physical_device_->memory_properties_.memoryTypes;
+    for(uint32_t i = 0u; i < physical_device_->memory_properties_.memoryTypeCount; ++i) {
+        if((memory_properties[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) {
+            memory_index = i;
+            break;
+        }
+    }
+    if(memory_index == UINT32_MAX) return VK_NULL_HANDLE;
+
+    VkMemoryAllocateInfo allocate_info {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = memory_index,
+    };
+
+    VkDeviceMemory device_memory{};
+    CHECK_VK_RESULT(vkAllocateMemory(*device_, &allocate_info, nullptr, &device_memory), return VK_NULL_HANDLE;);
+
+    return device_memory;
 }
 
 }
