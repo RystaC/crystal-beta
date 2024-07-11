@@ -63,7 +63,7 @@ bool Device::init(PhysicalDevice&& physical_device, uint32_t queue_family_index,
     return true;
 }
 
-std::shared_ptr<CommandPool> Device::create_command_pool() {
+std::unique_ptr<CommandPool> Device::create_command_pool() {
     VkCommandPoolCreateInfo pool_info {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
@@ -73,12 +73,10 @@ std::shared_ptr<CommandPool> Device::create_command_pool() {
     VkCommandPool command_pool{};
     CHECK_VK_RESULT(vkCreateCommandPool(*device_, &pool_info, nullptr, &command_pool), return {};);
 
-    auto command_pool_entity = std::make_shared<CommandPoolEntity>(device_, std::move(command_pool));
-
-    return std::make_shared<CommandPool>(std::move(command_pool_entity));
+    return std::make_unique<CommandPool>(device_, std::move(command_pool));
 }
 
-std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height) {
+std::unique_ptr<Swapchain> Device::create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height) {
     VkBool32 is_supported{};
     vkGetPhysicalDeviceSurfaceSupportKHR(*physical_device_, queue_family_index_, surface, &is_supported);
     if(!is_supported) return {};
@@ -136,7 +134,7 @@ std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
         CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]), return {};);
     }
 
-    return std::make_shared<Swapchain>(device_, std::move(swapchain), std::move(image_views), width, height);
+    return std::make_unique<Swapchain>(device_, std::move(swapchain), std::move(images), std::move(image_views), width, height);
 }
 
 std::unique_ptr<RenderPass> Device::create_render_pass() {

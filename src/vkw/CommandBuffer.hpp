@@ -44,17 +44,41 @@ public:
         return *this;
     }
 
+    auto& barrier_image(VkImage& image, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkImageLayout src_layout, VkImageLayout dst_layout) {
+        VkImageMemoryBarrier image_barrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = src_access_mask,
+            .dstAccessMask = dst_access_mask,
+            .oldLayout = src_layout,
+            .newLayout = dst_layout,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image,
+            .subresourceRange = VkImageSubresourceRange {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        vkCmdPipelineBarrier(command_buffer_, src_stage, dst_stage, 0, 0, nullptr, 0, nullptr, 1u, &image_barrier);
+
+        return *this;
+    }
+
 };
 
 class CommandBuffer {
-    std::shared_ptr<CommandPoolEntity> command_pool_;
+    std::shared_ptr<DeviceEntity> device_;
+    // std::shared_ptr<CommandPoolEntity> command_pool_;
     VkCommandBuffer command_buffer_;
 
 public:
-    CommandBuffer(std::shared_ptr<CommandPoolEntity> command_pool, VkCommandBuffer&& command_buffer) noexcept : command_pool_(command_pool), command_buffer_(command_buffer) {}
-    ~CommandBuffer() noexcept {
-        vkFreeCommandBuffers(*command_pool_->device_, *command_pool_, 1, &command_buffer_);
-    }
+    // CommandBuffer(std::shared_ptr<CommandPoolEntity> command_pool, VkCommandBuffer&& command_buffer) noexcept : command_pool_(command_pool), command_buffer_(command_buffer) {}
+    CommandBuffer(std::shared_ptr<DeviceEntity> device, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_buffer_(command_buffer) {}
+    ~CommandBuffer() = default;
 
     operator VkCommandBuffer() const noexcept { return command_buffer_; }
 

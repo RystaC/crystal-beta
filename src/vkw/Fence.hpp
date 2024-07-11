@@ -10,6 +10,9 @@ class Fence {
 
 public:
     Fence(std::shared_ptr<DeviceEntity> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
+    ~Fence() noexcept {
+        vkDestroyFence(*device_, fence_, nullptr);
+    }
 
     operator VkFence() const noexcept { return fence_; }
 

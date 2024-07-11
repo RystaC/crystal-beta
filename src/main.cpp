@@ -136,30 +136,58 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    // uint32_t current_index = swapchain->next_image_index(*fence);
+    command_buffer->record_commands(
+        [&](vkw::CommandBufferCommands& c) {
+            c
+            .barrier_image(swapchain->image(0),
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            )
+            .barrier_image(swapchain->image(1),
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            )
+            ;
+        }
+    );
+
+    device->submit_commands(*command_buffer, *fence);
+    fence->wait(UINT64_MAX);
+    fence->reset();
+
+    uint32_t current_index = swapchain->next_image_index(*fence);
 
     app->main_loop(
         [&](){
-            // VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
-            // VkClearValue clear_value = {0.0f, 0.0f, 0.0f, 1.0f};
+            VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
+            VkClearValue clear_value = {0.0f, 0.0f, 0.0f, 1.0f};
 
-            // command_buffer->record_commands(
-            //     [&](vkw::CommandBufferCommands& c) {
-            //         c
-            //         .begin_render_pass(*(framebuffers[0]), *render_pass, render_area, {clear_value})
-            //         .bind_graphics_pipeline(*pipeline)
-            //         .bind_vertex_buffer(*vertex_buffer)
-            //         .draw(3, 1)
-            //         .end_render_pass();
-            //     }
-            // );
+            command_buffer->record_commands(
+                [&](vkw::CommandBufferCommands& c) {
+                    c
+                    .barrier_image(swapchain->image(current_index),
+                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    )
+                    .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, {clear_value})
+                    .bind_graphics_pipeline(*pipeline)
+                    .bind_vertex_buffer(*vertex_buffer)
+                    .draw(3, 1)
+                    .end_render_pass();
+                }
+            );
 
-            // device->submit_commands(*command_buffer, *fence);
-            // fence->wait(UINT64_MAX);
+            device->submit_commands(*command_buffer, *fence);
+            fence->wait(UINT64_MAX);
 
-            // fence->reset();
+            device->present(*swapchain, current_index);
 
-            // current_index = swapchain->next_image_index(*fence);
+            fence->reset();
+
+            current_index = swapchain->next_image_index(*fence);
         }
     );
 

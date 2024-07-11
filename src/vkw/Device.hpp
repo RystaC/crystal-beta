@@ -51,9 +51,9 @@ public:
 
     bool init(PhysicalDevice&& physical_device, uint32_t queue_family_index, const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
 
-    std::shared_ptr<CommandPool> create_command_pool();
+    std::unique_ptr<CommandPool> create_command_pool();
 
-    std::shared_ptr<Swapchain> create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height);
+    std::unique_ptr<Swapchain> create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height);
 
     std::unique_ptr<RenderPass> create_render_pass();
     std::unique_ptr<RenderPass> create_render_pass(const RenderPassGraph& render_pass_graph);
@@ -88,6 +88,8 @@ public:
         CHECK_VK_RESULT(vkMapMemory(*device_, device_memory, 0, sizeof(T) * buffer_data.size(), 0, reinterpret_cast<void**>(&memory_pointer)), return {};);
         memcpy(memory_pointer, buffer_data.data(), sizeof(T) * buffer_data.size());
         vkUnmapMemory(*device_, device_memory);
+
+        CHECK_VK_RESULT(vkBindBufferMemory(*device_, buffer, device_memory, 0), return {};);
 
         return std::make_unique<Buffer<T>>(device_, std::move(buffer), std::move(device_memory));
     }

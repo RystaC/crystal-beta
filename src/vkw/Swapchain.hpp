@@ -9,11 +9,14 @@ namespace vkw {
 class Swapchain {
     std::shared_ptr<DeviceEntity> device_;
     VkSwapchainKHR swapchain_;
+    std::vector<VkImage> images_;
     std::vector<VkImageView> image_views_;
     uint32_t width_, height_;
 
 public:
-    Swapchain(std::shared_ptr<DeviceEntity> device, VkSwapchainKHR&& swapchain, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept : device_(device), swapchain_(swapchain), image_views_(image_views), width_(width), height_(height) {}
+    Swapchain(std::shared_ptr<DeviceEntity> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept :
+        device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), width_(width), height_(height)
+    {}
     ~Swapchain() noexcept {
         for(auto& image_view : image_views_) {
             vkDestroyImageView(*device_, image_view, nullptr);
@@ -25,7 +28,8 @@ public:
 
     constexpr auto image_view_size() const noexcept { return image_views_.size(); }
 
-    auto image_view(size_t index) { return image_views_[index]; }
+    auto& image(size_t index) { return images_[index]; }
+    auto& image_view(size_t index) { return image_views_[index]; }
     auto width() const noexcept { return width_; }
     auto height() const noexcept { return height_; }
 

@@ -7,28 +7,27 @@
 namespace vkw {
 
 class CommandPool {
-    std::shared_ptr<CommandPoolEntity> command_pool_;
+    std::shared_ptr<DeviceEntity> device_;
+    VkCommandPool command_pool_;
 
 public:
-    CommandPool(std::shared_ptr<CommandPoolEntity> command_pool) noexcept : command_pool_(command_pool) {}
-    ~CommandPool() noexcept {}
+    CommandPool(std::shared_ptr<DeviceEntity> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
+    ~CommandPool() noexcept {
+        vkDestroyCommandPool(*device_, command_pool_, nullptr);
+    }
 
     std::unique_ptr<CommandBuffer> allocate_command_buffer() {
         VkCommandBufferAllocateInfo allocate_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = *command_pool_,
+            .commandPool = command_pool_,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
+            .commandBufferCount = 1u,
         };
 
-        VkCommandBuffer command_buffer{};
+        VkCommandBuffer command_buffer;
+        CHECK_VK_RESULT(vkAllocateCommandBuffers(*device_, &allocate_info, &command_buffer), return {};);
 
-        auto res = vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer);
-        std::cerr << res << std::endl;
-        // CHECK_VK_RESULT(vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer), return {};);
-        // PRINT_VK_RESULT(vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer));
-
-        return std::make_unique<CommandBuffer>(command_pool_, std::move(command_buffer));
+        return std::make_unique<CommandBuffer>(device_, std::move(command_buffer));
     }
 
 };
