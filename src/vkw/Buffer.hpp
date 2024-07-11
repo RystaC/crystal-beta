@@ -18,6 +18,8 @@ public:
         vkFreeMemory(*device_, memory_, nullptr);
         vkDestroyBuffer(*device_, buffer_, nullptr);
     }
+
+    operator VkBuffer() const noexcept { return buffer_; }
 };
 
 }

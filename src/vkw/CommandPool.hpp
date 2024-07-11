@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "debug.hpp"
 #include "CommandBuffer.hpp"
 
 namespace vkw {
@@ -22,7 +23,10 @@ public:
 
         VkCommandBuffer command_buffer{};
 
-        CHECK_VK_RESULT(vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer), return {};);
+        auto res = vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer);
+        std::cerr << res << std::endl;
+        // CHECK_VK_RESULT(vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer), return {};);
+        // PRINT_VK_RESULT(vkAllocateCommandBuffers(*command_pool_->device_, &allocate_info, &command_buffer));
 
         return std::make_unique<CommandBuffer>(command_pool_, std::move(command_buffer));
     }

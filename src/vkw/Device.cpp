@@ -128,7 +128,7 @@ std::shared_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = desired_format.format,
             .components = {
-                VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A,
+                VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
             },
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
         };
@@ -166,6 +166,23 @@ std::unique_ptr<RenderPass> Device::create_render_pass() {
         .pAttachments = &attachment_desc,
         .subpassCount = 1,
         .pSubpasses = &subpass_desc,
+    };
+
+    VkRenderPass render_pass{};
+    CHECK_VK_RESULT(vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass), return {};);
+
+    return std::make_unique<RenderPass>(device_, std::move(render_pass));
+}
+
+std::unique_ptr<RenderPass> Device::create_render_pass(const RenderPassGraph& render_pass_graph) {
+    VkRenderPassCreateInfo render_pass_info {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = size_u32(render_pass_graph.attachments_.size()),
+        .pAttachments = render_pass_graph.attachments_.data(),
+        .subpassCount = size_u32(render_pass_graph.subpasses_.size()),
+        .pSubpasses = render_pass_graph.subpasses_.data(),
+        .dependencyCount = size_u32(render_pass_graph.dependencies_.size()),
+        .pDependencies = render_pass_graph.dependencies_.data(),
     };
 
     VkRenderPass render_pass{};
@@ -269,6 +286,50 @@ VkDeviceMemory Device::allocate_device_memory(const VkMemoryRequirements& requir
     CHECK_VK_RESULT(vkAllocateMemory(*device_, &allocate_info, nullptr, &device_memory), return VK_NULL_HANDLE;);
 
     return device_memory;
+}
+
+std::unique_ptr<Fence> Device::create_fence() {
+    VkFenceCreateInfo fence_info {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+    };
+
+    VkFence fence{};
+    CHECK_VK_RESULT(vkCreateFence(*device_, &fence_info, nullptr, &fence), return {};);
+
+    return std::make_unique<Fence>(device_, std::move(fence));
+}
+
+void Device::submit_commands(CommandBuffer& command_buffer, Fence& fence) {
+    VkCommandBuffer cb = command_buffer;
+    VkPipelineStageFlags wait_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSubmitInfo submit_info {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 0u,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = &wait_stage_mask,
+        .commandBufferCount = 1u,
+        .pCommandBuffers = &cb,
+        .signalSemaphoreCount = 0u,
+        .pSignalSemaphores = nullptr,
+    };
+
+    CHECK_VK_RESULT(vkQueueSubmit(queue_, 1u, &submit_info, fence), return;);
+}
+
+void Device::present(Swapchain& swapchain, uint32_t index) {
+    VkSwapchainKHR sc = swapchain;
+    VkPresentInfoKHR present_info {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 0u,
+        .pWaitSemaphores = nullptr,
+        .swapchainCount = 1u,
+        .pSwapchains = &sc,
+        .pImageIndices = &index,
+        .pResults = nullptr,
+    };
+
+    CHECK_VK_RESULT(vkQueuePresentKHR(queue_, &present_info), return;);
 }
 
 }

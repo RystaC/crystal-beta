@@ -14,6 +14,8 @@ public:
     ~Framebuffer() noexcept {
         vkDestroyFramebuffer(*device_, framebuffer_, nullptr);
     }
+
+    operator VkFramebuffer() const noexcept { return framebuffer_; }
 };
 
 }

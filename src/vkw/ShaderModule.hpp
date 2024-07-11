@@ -13,6 +13,8 @@ public:
     ~ShaderModule() noexcept {
         vkDestroyShaderModule(*device_, shader_module_, nullptr);
     }
+
+    operator VkShaderModule() const noexcept { return shader_module_; }
 };
 
 }

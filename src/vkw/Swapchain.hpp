@@ -23,14 +23,21 @@ public:
 
     operator VkSwapchainKHR() const noexcept { return swapchain_; }
 
-    constexpr auto size() const noexcept { return image_views_.size(); }
+    constexpr auto image_view_size() const noexcept { return image_views_.size(); }
 
-    const auto& operator[](size_t i) const& { return image_views_[i]; }
-    // auto& operator[](size_t i) & { return image_views_[i]; }
-    // auto operator[](size_t i) && { return image_views_[i]; }
-
+    auto image_view(size_t index) { return image_views_[index]; }
     auto width() const noexcept { return width_; }
     auto height() const noexcept { return height_; }
+
+    uint32_t next_image_index(Fence& fence) {
+        VkFence f = fence;
+        uint32_t next_index = UINT32_MAX;
+        CHECK_VK_RESULT(vkAcquireNextImageKHR(*device_, swapchain_, UINT64_MAX, VK_NULL_HANDLE, f, &next_index), return next_index;);
+        fence.wait(UINT64_MAX);
+        fence.reset();
+
+        return next_index;
+    }
 };
 
 }

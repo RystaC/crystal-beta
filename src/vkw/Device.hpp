@@ -1,8 +1,11 @@
 #pragma once
 
 #include "common.hpp"
+#include "debug.hpp"
 #include "PhysicalDevice.hpp"
 #include "CommandPool.hpp"
+#include "CommandBuffer.hpp"
+#include "Fence.hpp"
 #include "Swapchain.hpp"
 #include "RenderPass.hpp"
 #include "Framebuffer.hpp"
@@ -53,12 +56,19 @@ public:
     std::shared_ptr<Swapchain> create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height);
 
     std::unique_ptr<RenderPass> create_render_pass();
+    std::unique_ptr<RenderPass> create_render_pass(const RenderPassGraph& render_pass_graph);
 
     std::unique_ptr<Framebuffer> create_framebuffer(const RenderPass& render_pass, const std::vector<VkImageView>& image_views, uint32_t width, uint32_t height);
 
     std::unique_ptr<ShaderModule> create_shader_module(const std::filesystem::path& spirv_path);
 
     std::unique_ptr<Pipeline> create_graphics_pipeline(const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index);
+
+    std::unique_ptr<Fence> create_fence();
+
+    void submit_commands(CommandBuffer& command_buffer, Fence& fence);
+
+    void present(Swapchain& swapchain, uint32_t index);
 
     template<typename T>
     std::unique_ptr<Buffer<T>> create_vertex_buffer(const std::vector<T>& buffer_data) {
@@ -79,7 +89,7 @@ public:
         memcpy(memory_pointer, buffer_data.data(), sizeof(T) * buffer_data.size());
         vkUnmapMemory(*device_, device_memory);
 
-        return std::make_unique<Buffer>(device_, std::move(buffer), std::move(device_memory));
+        return std::make_unique<Buffer<T>>(device_, std::move(buffer), std::move(device_memory));
     }
 };
 

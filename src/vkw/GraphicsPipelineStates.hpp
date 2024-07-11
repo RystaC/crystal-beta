@@ -15,7 +15,6 @@ class GraphicsPipelineStates{
     VkPipelineRasterizationStateCreateInfo rasterization_state_;
     VkPipelineMultisampleStateCreateInfo multisample_state_;
     // VkPipelineDepthStencilStateCreateInfo depth_stencil_state_;
-    std::vector<VkPipelineColorBlendAttachmentState> blend_attachment_states_;
     VkPipelineColorBlendStateCreateInfo color_blend_state_;
     VkPipelineDynamicStateCreateInfo dynamic_state_;
 
@@ -29,7 +28,6 @@ public:
         viewport_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO},
         rasterization_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO},
         multisample_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO},
-        blend_attachment_states_(),
         color_blend_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO},
         dynamic_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO}
     {}
@@ -105,13 +103,12 @@ public:
         return *this;
     }
 
-    auto& color_blend_state(uint32_t attachment_count) {
-        blend_attachment_states_.resize(attachment_count, {.blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_R_BIT,});
+    auto& color_blend_state(const std::vector<VkPipelineColorBlendAttachmentState>& blend_attachment_states) {
         color_blend_state_ = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .logicOpEnable = VK_FALSE,
-            .attachmentCount = attachment_count,
-            .pAttachments = blend_attachment_states_.data(),
+            .attachmentCount = size_u32(blend_attachment_states.size()),
+            .pAttachments = blend_attachment_states.data(),
         };
 
         return *this;

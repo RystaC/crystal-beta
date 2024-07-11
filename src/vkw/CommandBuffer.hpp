@@ -33,6 +33,17 @@ public:
         return *this;
     }
 
+    auto& bind_vertex_buffer(VkBuffer buffer) {
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(command_buffer_, 0, 1, &buffer, &offset);
+        return *this;
+    }
+
+    auto& draw(uint32_t vertex_count, uint32_t instance_count, uint32_t vertex_offset = 0u, uint32_t instance_offset = 0u) {
+        vkCmdDraw(command_buffer_, vertex_count, instance_count, vertex_offset, instance_offset);
+        return *this;
+    }
+
 };
 
 class CommandBuffer {
@@ -45,6 +56,8 @@ public:
         vkFreeCommandBuffers(*command_pool_->device_, *command_pool_, 1, &command_buffer_);
     }
 
+    operator VkCommandBuffer() const noexcept { return command_buffer_; }
+
     template<typename CommandChain>
     auto record_commands(CommandChain command_chain) {
         VkCommandBufferBeginInfo begin_info {
@@ -55,7 +68,8 @@ public:
         result = vkBeginCommandBuffer(command_buffer_, &begin_info);
         if(result != VK_SUCCESS) return result;
 
-        command_chain(CommandBufferCommands(command_buffer_));
+        CommandBufferCommands commands {command_buffer_};
+        command_chain(commands);
 
         result = vkEndCommandBuffer(command_buffer_);
 
