@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include <SDL2/SDL.h>
@@ -8,10 +9,11 @@
 class App {
     SDL_Window* window_;
     SDL_Event event_;
+    uint64_t time_;
     bool quit_;
 
 public:
-    App() noexcept : window_(nullptr), event_(), quit_(false) {}
+    App() noexcept : window_(nullptr), event_(), time_(0ull), quit_(false) {}
     ~App() noexcept {
         SDL_DestroyWindow(window_);
         SDL_Quit();
@@ -26,11 +28,16 @@ public:
     template<typename F>
     void main_loop(F func) {
         while(!quit_) {
+            SDL_SetWindowTitle(window_, std::to_string(time_).c_str());
+
             func();
+
             while(SDL_PollEvent(&event_)) {
                 if(event_.type == SDL_QUIT) quit_ = true;
                 else if(event_.type == SDL_KEYDOWN && event_.key.keysym.sym == SDLK_ESCAPE) quit_ = true;
             }
+
+            ++time_;
         }
     }
 };
