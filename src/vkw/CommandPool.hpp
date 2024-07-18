@@ -27,7 +27,7 @@ public:
         VkCommandBuffer command_buffer;
         CHECK_VK_RESULT(vkAllocateCommandBuffers(*device_, &allocate_info, &command_buffer), return {};);
 
-        return std::make_unique<CommandBuffer>(device_, std::move(command_buffer));
+        return std::make_unique<CommandBuffer>(device_, command_pool_, std::move(command_buffer));
     }
 
 };

@@ -10,7 +10,7 @@ class Buffer {
     VkBuffer buffer_;
     VkDeviceMemory memory_;
 
-    using value_type = T;
+    using _value_type = T;
 
 public:
     Buffer(std::shared_ptr<DeviceEntity> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}

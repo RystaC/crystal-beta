@@ -62,7 +62,7 @@ public:
 
     std::unique_ptr<ShaderModule> create_shader_module(const std::filesystem::path& spirv_path);
 
-    std::unique_ptr<Pipeline> create_graphics_pipeline(const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index);
+    std::unique_ptr<Pipeline> create_graphics_pipeline(const std::vector<VkDescriptorSetLayout>& descriptor_set_layouts, const std::vector<VkPushConstantRange>& push_constant_ranges, const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index);
 
     std::unique_ptr<Fence> create_fence();
 

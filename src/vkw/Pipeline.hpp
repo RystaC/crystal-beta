@@ -16,7 +16,8 @@ public:
         vkDestroyPipelineLayout(*device_, layout_, nullptr);
     }
 
-    operator VkPipeline() const noexcept { return pipeline_; }
+    auto& pipeline() const noexcept { return pipeline_; }
+    auto& layout() const noexcept { return layout_; }
 };
 
 }

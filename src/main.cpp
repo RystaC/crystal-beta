@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "App.hpp"
 #include "vkw/Instance.hpp"
@@ -12,6 +13,10 @@
 
 constexpr size_t WINDOW_WIDTH = 640;
 constexpr size_t WINDOW_HEIGHT = 480;
+
+struct PushConstantData {
+    glm::mat4 model, view, projection;
+};
 
 int main(int argc, char** argv) {
     auto app = std::make_unique<App>();
@@ -112,7 +117,15 @@ int main(int argc, char** argv) {
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .color_blend_state(blend_attachment_states);
 
-    auto pipeline = device->create_graphics_pipeline(pipeline_states, *render_pass, 0);
+    std::vector<VkPushConstantRange> constant_ranges = {
+        {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0u,
+            .size = sizeof(PushConstantData),
+        }
+    };
+
+    auto pipeline = device->create_graphics_pipeline({}, constant_ranges, pipeline_states, *render_pass, 0);
     if(!pipeline) {
         std::cerr << "[crystal-beta] ERROR: failed to create pipeline. exit." << std::endl;
         std::exit(EXIT_FAILURE);
@@ -164,6 +177,15 @@ int main(int argc, char** argv) {
             VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
             VkClearValue clear_value = {0.0f, 0.0f, 0.0f, 1.0f};
 
+            glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(0.0f, 0.0f, 1.0f));
+            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
+            projection[1][1] *= -1;
+
+            PushConstantData push_constant_data {
+                model, view, projection,
+            };
+
             command_buffer->record_commands(
                 [&](vkw::CommandBufferCommands& c) {
                     c
@@ -173,7 +195,8 @@ int main(int argc, char** argv) {
                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     )
                     .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, {clear_value})
-                    .bind_graphics_pipeline(*pipeline)
+                    .bind_graphics_pipeline(pipeline->pipeline())
+                    .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(*vertex_buffer)
                     .draw(3, 1)
                     .end_render_pass();

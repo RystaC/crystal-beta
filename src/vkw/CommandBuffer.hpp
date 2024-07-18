@@ -5,10 +5,10 @@
 namespace vkw {
 
 class CommandBufferCommands {
-    VkCommandBuffer& command_buffer_;
+    const VkCommandBuffer& command_buffer_;
 
 public:
-    CommandBufferCommands(VkCommandBuffer& command_buffer) noexcept : command_buffer_(command_buffer) {}
+    CommandBufferCommands(const VkCommandBuffer& command_buffer) noexcept : command_buffer_(command_buffer) {}
 
     auto& begin_render_pass(VkFramebuffer framebuffer, VkRenderPass render_pass, VkRect2D render_area, const std::vector<VkClearValue>& clear_values) {
         VkRenderPassBeginInfo begin_info {
@@ -36,6 +36,11 @@ public:
     auto& bind_vertex_buffer(VkBuffer buffer) {
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(command_buffer_, 0, 1, &buffer, &offset);
+        return *this;
+    }
+
+    auto& push_constants(VkPipelineLayout layout, VkShaderStageFlags stage, uint32_t offset, uint32_t size, const void* data) {
+        vkCmdPushConstants(command_buffer_, layout, stage, offset, size, data);
         return *this;
     }
 
@@ -72,13 +77,14 @@ public:
 
 class CommandBuffer {
     std::shared_ptr<DeviceEntity> device_;
-    // std::shared_ptr<CommandPoolEntity> command_pool_;
+    const VkCommandPool& command_pool_;
     VkCommandBuffer command_buffer_;
 
 public:
-    // CommandBuffer(std::shared_ptr<CommandPoolEntity> command_pool, VkCommandBuffer&& command_buffer) noexcept : command_pool_(command_pool), command_buffer_(command_buffer) {}
-    CommandBuffer(std::shared_ptr<DeviceEntity> device, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_buffer_(command_buffer) {}
-    ~CommandBuffer() = default;
+    CommandBuffer(std::shared_ptr<DeviceEntity> device, const VkCommandPool& command_pool, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_pool_(command_pool), command_buffer_(command_buffer) {}
+    ~CommandBuffer() noexcept {
+        vkFreeCommandBuffers(*device_, command_pool_, 1, &command_buffer_);
+    }
 
     operator VkCommandBuffer() const noexcept { return command_buffer_; }
 

@@ -9,17 +9,18 @@
 class App {
     SDL_Window* window_;
     SDL_Event event_;
-    uint64_t time_;
+    uint64_t ticks_;
     bool quit_;
 
 public:
-    App() noexcept : window_(nullptr), event_(), time_(0ull), quit_(false) {}
+    App() noexcept : window_(nullptr), event_(), ticks_(0ull), quit_(false) {}
     ~App() noexcept {
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
 
     auto window() const noexcept { return window_; }
+    auto ticks() const noexcept { return ticks_; }
 
     bool init(int window_width, int window_height);
 
@@ -28,7 +29,7 @@ public:
     template<typename F>
     void main_loop(F func) {
         while(!quit_) {
-            SDL_SetWindowTitle(window_, std::to_string(time_).c_str());
+            SDL_SetWindowTitle(window_, std::to_string(ticks_).c_str());
 
             func();
 
@@ -37,7 +38,7 @@ public:
                 else if(event_.type == SDL_KEYDOWN && event_.key.keysym.sym == SDLK_ESCAPE) quit_ = true;
             }
 
-            ++time_;
+            ++ticks_;
         }
     }
 };
