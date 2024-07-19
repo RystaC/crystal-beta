@@ -22,7 +22,7 @@ find_package(SDL2 CONFIG REQUIRED)
 
 # collect source files
 # TODO: use subdirectories
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE sources
     "src/*.cpp"
     "src/*.hpp"
     "src/*.h"
@@ -30,7 +30,7 @@ file(GLOB_RECURSE SOURCES
 
 include_directories(app ${ADDITIONAL_INCLUDE_DIRECTORIES})
 
-add_executable(app ${SOURCES})
+add_executable(app ${sources})
 
 target_include_directories(app PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(app ${SDL2_LIBRARIES})

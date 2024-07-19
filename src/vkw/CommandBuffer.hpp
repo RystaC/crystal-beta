@@ -39,13 +39,23 @@ public:
         return *this;
     }
 
+    auto& bind_index_buffer(VkBuffer buffer, VkIndexType index_type) {
+        vkCmdBindIndexBuffer(command_buffer_, buffer, 0, index_type);
+        return *this;
+    }
+
     auto& push_constants(VkPipelineLayout layout, VkShaderStageFlags stage, uint32_t offset, uint32_t size, const void* data) {
         vkCmdPushConstants(command_buffer_, layout, stage, offset, size, data);
         return *this;
     }
 
-    auto& draw(uint32_t vertex_count, uint32_t instance_count, uint32_t vertex_offset = 0u, uint32_t instance_offset = 0u) {
-        vkCmdDraw(command_buffer_, vertex_count, instance_count, vertex_offset, instance_offset);
+    auto& draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex = 0u, uint32_t first_instance = 0u) {
+        vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
+        return *this;
+    }
+
+    auto& draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index = 0u, uint32_t vertex_offset = 0u, uint32_t first_instance = 0u) {
+        vkCmdDrawIndexed(command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
         return *this;
     }
 

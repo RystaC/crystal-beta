@@ -1,6 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <format>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <SDL2/SDL.h>
@@ -28,9 +31,11 @@ public:
 
     template<typename F>
     void main_loop(F func) {
-        while(!quit_) {
-            SDL_SetWindowTitle(window_, std::to_string(ticks_).c_str());
+        using namespace std::chrono;
 
+        auto previous_time_ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
+        while(!quit_) {
             func();
 
             while(SDL_PollEvent(&event_)) {
@@ -38,7 +43,13 @@ public:
                 else if(event_.type == SDL_KEYDOWN && event_.key.keysym.sym == SDLK_ESCAPE) quit_ = true;
             }
 
+            auto current_time_ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+
             ++ticks_;
+
+            auto fps = (double)ticks_ / (current_time_ms - previous_time_ms) * 1000.0;
+
+            SDL_SetWindowTitle(window_, std::format("[crystal-beta demo] fps = {:.2f}, ticks {}", fps, ticks_).c_str());
         }
     }
 };

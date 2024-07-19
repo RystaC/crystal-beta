@@ -45,7 +45,7 @@ public:
 
     operator VkDescriptorSet() const noexcept { return descriptor_set_; }
 
-    void update_with_buffer(uint32_t binding, uint32_t array_element, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range) {
+    void update(uint32_t binding, uint32_t array_element, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range) {
         VkDescriptorBufferInfo buffer_info {
             .buffer = buffer,
             .offset = offset,
@@ -65,7 +65,7 @@ public:
         vkUpdateDescriptorSets(*device_, 1u, &write_descriptor, 0u, nullptr);
     }
 
-    void update_with_image(uint32_t binding, uint32_t array_element, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout) {
+    void update(uint32_t binding, uint32_t array_element, VkSampler sampler, VkImageView image_view, VkImageLayout image_layout) {
         VkDescriptorImageInfo image_info {
             .sampler = sampler,
             .imageView = image_view,

@@ -123,32 +123,6 @@ public:
 
         return *this;
     }
-
-    // std::unique_ptr<Pipeline> create_pipeline(VkRenderPass render_pass, uint32_t subpass_index, VkPipelineLayout layout) {
-    //     color_blend_state_.attachmentCount = size_u32(blend_attachment_states_.size());
-    //     color_blend_state_.pAttachments = blend_attachment_states_.data();
-
-    //     VkGraphicsPipelineCreateInfo pipeline_info {
-    //         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-    //         .stageCount = size_u32(shader_stages_.size()),
-    //         .pStages = shader_stages_.data(),
-    //         .pVertexInputState = &vertex_input_state_,
-    //         .pInputAssemblyState = &input_assembly_state_,
-    //         .pViewportState = &viewport_state_,
-    //         .pRasterizationState = &rasterization_state_,
-    //         .pMultisampleState = &multisample_state_,
-    //         .pColorBlendState = &color_blend_state_,
-    //         .pDynamicState = &dynamic_state_,
-    //         .layout = layout,
-    //         .renderPass = render_pass,
-    //         .subpass = subpass_index,
-    //     };
-
-    //     VkPipeline pipeline{};
-    //     CHECK_VK_RESULT(vkCreateGraphicsPipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {}; );
-        
-    //     return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
-    // }
 };
 
 }

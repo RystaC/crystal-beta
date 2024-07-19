@@ -71,11 +71,11 @@ public:
     void present(Swapchain& swapchain, uint32_t index);
 
     template<typename T>
-    std::unique_ptr<Buffer<T>> create_vertex_buffer(const std::vector<T>& buffer_data) {
+    std::unique_ptr<Buffer<T>> create_buffer_with_data(const std::vector<T>& buffer_data, VkBufferUsageFlags usage) {
         VkBufferCreateInfo buffer_info {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = sizeof(T) * buffer_data.size(),
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .usage = usage,
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
 

@@ -82,12 +82,18 @@ int main(int argc, char** argv) {
     auto fragment_shader = device->create_shader_module("basic.frag.spirv");
 
     std::vector<glm::vec3> vertices = {
-        glm::vec3(0.0f, -0.75f, 0.0f),
-        glm::vec3(-0.5f, 0.75f, 0.0f),
-        glm::vec3(0.5f, 0.75f, 0.0f),
+        glm::vec3(-0.5f, 0.5f, 0.0f),
+        glm::vec3(-0.5f, -0.5f, 0.0f),
+        glm::vec3(0.5f, 0.5f, 0.0f),
+        glm::vec3(0.5f, -0.5f, 0.0f),
+    };
+    std::vector<uint16_t> indices = {
+        0, 1, 2,
+        1, 3, 2,
     };
 
-    auto vertex_buffer = device->create_vertex_buffer(vertices);
+    auto vertex_buffer = device->create_buffer_with_data(vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    auto index_buffer = device->create_buffer_with_data(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
     std::vector<VkVertexInputBindingDescription> bind_descs {
         { .binding = 0, .stride = sizeof(glm::vec3), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX},
@@ -198,7 +204,8 @@ int main(int argc, char** argv) {
                     .bind_graphics_pipeline(pipeline->pipeline())
                     .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(*vertex_buffer)
-                    .draw(3, 1)
+                    .bind_index_buffer(*index_buffer, VK_INDEX_TYPE_UINT16)
+                    .draw_indexed(6, 1)
                     .end_render_pass();
                 }
             );
