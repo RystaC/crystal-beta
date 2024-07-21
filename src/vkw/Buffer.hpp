@@ -4,6 +4,27 @@
 
 namespace vkw {
 
+struct DrawIndirectBufferData {
+    uint32_t group_count_x;
+    uint32_t group_count_y;
+    uint32_t group_count_z;
+};
+
+struct DispatchIndirectBufferData {
+    uint32_t vertex_count;
+    uint32_t instance_count;
+    uint32_t first_vertex;
+    uint32_t first_instance;
+};
+
+struct DrawIndexedIndirectBufferData {
+    uint32_t index_count;
+    uint32_t instance_count;
+    uint32_t first_index;
+    int32_t vertex_offset;
+    uint32_t first_instance;
+};
+
 template<typename T>
 class Buffer {
     std::shared_ptr<DeviceEntity> device_;

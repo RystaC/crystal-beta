@@ -14,6 +14,7 @@
 #include "ComputePipelineStates.hpp"
 #include "Pipeline.hpp"
 #include "Buffer.hpp"
+#include "Descriptor.hpp"
 
 namespace vkw {
 
@@ -61,6 +62,8 @@ public:
     std::unique_ptr<Framebuffer> create_framebuffer(const RenderPass& render_pass, const std::vector<VkImageView>& image_views, uint32_t width, uint32_t height);
 
     std::unique_ptr<ShaderModule> create_shader_module(const std::filesystem::path& spirv_path);
+
+    std::unique_ptr<DescriptorPool> create_descriptor_pool(const std::vector<VkDescriptorPoolSize>& pool_sizes, uint32_t max_sets);
 
     std::unique_ptr<Pipeline> create_graphics_pipeline(const std::vector<VkDescriptorSetLayout>& descriptor_set_layouts, const std::vector<VkPushConstantRange>& push_constant_ranges, const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index);
 

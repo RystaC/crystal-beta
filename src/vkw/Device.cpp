@@ -126,7 +126,10 @@ std::unique_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
             .format = desired_format.format,
             .components = {
-                VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
             },
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
         };
@@ -230,6 +233,20 @@ std::unique_ptr<ShaderModule> Device::create_shader_module(const std::filesystem
     CHECK_VK_RESULT(vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module), return {};);
 
     return std::make_unique<ShaderModule>(device_, std::move(shader_module));
+}
+
+std::unique_ptr<DescriptorPool> Device::create_descriptor_pool(const std::vector<VkDescriptorPoolSize>& pool_sizes, uint32_t max_sets) {
+    VkDescriptorPoolCreateInfo pool_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = max_sets,
+        .poolSizeCount = size_u32(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data(),
+    };
+
+    VkDescriptorPool descriptor_pool{};
+    CHECK_VK_RESULT(vkCreateDescriptorPool(*device_, &pool_info, nullptr, &descriptor_pool), return {};);
+
+    return std::make_unique<DescriptorPool>(device_, std::move(descriptor_pool));
 }
 
 std::unique_ptr<Pipeline> Device::create_graphics_pipeline(const std::vector<VkDescriptorSetLayout>& descriptor_set_layouts, const std::vector<VkPushConstantRange>& push_constant_ranges, const GraphicsPipelineStates& pipeline_states, const RenderPass& render_pass, uint32_t subpass_index) {

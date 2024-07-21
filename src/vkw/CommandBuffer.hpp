@@ -54,7 +54,7 @@ public:
         return *this;
     }
 
-    auto& draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index = 0u, uint32_t vertex_offset = 0u, uint32_t first_instance = 0u) {
+    auto& draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index = 0u, int32_t vertex_offset = 0, uint32_t first_instance = 0u) {
         vkCmdDrawIndexed(command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
         return *this;
     }
