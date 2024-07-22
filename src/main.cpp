@@ -13,56 +13,14 @@
 #include "vkw/Instance.hpp"
 #include "vkw/Device.hpp"
 
+#include "meshes/Mesh.hpp"
+
 constexpr size_t WINDOW_WIDTH = 640;
 constexpr size_t WINDOW_HEIGHT = 480;
-
-constexpr float PI = 3.14159265359f;
 
 struct PushConstantData {
     glm::mat4 model, view, projection;
 };
-
-struct VertexBufferData {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec4 color;
-};
-
-std::pair<std::vector<VertexBufferData>, std::vector<uint16_t>> create_torus(uint32_t row, uint32_t column, float inner_rad, float outer_rad) {
-    std::vector<VertexBufferData> vertices{};
-    std::vector<uint16_t> indices{};
-    vertices.reserve((row+1)*(column+1));
-    indices.reserve(row*column*6);
-
-    for(auto i = 0u; i <= row; ++i) {
-        float r = PI * 2.0f / row * i;
-        float rr = std::cos(r);
-        float ry = std::sin(r);
-        for(auto ii = 0u; ii <= column; ++ii) {
-            float tr = PI * 2.0f / column * ii;
-            float tx = (rr * inner_rad + outer_rad) * std::cos(tr);
-            float ty = ry * inner_rad;
-            float tz = (rr * inner_rad + outer_rad) * std::sin(tr);
-            float rx = rr * std::cos(tr);
-            float rz = rr * std::sin(tr);
-            vertices.emplace_back(VertexBufferData{glm::vec3(tx, ty, tz), glm::vec3(rx, ry, rz), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)});
-        }
-    }
-
-    for(auto i = 0u; i < row; ++i) {
-        for(auto ii = 0u; ii < column; ++ii) {
-            uint16_t r = (column + 1) * i + ii;
-            indices.push_back(r);
-            indices.push_back(r + column + 1);
-            indices.push_back(r + 1);
-            indices.push_back(r + column + 1);
-            indices.push_back(r + column + 2);
-            indices.push_back(r + 1);
-        }
-    }
-
-    return {vertices, indices};
-}
 
 int main(int argc, char** argv) {
     auto app = std::make_unique<App>();
@@ -127,29 +85,21 @@ int main(int argc, char** argv) {
     auto vertex_shader = device->create_shader_module("basic.vert.spirv");
     auto fragment_shader = device->create_shader_module("basic.frag.spirv");
 
-    // std::vector<glm::vec3> vertices = {
-    //     glm::vec3(-0.5f, 0.5f, 0.0f),
-    //     glm::vec3(-0.5f, -0.5f, 0.0f),
-    //     glm::vec3(0.5f, 0.5f, 0.0f),
-    //     glm::vec3(0.5f, -0.5f, 0.0f),
-    // };
-    // std::vector<uint16_t> indices = {
-    //     0, 1, 2,
-    //     1, 3, 2,
-    // };
+    // auto mesh = meshes::Mesh::rect();
+    // auto mesh = meshes::Mesh::cube();
+    // auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
+    auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
 
-    auto [vertices, indices] = create_torus(32, 32, 1.0f, 2.0f);
-
-    auto vertex_buffer = device->create_buffer_with_data(vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    auto index_buffer = device->create_buffer_with_data(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
     std::vector<VkVertexInputBindingDescription> bind_descs {
-        { .binding = 0, .stride = sizeof(VertexBufferData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX},
+        { .binding = 0, .stride = sizeof(meshes::VertexData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX},
     };
     std::vector<VkVertexInputAttributeDescription> attr_descs {
-        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(VertexBufferData, position) },
-        { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(VertexBufferData, normal) },
-        { .location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = offsetof(VertexBufferData, color) }
+        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(meshes::VertexData, position) },
+        { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(meshes::VertexData, normal) },
+        { .location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = offsetof(meshes::VertexData, color) }
     };
 
     std::vector<VkViewport> viewports = {
@@ -255,7 +205,7 @@ int main(int argc, char** argv) {
                     .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(*vertex_buffer)
                     .bind_index_buffer(*index_buffer, VK_INDEX_TYPE_UINT16)
-                    .draw_indexed((uint32_t)indices.size(), 1)
+                    .draw_indexed((uint32_t)mesh.indices().size(), 1)
                     .end_render_pass();
                 }
             );
