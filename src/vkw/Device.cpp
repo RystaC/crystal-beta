@@ -235,6 +235,19 @@ std::unique_ptr<ShaderModule> Device::create_shader_module(const std::filesystem
     return std::make_unique<ShaderModule>(device_, std::move(shader_module));
 }
 
+std::unique_ptr<DescriptorSetLayout> Device::create_descriptor_layout(const std::vector<VkDescriptorSetLayoutBinding>& layout_bindings) {
+    VkDescriptorSetLayoutCreateInfo layout_info {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = size_u32(layout_bindings.size()),
+        .pBindings = layout_bindings.data(),
+    };
+
+    VkDescriptorSetLayout descriptor_layout{};
+    CHECK_VK_RESULT(vkCreateDescriptorSetLayout(*device_, &layout_info, nullptr, &descriptor_layout), return {};);
+
+    return std::make_unique<DescriptorSetLayout>(device_, std::move(descriptor_layout));
+}
+
 std::unique_ptr<DescriptorPool> Device::create_descriptor_pool(const std::vector<VkDescriptorPoolSize>& pool_sizes, uint32_t max_sets) {
     VkDescriptorPoolCreateInfo pool_info {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
