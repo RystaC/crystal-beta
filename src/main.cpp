@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
         .vertex_input_state(bind_descs, attr_descs)
         .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
         .viewport_state(viewports, scissors)
-        .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
+        .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .color_blend_state(blend_attachment_states);
 
