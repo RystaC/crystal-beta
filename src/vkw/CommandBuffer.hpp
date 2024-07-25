@@ -33,9 +33,9 @@ public:
         return *this;
     }
 
-    auto& bind_vertex_buffer(VkBuffer buffer) {
+    auto& bind_vertex_buffer(uint32_t binding, VkBuffer buffer) {
         VkDeviceSize offset = 0;
-        vkCmdBindVertexBuffers(command_buffer_, 0, 1, &buffer, &offset);
+        vkCmdBindVertexBuffers(command_buffer_, binding, 1, &buffer, &offset);
         return *this;
     }
 
