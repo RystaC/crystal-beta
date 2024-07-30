@@ -14,6 +14,7 @@
 #include "ComputePipelineStates.hpp"
 #include "Pipeline.hpp"
 #include "Buffer.hpp"
+#include "Image.hpp"
 #include "Descriptor.hpp"
 
 namespace vkw {
@@ -56,7 +57,6 @@ public:
 
     std::unique_ptr<Swapchain> create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height);
 
-    std::unique_ptr<RenderPass> create_render_pass();
     std::unique_ptr<RenderPass> create_render_pass(const RenderPassGraph& render_pass_graph);
 
     std::unique_ptr<Framebuffer> create_framebuffer(const RenderPass& render_pass, const std::vector<VkImageView>& image_views, uint32_t width, uint32_t height);
@@ -97,6 +97,8 @@ public:
 
         return std::make_unique<Buffer<T>>(device_, std::move(buffer), std::move(device_memory));
     }
+
+    std::unique_ptr<Image> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageAspectFlags aspect);
 };
 
 }

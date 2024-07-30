@@ -14,7 +14,7 @@ class GraphicsPipelineStates{
     VkPipelineViewportStateCreateInfo viewport_state_;
     VkPipelineRasterizationStateCreateInfo rasterization_state_;
     VkPipelineMultisampleStateCreateInfo multisample_state_;
-    // VkPipelineDepthStencilStateCreateInfo depth_stencil_state_;
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state_;
     VkPipelineColorBlendStateCreateInfo color_blend_state_;
     VkPipelineDynamicStateCreateInfo dynamic_state_;
 
@@ -28,6 +28,7 @@ public:
         viewport_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO},
         rasterization_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO},
         multisample_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO},
+        depth_stencil_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO},
         color_blend_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO},
         dynamic_state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO}
     {}
@@ -98,6 +99,23 @@ public:
             .sampleShadingEnable = VK_FALSE,
             .alphaToCoverageEnable = VK_FALSE,
             .alphaToOneEnable = VK_FALSE,
+        };
+
+        return *this;
+    }
+
+    auto& depth_stencil_state(VkBool32 depth_test_enable, VkBool32 depth_write_enable, VkCompareOp depth_compare_op, VkBool32 depth_bounds_test_enable, VkBool32 stencil_test_enable, const VkStencilOpState& front = {}, const VkStencilOpState& back = {}, float min_depth_bound = 0.0f, float max_depth_bound = 1.0f) {
+        depth_stencil_state_ = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = depth_test_enable,
+            .depthWriteEnable = depth_write_enable,
+            .depthCompareOp = depth_compare_op,
+            .depthBoundsTestEnable = depth_bounds_test_enable,
+            .stencilTestEnable = stencil_test_enable,
+            .front = front,
+            .back = back,
+            .minDepthBounds = min_depth_bound,
+            .maxDepthBounds = max_depth_bound,
         };
 
         return *this;

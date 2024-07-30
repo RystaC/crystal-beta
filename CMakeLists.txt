@@ -42,3 +42,25 @@ set_target_properties(app PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
 # suppress warnings
 set_target_properties(app PROPERTIES LINK_FLAGS "/NODEFAULTLIB:library")
 set_target_properties(app PROPERTIES LINK_FLAGS "/IGNORE:4099")
+
+# shader compile
+set(glslc "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
+
+file(GLOB_RECURSE shader_sources
+    "src/glsl/*.glsl"
+)
+
+foreach(shader ${shader_sources})
+    get_filename_component(file_name ${shader} NAME)
+    set(spirv "${PROJECT_BINARY_DIR}/shaders/${file_name}.spirv")
+    add_custom_command(
+        OUTPUT ${spirv}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
+        COMMAND ${glslc} ${shader} -V -o ${spirv}
+        DEPENDS ${shader}
+    )
+    list(APPEND spirv_binaries ${spirv})
+endforeach(shader ${shader_sources})
+
+add_custom_target(shaders DEPENDS ${spirv_binaries})
+add_dependencies(app shaders)

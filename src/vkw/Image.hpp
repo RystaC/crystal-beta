@@ -17,6 +17,9 @@ public:
         vkFreeMemory(*device_, memory_, nullptr);
         vkDestroyImage(*device_, image_, nullptr);
     }
+
+    auto& image() const noexcept { return image_; }
+    auto& view() const noexcept { return image_view_; }
 };
 
 }

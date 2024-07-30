@@ -33,7 +33,7 @@ public:
         );
     }
 
-    void add_subpass(VkPipelineBindPoint bind_point, const std::vector<VkAttachmentReference>& input_attachments, const std::vector<VkAttachmentReference>& color_attachments, const std::vector<VkAttachmentReference>& resolve_attachments, const VkAttachmentReference& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
+    void add_subpass(VkPipelineBindPoint bind_point, const std::vector<VkAttachmentReference>& input_attachments, const std::vector<VkAttachmentReference>& color_attachments, const std::vector<VkAttachmentReference>& resolve_attachments, const std::optional<VkAttachmentReference>& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
         subpasses_.emplace_back(
             VkSubpassDescription {
                 .pipelineBindPoint = bind_point,
@@ -42,7 +42,7 @@ public:
                 .colorAttachmentCount = size_u32(color_attachments.size()),
                 .pColorAttachments = color_attachments.data(),
                 .pResolveAttachments = resolve_attachments.empty() ? nullptr : resolve_attachments.data(),
-                .pDepthStencilAttachment = &depth_stencil_attachment,
+                .pDepthStencilAttachment = depth_stencil_attachment.has_value() ? &depth_stencil_attachment.value() : nullptr,
                 .preserveAttachmentCount = size_u32(preserve_attachments.size()),
                 .pPreserveAttachments = preserve_attachments.data(),
             }

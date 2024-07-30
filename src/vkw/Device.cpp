@@ -140,41 +140,6 @@ std::unique_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
     return std::make_unique<Swapchain>(device_, std::move(swapchain), std::move(images), std::move(image_views), width, height);
 }
 
-std::unique_ptr<RenderPass> Device::create_render_pass() {
-    VkAttachmentDescription attachment_desc {
-        .format = VK_FORMAT_B8G8R8A8_UNORM,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-    };
-
-    VkAttachmentReference attachment_ref {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    VkSubpassDescription subpass_desc {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &attachment_ref,
-    };
-
-    VkRenderPassCreateInfo render_pass_info {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &attachment_desc,
-        .subpassCount = 1,
-        .pSubpasses = &subpass_desc,
-    };
-
-    VkRenderPass render_pass{};
-    CHECK_VK_RESULT(vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass), return {};);
-
-    return std::make_unique<RenderPass>(device_, std::move(render_pass));
-}
-
 std::unique_ptr<RenderPass> Device::create_render_pass(const RenderPassGraph& render_pass_graph) {
     VkRenderPassCreateInfo render_pass_info {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -283,6 +248,7 @@ std::unique_ptr<Pipeline> Device::create_graphics_pipeline(const std::vector<VkD
         .pViewportState = &pipeline_states.viewport_state_,
         .pRasterizationState = &pipeline_states.rasterization_state_,
         .pMultisampleState = &pipeline_states.multisample_state_,
+        .pDepthStencilState = &pipeline_states.depth_stencil_state_,
         .pColorBlendState = &pipeline_states.color_blend_state_,
         .pDynamicState = &pipeline_states.dynamic_state_,
         .layout = pipeline_layout,
@@ -362,6 +328,53 @@ void Device::present(Swapchain& swapchain, uint32_t index) {
     };
 
     CHECK_VK_RESULT(vkQueuePresentKHR(queue_, &present_info), return;);
+}
+
+std::unique_ptr<Image> Device::create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+    VkImageCreateInfo image_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = { .width = width, .height = height, .depth = 1u },
+        .mipLevels = 1u,
+        .arrayLayers = 1u,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VkImage image{};
+    CHECK_VK_RESULT(vkCreateImage(*device_, &image_info, nullptr, &image), return {};);
+
+    auto memory = allocate_memory(image);
+    CHECK_VK_RESULT(vkBindImageMemory(*device_, image, memory, 0), return {};);
+
+    VkImageViewCreateInfo view_info {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = format,
+        .components = {
+            .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+        },
+        .subresourceRange = {
+            .aspectMask = aspect,
+            .baseMipLevel = 0u,
+            .levelCount = 1u,
+            .baseArrayLayer = 0u,
+            .layerCount = 1u,
+        },
+    };
+
+    VkImageView image_view{};
+    CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_view), return {};);
+
+    return std::make_unique<Image>(device_, std::move(image), std::move(memory), std::move(image_view));
 }
 
 }

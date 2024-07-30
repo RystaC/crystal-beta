@@ -80,15 +80,44 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    auto render_pass = device->create_render_pass();
+    auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    vkw::RenderPassGraph render_pass_graph{};
+    render_pass_graph.add_attachment(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    );
+    render_pass_graph.add_attachment(
+        VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    );
+
+    std::vector<VkAttachmentReference> color_references = {
+        { .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
+    };
+
+    render_pass_graph.add_subpass(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        {},
+        color_references,
+        {},
+        VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
+        {}
+    );
+
+    auto render_pass = device->create_render_pass(render_pass_graph);
 
     std::vector<std::unique_ptr<vkw::Framebuffer>> framebuffers(swapchain->image_view_size());
-    framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0)}, swapchain->width(), swapchain->height());
-    framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1)}, swapchain->width(), swapchain->height());
+    framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0), depth_buffer->view()}, swapchain->width(), swapchain->height());
+    framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1), depth_buffer->view()}, swapchain->width(), swapchain->height());
 
-    auto vertex_shader = device->create_shader_module("basic.vert.spirv");
-    auto fragment_shader = device->create_shader_module("basic.frag.spirv");
-    //auto wire_frame_shader = device->create_shader_module("wire_frame.geom.spirv");
+    auto vertex_shader = device->create_shader_module("shaders/basic.vert.glsl.spirv");
+    auto fragment_shader = device->create_shader_module("shaders/basic.frag.glsl.spirv");
+    //auto wire_frame_shader = device->create_shader_module("shaders/wire_frame.geom.glsl.spirv");
 
     // auto mesh = meshes::Mesh::rect();
     // auto mesh = meshes::Mesh::cube();
@@ -135,6 +164,7 @@ int main(int argc, char** argv) {
         .viewport_state(viewports, scissors)
         .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
+        .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
         .color_blend_state(blend_attachment_states);
 
     std::vector<VkPushConstantRange> constant_ranges = {
@@ -195,7 +225,10 @@ int main(int argc, char** argv) {
     app->main_loop(
         [&](){
             VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
-            VkClearValue clear_value = {0.0f, 0.0f, 0.0f, 1.0f};
+            std::vector<VkClearValue> clear_values = {
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .depthStencil = {1.0f, 0} },
+            };
 
             glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(1.0f));
             glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -214,7 +247,7 @@ int main(int argc, char** argv) {
                         VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     )
-                    .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, {clear_value})
+                    .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, clear_values)
                     .bind_graphics_pipeline(pipeline->pipeline())
                     .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(0, *vertex_buffer)
