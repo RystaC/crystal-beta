@@ -140,15 +140,15 @@ std::unique_ptr<Swapchain> Device::create_swapchain(const Surface& surface, cons
     return std::make_unique<Swapchain>(device_, std::move(swapchain), std::move(images), std::move(image_views), width, height);
 }
 
-std::unique_ptr<RenderPass> Device::create_render_pass(const RenderPassGraph& render_pass_graph) {
+std::unique_ptr<RenderPass> Device::create_render_pass(const AttachmentDescriptions& attachment_descs, const SubpassDescriptions subpass_descs, const SubpassDependencies subpass_dependencies) {
     VkRenderPassCreateInfo render_pass_info {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = size_u32(render_pass_graph.attachments_.size()),
-        .pAttachments = render_pass_graph.attachments_.data(),
-        .subpassCount = size_u32(render_pass_graph.subpasses_.size()),
-        .pSubpasses = render_pass_graph.subpasses_.data(),
-        .dependencyCount = size_u32(render_pass_graph.dependencies_.size()),
-        .pDependencies = render_pass_graph.dependencies_.data(),
+        .attachmentCount = size_u32(attachment_descs.descs_.size()),
+        .pAttachments = attachment_descs.descs_.data(),
+        .subpassCount = size_u32(subpass_descs.subpasses_.size()),
+        .pSubpasses = subpass_descs.subpasses_.data(),
+        .dependencyCount = size_u32(subpass_dependencies.dependencies_.size()),
+        .pDependencies = subpass_dependencies.dependencies_.data(),
     };
 
     VkRenderPass render_pass{};

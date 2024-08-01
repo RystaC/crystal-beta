@@ -39,9 +39,6 @@ class DescriptorSet {
 
 public:
     DescriptorSet(std::shared_ptr<DeviceEntity> device, const VkDescriptorPool& descriptor_pool, VkDescriptorSet&& descriptor_set) noexcept : device_(device), descriptor_pool_(descriptor_pool), descriptor_set_(descriptor_set) {}
-    ~DescriptorSet() noexcept {
-        vkFreeDescriptorSets(*device_, descriptor_pool_, 1u, &descriptor_set_);
-    }
 
     operator VkDescriptorSet() const noexcept { return descriptor_set_; }
 

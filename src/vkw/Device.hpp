@@ -57,7 +57,7 @@ public:
 
     std::unique_ptr<Swapchain> create_swapchain(const Surface& surface, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, uint32_t width, uint32_t height);
 
-    std::unique_ptr<RenderPass> create_render_pass(const RenderPassGraph& render_pass_graph);
+    std::unique_ptr<RenderPass> create_render_pass(const AttachmentDescriptions& attachment_descs, const SubpassDescriptions subpass_descs, const SubpassDependencies subpass_dependencies);
 
     std::unique_ptr<Framebuffer> create_framebuffer(const RenderPass& render_pass, const std::vector<VkImageView>& image_views, uint32_t width, uint32_t height);
 

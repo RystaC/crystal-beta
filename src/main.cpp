@@ -82,34 +82,34 @@ int main(int argc, char** argv) {
 
     auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    vkw::RenderPassGraph render_pass_graph{};
-    render_pass_graph.add_attachment(
+    vkw::AttachmentDescriptions attachment_descs{};
+    attachment_descs.add(
         VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     );
-    render_pass_graph.add_attachment(
+    attachment_descs.add(
         VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     );
 
-    std::vector<VkAttachmentReference> color_references = {
-        { .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-    };
+    vkw::AttachmentReferences color_refs{};
+    color_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    render_pass_graph.add_subpass(
+    vkw::SubpassDescriptions subpass_descs{};
+    subpass_descs.add(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         {},
-        color_references,
+        color_refs,
         {},
         VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
         {}
     );
 
-    auto render_pass = device->create_render_pass(render_pass_graph);
+    auto render_pass = device->create_render_pass(attachment_descs, subpass_descs, {});
 
     std::vector<std::unique_ptr<vkw::Framebuffer>> framebuffers(swapchain->image_view_size());
     framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0), depth_buffer->view()}, swapchain->width(), swapchain->height());

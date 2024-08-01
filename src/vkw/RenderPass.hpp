@@ -6,20 +6,14 @@ namespace vkw {
 
 class Device;
 
-class RenderPassGraph {
-    std::vector<VkAttachmentDescription> attachments_;
-    std::vector<VkSubpassDescription> subpasses_;
-    std::vector<VkSubpassDependency> dependencies_;
+class AttachmentDescriptions {
+    std::vector<VkAttachmentDescription> descs_;
 
 public:
     friend Device;
-    
-    RenderPassGraph() = default;
-    ~RenderPassGraph() = default;
 
-    void add_attachment(VkFormat format, VkSampleCountFlagBits sample_count, VkAttachmentLoadOp loat_op, VkAttachmentStoreOp store_op, VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, VkImageLayout initial_layout, VkImageLayout final_layout) {
-        
-        attachments_.emplace_back(
+    void add(VkFormat format, VkSampleCountFlagBits sample_count, VkAttachmentLoadOp loat_op, VkAttachmentStoreOp store_op, VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, VkImageLayout initial_layout, VkImageLayout final_layout) {
+        descs_.emplace_back(
             VkAttachmentDescription {
                 .format = format,
                 .samples = sample_count,
@@ -32,24 +26,57 @@ public:
             }
         );
     }
+};
 
-    void add_subpass(VkPipelineBindPoint bind_point, const std::vector<VkAttachmentReference>& input_attachments, const std::vector<VkAttachmentReference>& color_attachments, const std::vector<VkAttachmentReference>& resolve_attachments, const std::optional<VkAttachmentReference>& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
+class SubpassDescriptions;
+
+class AttachmentReferences {
+    std::vector<VkAttachmentReference> refs_;
+
+public:
+    friend Device;
+    friend SubpassDescriptions;
+
+    void add(uint32_t attachment_index, VkImageLayout internal_layout) {
+        refs_.emplace_back(
+            VkAttachmentReference {
+                .attachment = attachment_index,
+                .layout = internal_layout,
+            }
+        );
+    }
+};
+
+class SubpassDescriptions {
+    std::vector<VkSubpassDescription> subpasses_;
+
+public:
+    friend Device;
+
+    void add(VkPipelineBindPoint bind_point, const AttachmentReferences& input_attachments, const AttachmentReferences& color_attachments, const std::optional<AttachmentReferences>& resolve_attachments, const std::optional<VkAttachmentReference>& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
         subpasses_.emplace_back(
             VkSubpassDescription {
                 .pipelineBindPoint = bind_point,
-                .inputAttachmentCount = size_u32(input_attachments.size()),
-                .pInputAttachments = input_attachments.data(),
-                .colorAttachmentCount = size_u32(color_attachments.size()),
-                .pColorAttachments = color_attachments.data(),
-                .pResolveAttachments = resolve_attachments.empty() ? nullptr : resolve_attachments.data(),
+                .inputAttachmentCount = size_u32(input_attachments.refs_.size()),
+                .pInputAttachments = input_attachments.refs_.data(),
+                .colorAttachmentCount = size_u32(color_attachments.refs_.size()),
+                .pColorAttachments = color_attachments.refs_.data(),
+                .pResolveAttachments = resolve_attachments.has_value() ? resolve_attachments.value().refs_.data() : nullptr,
                 .pDepthStencilAttachment = depth_stencil_attachment.has_value() ? &depth_stencil_attachment.value() : nullptr,
                 .preserveAttachmentCount = size_u32(preserve_attachments.size()),
                 .pPreserveAttachments = preserve_attachments.data(),
             }
         );
     }
+};
 
-    void add_dependency(uint32_t src_index, uint32_t dst_index, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkDependencyFlags dependency_flags) {
+class SubpassDependencies {
+    std::vector<VkSubpassDependency> dependencies_;
+
+public:
+    friend Device;
+
+    void add(uint32_t src_index, uint32_t dst_index, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkDependencyFlags dependency_flags) {
         dependencies_.emplace_back(
             VkSubpassDependency {
                 .srcSubpass = src_index,
