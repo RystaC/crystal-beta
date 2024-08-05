@@ -22,6 +22,10 @@ struct PushConstantData {
     glm::mat4 model, view, projection;
 };
 
+struct UniformBufferData {
+    glm::vec3 light_position;
+};
+
 struct InstanceBufferData {
     glm::vec3 translate;
 };
@@ -83,13 +87,14 @@ int main(int argc, char** argv) {
     auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
 
     vkw::AttachmentDescriptions attachment_descs{};
-    attachment_descs.add(
+    attachment_descs
+    .add(
         VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    );
-    attachment_descs.add(
+    )
+    .add(
         VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -97,10 +102,12 @@ int main(int argc, char** argv) {
     );
 
     vkw::AttachmentReferences color_refs{};
-    color_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    color_refs
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     vkw::SubpassDescriptions subpass_descs{};
-    subpass_descs.add(
+    subpass_descs
+    .add(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         {},
         color_refs,
@@ -121,28 +128,52 @@ int main(int argc, char** argv) {
 
     // auto mesh = meshes::Mesh::rect();
     // auto mesh = meshes::Mesh::cube();
-    // auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
-    auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
+    auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
+    // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
 
     std::vector<InstanceBufferData> instance_data = {
         { glm::vec3(-2.0f, 0.0f, 0.0f) },
         { glm::vec3(2.0f, 0.0f, 0.0f) },
     };
 
+    std::vector<UniformBufferData> uniform_data = {
+        { glm::vec3(5.0f, 5.0f, -5.0f) },
+    };
+
     auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto instance_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    auto uniform_buffer = device->create_buffer_with_data(uniform_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-    std::vector<VkVertexInputBindingDescription> bind_descs {
-        { .binding = 0, .stride = sizeof(meshes::VertexData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },
-        { .binding = 1, .stride = sizeof(InstanceBufferData), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE },
+    std::vector<VkDescriptorSetLayoutBinding> layout_bindings = {
+        { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
     };
-    std::vector<VkVertexInputAttributeDescription> attr_descs {
-        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(meshes::VertexData, position) },
-        { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(meshes::VertexData, normal) },
-        { .location = 2, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = offsetof(meshes::VertexData, color) },
-        { .location = 3, .binding = 1, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(InstanceBufferData, translate)},
+
+    auto descriptor_layout = device->create_descriptor_layout(layout_bindings);
+
+    std::vector<VkDescriptorPoolSize> pool_sizes = {
+        { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = vkw::size_u32(swapchain->image_view_size()) },
     };
+
+    auto descriptor_pool = device->create_descriptor_pool(pool_sizes, vkw::size_u32(swapchain->image_view_size()));
+
+    std::vector<std::unique_ptr<vkw::DescriptorSet<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>>> descriptor_sets(swapchain->image_view_size());
+    descriptor_sets[0] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
+    descriptor_sets[1] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
+    descriptor_sets[0]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
+    descriptor_sets[1]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
+
+    vkw::VertexInputBindingDescriptions bind_descs{};
+    bind_descs
+    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
+
+    vkw::VertexInputAttributeDescriptions attr_descs{};
+    attr_descs
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
+    .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
 
     std::vector<VkViewport> viewports = {
         {0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT, 0.0f, 1.0f},
@@ -167,6 +198,10 @@ int main(int argc, char** argv) {
         .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
         .color_blend_state(blend_attachment_states);
 
+    std::vector<VkDescriptorSetLayout> descriptor_layouts = {
+        *descriptor_layout,
+    };
+
     std::vector<VkPushConstantRange> constant_ranges = {
         {
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
@@ -175,7 +210,7 @@ int main(int argc, char** argv) {
         }
     };
 
-    auto pipeline = device->create_graphics_pipeline({}, constant_ranges, pipeline_states, *render_pass, 0);
+    auto pipeline = device->create_graphics_pipeline(descriptor_layouts, constant_ranges, pipeline_states, *render_pass, 0);
     if(!pipeline) {
         std::cerr << "[crystal-beta] ERROR: failed to create pipeline. exit." << std::endl;
         std::exit(EXIT_FAILURE);
@@ -249,6 +284,7 @@ int main(int argc, char** argv) {
                     )
                     .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, clear_values)
                     .bind_graphics_pipeline(pipeline->pipeline())
+                    .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout(), *descriptor_sets[current_index])
                     .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(0, *vertex_buffer)
                     .bind_vertex_buffer(1, *instance_buffer)

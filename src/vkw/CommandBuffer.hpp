@@ -49,6 +49,11 @@ public:
         return *this;
     }
 
+    auto& bind_descriptor_set(VkPipelineBindPoint bind_point, VkPipelineLayout layout, VkDescriptorSet descriptor_set) {
+        vkCmdBindDescriptorSets(command_buffer_, bind_point, layout, 0u, 1u, &descriptor_set, 0, nullptr);
+        return *this;
+    }
+
     auto& draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex = 0u, uint32_t first_instance = 0u) {
         vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
         return *this;

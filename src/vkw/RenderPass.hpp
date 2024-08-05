@@ -12,7 +12,7 @@ class AttachmentDescriptions {
 public:
     friend Device;
 
-    void add(VkFormat format, VkSampleCountFlagBits sample_count, VkAttachmentLoadOp loat_op, VkAttachmentStoreOp store_op, VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, VkImageLayout initial_layout, VkImageLayout final_layout) {
+    auto& add(VkFormat format, VkSampleCountFlagBits sample_count, VkAttachmentLoadOp loat_op, VkAttachmentStoreOp store_op, VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, VkImageLayout initial_layout, VkImageLayout final_layout) {
         descs_.emplace_back(
             VkAttachmentDescription {
                 .format = format,
@@ -25,6 +25,8 @@ public:
                 .finalLayout = final_layout,
             }
         );
+
+        return *this;
     }
 };
 
@@ -34,16 +36,17 @@ class AttachmentReferences {
     std::vector<VkAttachmentReference> refs_;
 
 public:
-    friend Device;
     friend SubpassDescriptions;
 
-    void add(uint32_t attachment_index, VkImageLayout internal_layout) {
+    auto& add(uint32_t attachment_index, VkImageLayout internal_layout) {
         refs_.emplace_back(
             VkAttachmentReference {
                 .attachment = attachment_index,
                 .layout = internal_layout,
             }
         );
+
+        return *this;
     }
 };
 
@@ -53,7 +56,7 @@ class SubpassDescriptions {
 public:
     friend Device;
 
-    void add(VkPipelineBindPoint bind_point, const AttachmentReferences& input_attachments, const AttachmentReferences& color_attachments, const std::optional<AttachmentReferences>& resolve_attachments, const std::optional<VkAttachmentReference>& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
+    auto& add(VkPipelineBindPoint bind_point, const AttachmentReferences& input_attachments, const AttachmentReferences& color_attachments, const std::optional<AttachmentReferences>& resolve_attachments, const std::optional<VkAttachmentReference>& depth_stencil_attachment, const std::vector<uint32_t>& preserve_attachments) {
         subpasses_.emplace_back(
             VkSubpassDescription {
                 .pipelineBindPoint = bind_point,
@@ -67,6 +70,8 @@ public:
                 .pPreserveAttachments = preserve_attachments.data(),
             }
         );
+
+        return *this;
     }
 };
 
@@ -76,7 +81,7 @@ class SubpassDependencies {
 public:
     friend Device;
 
-    void add(uint32_t src_index, uint32_t dst_index, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkDependencyFlags dependency_flags) {
+    auto& add(uint32_t src_index, uint32_t dst_index, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkDependencyFlags dependency_flags) {
         dependencies_.emplace_back(
             VkSubpassDependency {
                 .srcSubpass = src_index,
@@ -88,6 +93,8 @@ public:
                 .dependencyFlags = dependency_flags,
             }
         );
+
+        return *this;
     }
 };
 

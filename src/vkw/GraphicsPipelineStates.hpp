@@ -4,6 +4,45 @@
 
 namespace vkw {
 
+class GraphicsPipelineStates;
+
+class VertexInputBindingDescriptions {
+    std::vector<VkVertexInputBindingDescription> descs_;
+
+public:
+    friend GraphicsPipelineStates;
+
+    auto& add(uint32_t binding, uint32_t stride, VkVertexInputRate input_rate) {
+        descs_.emplace_back(
+            VkVertexInputBindingDescription {
+                .binding = binding,
+                .stride = stride,
+                .inputRate = input_rate,
+            }
+        );
+        return *this;
+    }
+};
+
+class VertexInputAttributeDescriptions {
+    std::vector<VkVertexInputAttributeDescription> descs_;
+
+public:
+    friend GraphicsPipelineStates;
+    auto& add(uint32_t location, uint32_t binding, VkFormat format, uint32_t offset) {
+        descs_.emplace_back(
+            VkVertexInputAttributeDescription {
+                .location = location,
+                .binding = binding,
+                .format = format,
+                .offset = offset,
+            }
+        );
+
+        return *this;
+    }
+};
+
 class Device;
 
 class GraphicsPipelineStates{
@@ -44,13 +83,13 @@ public:
         return *this;
     }
 
-    auto& vertex_input_state(const std::vector<VkVertexInputBindingDescription>& bindings, const std::vector<VkVertexInputAttributeDescription>& attributes) {
+    auto& vertex_input_state(const VertexInputBindingDescriptions& bindings, const VertexInputAttributeDescriptions& attributes) {
         vertex_input_state_ = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = size_u32(bindings.size()),
-            .pVertexBindingDescriptions = bindings.data(),
-            .vertexAttributeDescriptionCount = size_u32(attributes.size()),
-            .pVertexAttributeDescriptions = attributes.data(),
+            .vertexBindingDescriptionCount = size_u32(bindings.descs_.size()),
+            .pVertexBindingDescriptions = bindings.descs_.data(),
+            .vertexAttributeDescriptionCount = size_u32(attributes.descs_.size()),
+            .pVertexAttributeDescriptions = attributes.descs_.data(),
         };
 
         return *this;
