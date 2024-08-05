@@ -22,8 +22,15 @@ struct PushConstantData {
     glm::mat4 model, view, projection;
 };
 
+constexpr uint32_t MAX_LIGHTS = 3;
+
 struct UniformBufferData {
-    glm::vec3 light_position;
+    alignas(16) glm::vec3 camera_position;
+    alignas(16) glm::vec3 ambient;
+    alignas(16) struct {
+        alignas(16) glm::vec3 position;
+        alignas(16) glm::vec3 color;
+    } lights[MAX_LIGHTS];
 };
 
 struct InstanceBufferData {
@@ -123,13 +130,15 @@ int main(int argc, char** argv) {
     framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1), depth_buffer->view()}, swapchain->width(), swapchain->height());
 
     auto vertex_shader = device->create_shader_module("shaders/basic.vert.glsl.spirv");
+    // auto vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
     auto fragment_shader = device->create_shader_module("shaders/basic.frag.glsl.spirv");
+    // auto fragment_shader = device->create_shader_module("shaders/simple_plane.frag.glsl.spirv");
     //auto wire_frame_shader = device->create_shader_module("shaders/wire_frame.geom.glsl.spirv");
 
     // auto mesh = meshes::Mesh::rect();
     // auto mesh = meshes::Mesh::cube();
-    auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
-    // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
+    // auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
+    auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
 
     std::vector<InstanceBufferData> instance_data = {
         { glm::vec3(-2.0f, 0.0f, 0.0f) },
@@ -137,7 +146,15 @@ int main(int argc, char** argv) {
     };
 
     std::vector<UniformBufferData> uniform_data = {
-        { glm::vec3(5.0f, 5.0f, -5.0f) },
+        { 
+            glm::vec3(0.0f, 0.0f, -0.5f),
+            glm::vec3(0.2f),
+            {
+                { glm::vec3(5.0f, 5.0f, -5.0f), glm::vec3(1.0f, 0.0f, 0.0f) },
+                { glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) },
+                { glm::vec3(-5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 0.0f, 1.0f) },
+            },
+        }
     };
 
     auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
@@ -189,11 +206,12 @@ int main(int argc, char** argv) {
     auto pipeline_states = vkw::GraphicsPipelineStates()
         .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *vertex_shader, "main")
         .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *fragment_shader, "main")
-        //.add_shader_stage(VK_SHADER_STAGE_GEOMETRY_BIT, *wire_frame_shader, "main")
+        // .add_shader_stage(VK_SHADER_STAGE_GEOMETRY_BIT, *wire_frame_shader, "main")
         .vertex_input_state(bind_descs, attr_descs)
         .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
         .viewport_state(viewports, scissors)
         .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
+        // .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
         .color_blend_state(blend_attachment_states);
@@ -290,6 +308,7 @@ int main(int argc, char** argv) {
                     .bind_vertex_buffer(1, *instance_buffer)
                     .bind_index_buffer(*index_buffer, VK_INDEX_TYPE_UINT16)
                     .draw_indexed((uint32_t)mesh.indices().size(), 2)
+                    // .draw(3, 1)
                     .end_render_pass();
                 }
             );
