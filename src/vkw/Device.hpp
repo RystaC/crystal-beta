@@ -98,7 +98,7 @@ public:
         return std::make_unique<Buffer<T>>(device_, std::move(buffer), std::move(device_memory));
     }
 
-    std::unique_ptr<Image> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageAspectFlags aspect);
+    std::unique_ptr<Image> create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage);
 };
 
 }

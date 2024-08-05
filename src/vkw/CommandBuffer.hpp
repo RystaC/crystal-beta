@@ -23,6 +23,11 @@ public:
         return *this;
     }
 
+    auto& next_subpass() {
+        vkCmdNextSubpass(command_buffer_, VK_SUBPASS_CONTENTS_INLINE);
+        return *this;
+    }
+
     auto& end_render_pass() {
         vkCmdEndRenderPass(command_buffer_);
         return *this;

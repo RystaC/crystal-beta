@@ -330,7 +330,7 @@ void Device::present(Swapchain& swapchain, uint32_t index) {
     CHECK_VK_RESULT(vkQueuePresentKHR(queue_, &present_info), return;);
 }
 
-std::unique_ptr<Image> Device::create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImageAspectFlags aspect) {
+std::unique_ptr<Image> Device::create_image(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage) {
     VkImageCreateInfo image_info {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -351,30 +351,7 @@ std::unique_ptr<Image> Device::create_image(uint32_t width, uint32_t height, VkF
     auto memory = allocate_memory(image);
     CHECK_VK_RESULT(vkBindImageMemory(*device_, image, memory, 0), return {};);
 
-    VkImageViewCreateInfo view_info {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = format,
-        .components = {
-            .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-            .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-            .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-            .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-        },
-        .subresourceRange = {
-            .aspectMask = aspect,
-            .baseMipLevel = 0u,
-            .levelCount = 1u,
-            .baseArrayLayer = 0u,
-            .layerCount = 1u,
-        },
-    };
-
-    VkImageView image_view{};
-    CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_view), return {};);
-
-    return std::make_unique<Image>(device_, std::move(image), std::move(memory), std::move(image_view));
+    return std::make_unique<Image>(device_, std::move(image), std::move(memory), format);
 }
 
 }

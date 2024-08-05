@@ -4,6 +4,9 @@ layout(location = 0) in vec2 uv;
 
 layout(location = 0) out vec4 out_color;
 
+layout(input_attachment_index = 0, binding = 0) uniform subpassInput input_depth;
+
 void main() {
-    out_color = vec4(uv, 0.0f, 1.0f);
+    float depth = subpassLoad(input_depth).x;
+    out_color = vec4(vec3(depth), 1.0f);
 }

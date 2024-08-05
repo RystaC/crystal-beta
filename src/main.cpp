@@ -91,7 +91,9 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto depth_output_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
+    auto depth_input_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
 
     vkw::AttachmentDescriptions attachment_descs{};
     attachment_descs
@@ -103,37 +105,79 @@ int main(int argc, char** argv) {
     )
     .add(
         VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    )
+    .add(
+        VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     );
 
+    // vkw::AttachmentReferences color_refs{};
+    // color_refs
+    // .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkw::AttachmentReferences depth_refs{};
+    depth_refs.add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkw::AttachmentReferences input_refs{};
+    input_refs.add(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     vkw::AttachmentReferences color_refs{};
-    color_refs
-    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    color_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     vkw::SubpassDescriptions subpass_descs{};
     subpass_descs
     .add(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         {},
-        color_refs,
+        {},
         {},
         VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
         {}
+    )
+    .add(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        input_refs,
+        color_refs,
+        {},
+        {},
+        {}
+    );
+    // subpass_descs
+    // .add(
+    //     VK_PIPELINE_BIND_POINT_GRAPHICS,
+    //     {},
+    //     color_refs,
+    //     {},
+    //     VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
+    //     {}
+    // );
+
+    vkw::SubpassDependencies depends{};
+    depends.add(
+        0, 1, 
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_DEPENDENCY_BY_REGION_BIT
     );
 
-    auto render_pass = device->create_render_pass(attachment_descs, subpass_descs, {});
+    auto render_pass = device->create_render_pass(attachment_descs, subpass_descs, depends);
 
     std::vector<std::unique_ptr<vkw::Framebuffer>> framebuffers(swapchain->image_view_size());
-    framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0), depth_buffer->view()}, swapchain->width(), swapchain->height());
-    framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1), depth_buffer->view()}, swapchain->width(), swapchain->height());
+    framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0), *depth_output_view, *depth_input_view}, swapchain->width(), swapchain->height());
+    framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1), *depth_output_view, *depth_input_view}, swapchain->width(), swapchain->height());
 
-    auto vertex_shader = device->create_shader_module("shaders/basic.vert.glsl.spirv");
+    // auto vertex_shader = device->create_shader_module("shaders/basic.vert.glsl.spirv");
     // auto vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
-    auto fragment_shader = device->create_shader_module("shaders/basic.frag.glsl.spirv");
+    // auto fragment_shader = device->create_shader_module("shaders/basic.frag.glsl.spirv");
     // auto fragment_shader = device->create_shader_module("shaders/simple_plane.frag.glsl.spirv");
     //auto wire_frame_shader = device->create_shader_module("shaders/wire_frame.geom.glsl.spirv");
+
+    auto first_vertex_shader = device->create_shader_module("shaders/render_pass_test.vert.glsl.spirv");
+    auto first_fragment_shader = device->create_shader_module("shaders/render_pass_test.frag.glsl.spirv");
+    auto second_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
+    auto second_fragment_shader = device->create_shader_module("shaders/simple_plane.frag.glsl.spirv");
 
     // auto mesh = meshes::Mesh::rect();
     // auto mesh = meshes::Mesh::cube();
@@ -160,25 +204,34 @@ int main(int argc, char** argv) {
     auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto instance_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-    auto uniform_buffer = device->create_buffer_with_data(uniform_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    // auto uniform_buffer = device->create_buffer_with_data(uniform_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
+    // std::vector<VkDescriptorSetLayoutBinding> layout_bindings = {
+    //     { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
+    // };
     std::vector<VkDescriptorSetLayoutBinding> layout_bindings = {
-        { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
+        { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
     };
 
     auto descriptor_layout = device->create_descriptor_layout(layout_bindings);
 
+    // std::vector<VkDescriptorPoolSize> pool_sizes = {
+    //     { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = vkw::size_u32(swapchain->image_view_size()) },
+    // };
     std::vector<VkDescriptorPoolSize> pool_sizes = {
-        { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = vkw::size_u32(swapchain->image_view_size()) },
+        { .type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1 },
     };
 
-    auto descriptor_pool = device->create_descriptor_pool(pool_sizes, vkw::size_u32(swapchain->image_view_size()));
+    // auto descriptor_pool = device->create_descriptor_pool(pool_sizes, vkw::size_u32(swapchain->image_view_size()));
+    auto descriptor_pool = device->create_descriptor_pool(pool_sizes, 1);
 
-    std::vector<std::unique_ptr<vkw::DescriptorSet<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>>> descriptor_sets(swapchain->image_view_size());
-    descriptor_sets[0] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
-    descriptor_sets[1] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
-    descriptor_sets[0]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
-    descriptor_sets[1]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
+    // std::vector<std::unique_ptr<vkw::DescriptorSet<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>>> descriptor_sets(swapchain->image_view_size());
+    // descriptor_sets[0] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
+    // descriptor_sets[1] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
+    // descriptor_sets[0]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
+    // descriptor_sets[1]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
+    auto descriptor_set = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT>(*descriptor_layout);
+    descriptor_set->update(0, 0, VK_NULL_HANDLE, *depth_input_view, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     vkw::VertexInputBindingDescriptions bind_descs{};
     bind_descs
@@ -203,17 +256,38 @@ int main(int argc, char** argv) {
         { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
     };
 
-    auto pipeline_states = vkw::GraphicsPipelineStates()
-        .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *vertex_shader, "main")
-        .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *fragment_shader, "main")
-        // .add_shader_stage(VK_SHADER_STAGE_GEOMETRY_BIT, *wire_frame_shader, "main")
+    // auto pipeline_states = vkw::GraphicsPipelineStates()
+    //     .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *vertex_shader, "main")
+    //     .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *fragment_shader, "main")
+    //     // .add_shader_stage(VK_SHADER_STAGE_GEOMETRY_BIT, *wire_frame_shader, "main")
+    //     .vertex_input_state(bind_descs, attr_descs)
+    //     .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+    //     .viewport_state(viewports, scissors)
+    //     .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
+    //     // .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
+    //     .multisample_state(VK_SAMPLE_COUNT_1_BIT)
+    //     .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
+    //     .color_blend_state(blend_attachment_states);
+
+    auto first_pipeline_states = vkw::GraphicsPipelineStates()
+        .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *first_vertex_shader, "main")
+        .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *first_fragment_shader, "main")
         .vertex_input_state(bind_descs, attr_descs)
         .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
         .viewport_state(viewports, scissors)
         .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
-        // .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
+        .color_blend_state(blend_attachment_states);
+
+    auto second_pipeline_states = vkw::GraphicsPipelineStates()
+        .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *second_vertex_shader, "main")
+        .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *second_fragment_shader, "main")
+        .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+        .viewport_state(viewports, scissors)
+        .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
+        .multisample_state(VK_SAMPLE_COUNT_1_BIT)
+        .depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE)
         .color_blend_state(blend_attachment_states);
 
     std::vector<VkDescriptorSetLayout> descriptor_layouts = {
@@ -228,11 +302,14 @@ int main(int argc, char** argv) {
         }
     };
 
-    auto pipeline = device->create_graphics_pipeline(descriptor_layouts, constant_ranges, pipeline_states, *render_pass, 0);
-    if(!pipeline) {
-        std::cerr << "[crystal-beta] ERROR: failed to create pipeline. exit." << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
+    // auto pipeline = device->create_graphics_pipeline(descriptor_layouts, constant_ranges, pipeline_states, *render_pass, 0);
+    // if(!pipeline) {
+    //     std::cerr << "[crystal-beta] ERROR: failed to create pipeline. exit." << std::endl;
+    //     std::exit(EXIT_FAILURE);
+    // }
+
+    auto first_pipeline = device->create_graphics_pipeline({}, constant_ranges, first_pipeline_states, *render_pass, 0);
+    auto second_pipeline = device->create_graphics_pipeline(descriptor_layouts, {}, second_pipeline_states, *render_pass, 1);
 
     auto command_pool = device->create_command_pool();
     if(!command_pool) {
@@ -301,14 +378,19 @@ int main(int argc, char** argv) {
                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                     )
                     .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, clear_values)
-                    .bind_graphics_pipeline(pipeline->pipeline())
-                    .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout(), *descriptor_sets[current_index])
-                    .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
+                    // .bind_graphics_pipeline(pipeline->pipeline())
+                    .bind_graphics_pipeline(first_pipeline->pipeline())
+                    // .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout(), *descriptor_sets[current_index])
+                    // .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
+                    .push_constants(first_pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
                     .bind_vertex_buffer(0, *vertex_buffer)
                     .bind_vertex_buffer(1, *instance_buffer)
                     .bind_index_buffer(*index_buffer, VK_INDEX_TYPE_UINT16)
                     .draw_indexed((uint32_t)mesh.indices().size(), 2)
-                    // .draw(3, 1)
+                    .next_subpass()
+                    .bind_graphics_pipeline(second_pipeline->pipeline())
+                    .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, second_pipeline->layout(), *descriptor_set)
+                    .draw(3, 1)
                     .end_render_pass();
                 }
             );
