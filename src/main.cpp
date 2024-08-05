@@ -92,67 +92,111 @@ int main(int argc, char** argv) {
     }
 
     auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    auto depth_output_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
-    auto depth_input_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
+    auto depth_buffer_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
+
+    auto position_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto position_output_view = position_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto position_input_view = position_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto normal_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto normal_output_view = normal_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto normal_input_view = normal_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto albedo_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto albedo_output_view = albedo_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto albedo_input_view = albedo_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
 
     vkw::AttachmentDescriptions attachment_descs{};
     attachment_descs
+    // swapchain image
     .add(
         VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     )
+    // depth buffer output
     .add(
         VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     )
+    // position buffer output
     .add(
-        VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    )
+    // position buffer input
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    )
+    // normal buffer output
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    )
+    // normal buffer input
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    )
+    // albedo buffer output
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+    )
+    // albedo buffer input
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     );
 
-    // vkw::AttachmentReferences color_refs{};
-    // color_refs
-    // .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkw::AttachmentReferences depth_refs{};
-    depth_refs.add(1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkw::AttachmentReferences input_refs{};
-    input_refs.add(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    vkw::AttachmentReferences color_refs{};
-    color_refs.add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkw::AttachmentReferences first_output_refs{};
+    first_output_refs
+    .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    .add(4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    .add(6, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkw::AttachmentReferences second_input_refs{};
+    second_input_refs
+    .add(3, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    .add(5, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    .add(7, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    vkw::AttachmentReferences second_output_refs{};
+    second_output_refs
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     vkw::SubpassDescriptions subpass_descs{};
     subpass_descs
+    // first pass
     .add(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         {},
-        {},
+        first_output_refs,
         {},
         VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
         {}
     )
+    // second pass
     .add(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        input_refs,
-        color_refs,
+        second_input_refs,
+        second_output_refs,
         {},
         {},
         {}
     );
-    // subpass_descs
-    // .add(
-    //     VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //     {},
-    //     color_refs,
-    //     {},
-    //     VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
-    //     {}
-    // );
 
     vkw::SubpassDependencies depends{};
     depends.add(
@@ -165,19 +209,31 @@ int main(int argc, char** argv) {
     auto render_pass = device->create_render_pass(attachment_descs, subpass_descs, depends);
 
     std::vector<std::unique_ptr<vkw::Framebuffer>> framebuffers(swapchain->image_view_size());
-    framebuffers[0] = device->create_framebuffer(*render_pass, {swapchain->image_view(0), *depth_output_view, *depth_input_view}, swapchain->width(), swapchain->height());
-    framebuffers[1] = device->create_framebuffer(*render_pass, {swapchain->image_view(1), *depth_output_view, *depth_input_view}, swapchain->width(), swapchain->height());
+    framebuffers[0] = device->create_framebuffer(
+        *render_pass,
+        {
+            swapchain->image_view(0), *depth_buffer_view,
+            *position_output_view, *position_input_view,
+            *normal_output_view, *normal_input_view,
+            *albedo_output_view, *albedo_input_view,
+        },
+        swapchain->width(), swapchain->height()
+    );
+    framebuffers[1] = device->create_framebuffer(
+        *render_pass,
+        {
+            swapchain->image_view(1), *depth_buffer_view,
+            *position_output_view, *position_input_view,
+            *normal_output_view, *normal_input_view,
+            *albedo_output_view, *albedo_input_view,
+        },
+        swapchain->width(), swapchain->height()
+    );
 
-    // auto vertex_shader = device->create_shader_module("shaders/basic.vert.glsl.spirv");
-    // auto vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
-    // auto fragment_shader = device->create_shader_module("shaders/basic.frag.glsl.spirv");
-    // auto fragment_shader = device->create_shader_module("shaders/simple_plane.frag.glsl.spirv");
-    //auto wire_frame_shader = device->create_shader_module("shaders/wire_frame.geom.glsl.spirv");
-
-    auto first_vertex_shader = device->create_shader_module("shaders/render_pass_test.vert.glsl.spirv");
-    auto first_fragment_shader = device->create_shader_module("shaders/render_pass_test.frag.glsl.spirv");
-    auto second_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
-    auto second_fragment_shader = device->create_shader_module("shaders/simple_plane.frag.glsl.spirv");
+    auto first_vertex_shader = device->create_shader_module("shaders/deferred_first.vert.glsl.spirv");
+    auto first_fragment_shader = device->create_shader_module("shaders/deferred_first.frag.glsl.spirv");
+    auto second_vertex_shader = device->create_shader_module("shaders/deferred_second.vert.glsl.spirv");
+    auto second_fragment_shader = device->create_shader_module("shaders/deferred_second.frag.glsl.spirv");
 
     // auto mesh = meshes::Mesh::rect();
     // auto mesh = meshes::Mesh::cube();
@@ -206,32 +262,26 @@ int main(int argc, char** argv) {
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     // auto uniform_buffer = device->create_buffer_with_data(uniform_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-    // std::vector<VkDescriptorSetLayoutBinding> layout_bindings = {
-    //     { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
-    // };
     std::vector<VkDescriptorSetLayoutBinding> layout_bindings = {
-        { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
+        { .binding = 0, .descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 3, .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT, .pImmutableSamplers = nullptr },
     };
 
     auto descriptor_layout = device->create_descriptor_layout(layout_bindings);
 
-    // std::vector<VkDescriptorPoolSize> pool_sizes = {
-    //     { .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = vkw::size_u32(swapchain->image_view_size()) },
-    // };
     std::vector<VkDescriptorPoolSize> pool_sizes = {
-        { .type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 1 },
+        { .type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, .descriptorCount = 3 },
     };
 
     // auto descriptor_pool = device->create_descriptor_pool(pool_sizes, vkw::size_u32(swapchain->image_view_size()));
-    auto descriptor_pool = device->create_descriptor_pool(pool_sizes, 1);
+    auto descriptor_pool = device->create_descriptor_pool(pool_sizes, 3);
 
-    // std::vector<std::unique_ptr<vkw::DescriptorSet<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>>> descriptor_sets(swapchain->image_view_size());
-    // descriptor_sets[0] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
-    // descriptor_sets[1] = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER>(*descriptor_layout);
-    // descriptor_sets[0]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
-    // descriptor_sets[1]->update(0, 0, *uniform_buffer, 0, sizeof(UniformBufferData));
-    auto descriptor_set = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT>(*descriptor_layout);
-    descriptor_set->update(0, 0, VK_NULL_HANDLE, *depth_input_view, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    auto second_descriptor_set = descriptor_pool->allocate_descriptor_set<VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT>(*descriptor_layout);
+    std::vector<VkDescriptorImageInfo> image_infos = {
+        { .sampler = VK_NULL_HANDLE, .imageView = *position_input_view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { .sampler = VK_NULL_HANDLE, .imageView = *normal_input_view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+        { .sampler = VK_NULL_HANDLE, .imageView = *albedo_input_view, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL },
+    };
+    second_descriptor_set->update(0, 0, image_infos);
 
     vkw::VertexInputBindingDescriptions bind_descs{};
     bind_descs
@@ -252,22 +302,15 @@ int main(int argc, char** argv) {
         {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}},
     };
 
-    std::vector<VkPipelineColorBlendAttachmentState> blend_attachment_states = {
+    std::vector<VkPipelineColorBlendAttachmentState> first_blend_attachment_states = {
+        { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
+        { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
         { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
     };
 
-    // auto pipeline_states = vkw::GraphicsPipelineStates()
-    //     .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *vertex_shader, "main")
-    //     .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *fragment_shader, "main")
-    //     // .add_shader_stage(VK_SHADER_STAGE_GEOMETRY_BIT, *wire_frame_shader, "main")
-    //     .vertex_input_state(bind_descs, attr_descs)
-    //     .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-    //     .viewport_state(viewports, scissors)
-    //     .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
-    //     // .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
-    //     .multisample_state(VK_SAMPLE_COUNT_1_BIT)
-    //     .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
-    //     .color_blend_state(blend_attachment_states);
+    std::vector<VkPipelineColorBlendAttachmentState> second_blend_attachment_states = {
+        { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
+    };
 
     auto first_pipeline_states = vkw::GraphicsPipelineStates()
         .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *first_vertex_shader, "main")
@@ -278,7 +321,7 @@ int main(int argc, char** argv) {
         .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
-        .color_blend_state(blend_attachment_states);
+        .color_blend_state(first_blend_attachment_states);
 
     auto second_pipeline_states = vkw::GraphicsPipelineStates()
         .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *second_vertex_shader, "main")
@@ -288,7 +331,7 @@ int main(int argc, char** argv) {
         .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
         .multisample_state(VK_SAMPLE_COUNT_1_BIT)
         .depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE)
-        .color_blend_state(blend_attachment_states);
+        .color_blend_state(second_blend_attachment_states);
 
     std::vector<VkDescriptorSetLayout> descriptor_layouts = {
         *descriptor_layout,
@@ -301,12 +344,6 @@ int main(int argc, char** argv) {
             .size = sizeof(PushConstantData),
         }
     };
-
-    // auto pipeline = device->create_graphics_pipeline(descriptor_layouts, constant_ranges, pipeline_states, *render_pass, 0);
-    // if(!pipeline) {
-    //     std::cerr << "[crystal-beta] ERROR: failed to create pipeline. exit." << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
 
     auto first_pipeline = device->create_graphics_pipeline({}, constant_ranges, first_pipeline_states, *render_pass, 0);
     auto second_pipeline = device->create_graphics_pipeline(descriptor_layouts, {}, second_pipeline_states, *render_pass, 1);
@@ -358,6 +395,12 @@ int main(int argc, char** argv) {
             std::vector<VkClearValue> clear_values = {
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
                 { .depthStencil = {1.0f, 0} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
             };
 
             glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(1.0f));
@@ -367,6 +410,10 @@ int main(int argc, char** argv) {
 
             PushConstantData push_constant_data {
                 model, view, projection,
+            };
+
+            std::vector<VkDescriptorSet> descriptor_sets = {
+                *second_descriptor_set 
             };
 
             command_buffer->record_commands(
@@ -389,7 +436,7 @@ int main(int argc, char** argv) {
                     .draw_indexed((uint32_t)mesh.indices().size(), 2)
                     .next_subpass()
                     .bind_graphics_pipeline(second_pipeline->pipeline())
-                    .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, second_pipeline->layout(), *descriptor_set)
+                    .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, second_pipeline->layout(), descriptor_sets)
                     .draw(3, 1)
                     .end_render_pass();
                 }

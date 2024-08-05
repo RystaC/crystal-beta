@@ -54,8 +54,8 @@ public:
         return *this;
     }
 
-    auto& bind_descriptor_set(VkPipelineBindPoint bind_point, VkPipelineLayout layout, VkDescriptorSet descriptor_set) {
-        vkCmdBindDescriptorSets(command_buffer_, bind_point, layout, 0u, 1u, &descriptor_set, 0, nullptr);
+    auto& bind_descriptor_sets(VkPipelineBindPoint bind_point, VkPipelineLayout layout, const std::vector<VkDescriptorSet>& descriptor_sets) {
+        vkCmdBindDescriptorSets(command_buffer_, bind_point, layout, 0u, size_u32(descriptor_sets.size()), descriptor_sets.data(), 0, nullptr);
         return *this;
     }
 

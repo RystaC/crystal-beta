@@ -99,6 +99,21 @@ public:
 
         vkUpdateDescriptorSets(*device_, 1u, &write_descriptor, 0u, nullptr);
     }
+
+        void update(uint32_t binding, uint32_t array_element, const std::vector<VkDescriptorImageInfo>& image_infos) {
+
+        VkWriteDescriptorSet write_descriptor {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = descriptor_set_,
+            .dstBinding = binding,
+            .dstArrayElement = array_element,
+            .descriptorCount = size_u32(image_infos.size()),
+            .descriptorType = descriptor_type_,
+            .pImageInfo = image_infos.data(),
+        };
+
+        vkUpdateDescriptorSets(*device_, 1u, &write_descriptor, 0u, nullptr);
+    }
 };
 
 }
