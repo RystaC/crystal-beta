@@ -243,9 +243,9 @@ int main(int argc, char** argv) {
     auto debug_fragment_shader = device->create_shader_module("shaders/bounding_box.frag.glsl.spirv");
 
     // auto mesh = meshes::Mesh::rect();
-    auto mesh = meshes::Mesh::cube();
+    // auto mesh = meshes::Mesh::cube();
     // auto mesh = meshes::Mesh::sphere(64, 64, 1.0f);
-    // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
+    auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     auto box_size = mesh.bounding_box();
 
     auto bounding_box = meshes::Mesh::frame();
