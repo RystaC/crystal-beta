@@ -151,4 +151,25 @@ Mesh Mesh::torus(uint32_t row, uint32_t column, float inner_radius, float outer_
     return { std::move(vertices), std::move(indices) };
 }
 
+Mesh Mesh::frame() {
+    std::vector<VertexData> vertices = {
+        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+    };
+
+    std::vector<uint16_t> indices = {
+        0, 1, 1, 2, 2, 3, 3, 0,
+        4, 5, 5, 6, 6, 7, 7, 4,
+        0, 4, 1, 5, 2, 6, 3, 7,
+    };
+
+    return { std::move(vertices), std::move(indices) };
+}
+
 }
