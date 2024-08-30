@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
+#include "Device.hpp"
 
 namespace vkw {
 
@@ -95,13 +96,15 @@ public:
 
 };
 
+namespace objects {
+
 class CommandBuffer {
-    std::shared_ptr<DeviceEntity> device_;
+    std::shared_ptr<objects::Device> device_;
     const VkCommandPool& command_pool_;
     VkCommandBuffer command_buffer_;
 
 public:
-    CommandBuffer(std::shared_ptr<DeviceEntity> device, const VkCommandPool& command_pool, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_pool_(command_pool), command_buffer_(command_buffer) {}
+    CommandBuffer(std::shared_ptr<objects::Device> device, const VkCommandPool& command_pool, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_pool_(command_pool), command_buffer_(command_buffer) {}
     ~CommandBuffer() noexcept {
         vkFreeCommandBuffers(*device_, command_pool_, 1, &command_buffer_);
     }
@@ -126,5 +129,7 @@ public:
         return result;
     }
 };
+
+}
 
 }

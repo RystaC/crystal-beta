@@ -1,30 +1,21 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
+#include "Device.hpp"
+#include "ImageView.hpp"
 
 namespace vkw {
 
-class ImageView {
-    std::shared_ptr<DeviceEntity> device_;
-    VkImageView view_;
-
-public:
-    ImageView(std::shared_ptr<DeviceEntity> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
-    ~ImageView() noexcept {
-        vkDestroyImageView(*device_, view_, nullptr);
-    }
-
-    operator VkImageView() const noexcept { return view_; }
-};
+namespace objects {
 
 class Image {
-    std::shared_ptr<DeviceEntity> device_;
+    std::shared_ptr<objects::Device> device_;
     VkImage image_;
     VkDeviceMemory memory_;
     VkFormat format_;
 
 public:
-    Image(std::shared_ptr<DeviceEntity> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
+    Image(std::shared_ptr<objects::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
     ~Image() noexcept {
         vkFreeMemory(*device_, memory_, nullptr);
         vkDestroyImage(*device_, image_, nullptr);
@@ -59,5 +50,7 @@ public:
         return std::make_unique<ImageView>(device_, std::move(image_view));
     }
 };
+
+}
 
 }

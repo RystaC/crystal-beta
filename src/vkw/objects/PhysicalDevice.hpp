@@ -1,10 +1,12 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
 
 namespace vkw {
 
 class Device;
+
+namespace objects {
 
 class PhysicalDevice {
     VkPhysicalDevice physical_device_;
@@ -13,7 +15,7 @@ class PhysicalDevice {
     std::vector<VkQueueFamilyProperties> queue_family_properties_;
 
 public:
-    friend Device;
+    friend vkw::Device;
     
     PhysicalDevice() = default;
     PhysicalDevice(VkPhysicalDevice&& physical_device) noexcept : physical_device_(physical_device), device_properties_(), memory_properties_(), queue_family_properties_() {
@@ -44,5 +46,7 @@ public:
     }
 
 };
+
+}
 
 }

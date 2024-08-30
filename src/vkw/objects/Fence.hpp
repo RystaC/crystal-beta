@@ -1,15 +1,18 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
+#include "Device.hpp"
 
 namespace vkw {
 
+namespace objects {
+
 class Fence {
-    std::shared_ptr<DeviceEntity> device_;
+    std::shared_ptr<objects::Device> device_;
     VkFence fence_;
 
 public:
-    Fence(std::shared_ptr<DeviceEntity> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
+    Fence(std::shared_ptr<objects::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
     ~Fence() noexcept {
         vkDestroyFence(*device_, fence_, nullptr);
     }
@@ -24,5 +27,7 @@ public:
         return vkResetFences(*device_, 1u, &fence_);
     }
 };
+
+}
 
 }

@@ -1,20 +1,24 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
+#include "Device.hpp"
 #include "Surface.hpp"
 #include "PhysicalDevice.hpp"
+#include "Fence.hpp"
 
 namespace vkw {
 
+namespace objects {
+
 class Swapchain {
-    std::shared_ptr<DeviceEntity> device_;
+    std::shared_ptr<objects::Device> device_;
     VkSwapchainKHR swapchain_;
     std::vector<VkImage> images_;
     std::vector<VkImageView> image_views_;
     uint32_t width_, height_;
 
 public:
-    Swapchain(std::shared_ptr<DeviceEntity> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept :
+    Swapchain(std::shared_ptr<objects::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept :
         device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), width_(width), height_(height)
     {}
     ~Swapchain() noexcept {
@@ -43,5 +47,7 @@ public:
         return next_index;
     }
 };
+
+}
 
 }

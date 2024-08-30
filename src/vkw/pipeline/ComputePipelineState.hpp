@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "../common/common.hpp"
 
 namespace vkw {
 
@@ -26,19 +26,6 @@ public:
 
         return *this;
     }
-
-    // std::unique_ptr<Pipeline> create_pipeline(VkPipelineLayout layout) {
-    //     VkComputePipelineCreateInfo pipeline_info {
-    //         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-    //         .stage = shader_stage_,
-    //         .layout = layout,
-    //     };
-
-    //     VkPipeline pipeline{};
-    //     CHECK_VK_RESULT(vkCreateComputePipelines(*device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline), return {};);
-
-    //     return std::make_unique<Pipeline>(device_, std::move(pipeline), std::move(layout));
-    // }
 
 };
 

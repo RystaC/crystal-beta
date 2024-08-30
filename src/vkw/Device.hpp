@@ -12,6 +12,7 @@
 #include "ShaderModule.hpp"
 #include "GraphicsPipelineStates.hpp"
 #include "ComputePipelineStates.hpp"
+#include "PipelineLayout.hpp"
 #include "Pipeline.hpp"
 #include "Buffer.hpp"
 #include "Image.hpp"

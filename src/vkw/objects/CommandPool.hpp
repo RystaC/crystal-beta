@@ -1,17 +1,19 @@
 #pragma once
 
-#include "common.hpp"
-#include "debug.hpp"
+#include "../common/common.hpp"
+#include "Device.hpp"
 #include "CommandBuffer.hpp"
 
 namespace vkw {
 
+namespace objects {
+
 class CommandPool {
-    std::shared_ptr<DeviceEntity> device_;
+    std::shared_ptr<objects::Device> device_;
     VkCommandPool command_pool_;
 
 public:
-    CommandPool(std::shared_ptr<DeviceEntity> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
+    CommandPool(std::shared_ptr<objects::Device> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
     ~CommandPool() noexcept {
         vkDestroyCommandPool(*device_, command_pool_, nullptr);
     }
@@ -31,5 +33,7 @@ public:
     }
 
 };
+
+}
 
 }
