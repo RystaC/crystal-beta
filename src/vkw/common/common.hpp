@@ -22,4 +22,15 @@ namespace vkw {
 // utility functions
 inline uint32_t size_u32(size_t s) { return static_cast<uint32_t>(s); }
 
+template<typename T, typename U>
+inline std::vector<U> detach(const std::vector<T>& wrapper_vector) {
+    std::vector<U> dst(wrapper_vector.size());
+
+    for(auto i = 0; i < wrapper_vector.size(); ++i) {
+        dst[i] = static_cast<U>(wrapper_vector[i]);
+    }
+
+    return dst;
+}
+
 }
