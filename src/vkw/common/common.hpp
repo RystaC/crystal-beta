@@ -26,9 +26,7 @@ template<typename T, typename U = T::object_type>
 inline std::vector<U> detach(const std::vector<T>& wrapper_vector) {
     std::vector<U> dst(wrapper_vector.size());
 
-    for(auto i = 0; i < wrapper_vector.size(); ++i) {
-        dst[i] = static_cast<U>(wrapper_vector[i]);
-    }
+    std::transform(wrapper_vector.begin(), wrapper_vector.end(), dst.begin(), [](const auto& wrapped) { return static_cast<U>(wrapped); });
 
     return dst;
 }

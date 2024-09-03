@@ -2,7 +2,7 @@
 
 #include "../common/common.hpp"
 #include "Device.hpp"
-#include "CommandBuffer.hpp"
+#include "CommandBuffers.hpp"
 
 namespace vkw {
 
@@ -20,18 +20,18 @@ public:
         vkDestroyCommandPool(*device_, command_pool_, nullptr);
     }
 
-    std::unique_ptr<CommandBuffer> allocate_command_buffer() {
+    CommandBuffers allocate_command_buffers(uint32_t buffer_count = 1) {
         VkCommandBufferAllocateInfo allocate_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = command_pool_,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1u,
+            .commandBufferCount = buffer_count,
         };
 
-        VkCommandBuffer command_buffer;
-        CHECK_VK_RESULT(vkAllocateCommandBuffers(*device_, &allocate_info, &command_buffer), return {};);
+        std::vector<VkCommandBuffer> cbs(buffer_count);
+        vkAllocateCommandBuffers(*device_, &allocate_info, cbs.data());
 
-        return std::make_unique<CommandBuffer>(device_, command_pool_, std::move(command_buffer));
+        return CommandBuffers(device_, command_pool_, std::move(cbs));
     }
 
 };

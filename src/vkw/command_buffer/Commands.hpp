@@ -2,6 +2,10 @@
 
 #include "../common/common.hpp"
 
+#include "../barrier/BufferMemoryBarriers.hpp"
+#include "../barrier/ImageMemoryBarriers.hpp"
+#include "../barrier/MemoryBarriers.hpp"
+
 namespace vkw {
 
 namespace command_buffer {
@@ -13,6 +17,7 @@ public:
     Commands(const VkCommandBuffer& command_buffer) noexcept : command_buffer_(command_buffer) {}
 
     // render pass commands
+
     [[nodiscard]]
     auto& begin_render_pass(VkFramebuffer framebuffer, VkRenderPass render_pass, VkRect2D render_area, const std::vector<VkClearValue>& clear_values) {
         VkRenderPassBeginInfo begin_info {
@@ -40,6 +45,7 @@ public:
     }
 
     // binding commands
+
     [[nodiscard]]
     auto& bind_pipline(VkPipelineBindPoint bind_point, VkPipeline pipeline) {
         vkCmdBindPipeline(command_buffer_, bind_point, pipeline);
@@ -66,6 +72,7 @@ public:
     }
 
     // push constant command
+
     [[nodiscard]]
     auto& push_constants(VkPipelineLayout layout, VkShaderStageFlags stage, uint32_t offset, uint32_t size, const void* data) {
         vkCmdPushConstants(command_buffer_, layout, stage, offset, size, data);
@@ -73,6 +80,7 @@ public:
     }
 
     // draw commands
+
     [[nodiscard]]
     auto& draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex = 0u, uint32_t first_instance = 0u) {
         vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
@@ -98,6 +106,7 @@ public:
     }
 
     // dispatch commands
+
     [[nodiscard]]
     auto& dispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) {
         vkCmdDispatch(command_buffer_, group_x, group_y, group_z);
@@ -111,34 +120,100 @@ public:
     }
 
     // sync commands
-    [[nodiscard]]
-    auto& barrier_image(VkImage& image, Transition<VkPipelineStageFlags> stage_transition, Transition<VkAccessFlags> access_transition, Transition<VkImageLayout> layout_transition) {
-        VkImageMemoryBarrier image_barrier {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = access_transition.src,
-            .dstAccessMask = access_transition.dst,
-            .oldLayout = layout_transition.src,
-            .newLayout = layout_transition.dst,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = image,
-            .subresourceRange = VkImageSubresourceRange {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
 
-        vkCmdPipelineBarrier(command_buffer_, stage_transition.src, stage_transition.dst, 0, 0, nullptr, 0, nullptr, 1u, &image_barrier);
+    [[nodiscard]]
+    auto& pipeline_barrier(Transition<VkPipelineStageFlags> stage_transition, VkDependencyFlags dependency, 
+        const std::optional<barrier::MemoryBarriers>& memory_barriers = std::nullopt,
+        const std::optional<barrier::BufferMemoryBarriers>& buffer_barriers = std::nullopt,
+        const std::optional<barrier::ImageMemoryBarriers>& image_barriers = std::nullopt
+    ) {
+        uint32_t mb_count = memory_barriers.has_value() ? size_u32(memory_barriers.value().barriers_.size()) : 0;
+        const VkMemoryBarrier* mb = memory_barriers.has_value() ? memory_barriers.value().barriers_.data() : nullptr;
+        uint32_t bb_count = buffer_barriers.has_value() ? size_u32(buffer_barriers.value().barriers_.size()) : 0;
+        const VkBufferMemoryBarrier* bb = buffer_barriers.has_value() ? buffer_barriers.value().barriers_.data() : nullptr;
+        uint32_t ib_count = image_barriers.has_value() ? size_u32(image_barriers.value().barriers_.size()) : 0;
+        const VkImageMemoryBarrier* ib = image_barriers.has_value() ? image_barriers.value().barriers_.data() : nullptr;
+
+        vkCmdPipelineBarrier(command_buffer_, stage_transition.src, stage_transition.dst, dependency,
+            mb_count, mb, bb_count, bb, ib_count, ib
+        );
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& set_event(VkEvent event, VkPipelineStageFlags src_stage) {
+        vkCmdSetEvent(command_buffer_, event, src_stage);
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& reset_event(VkEvent event, VkPipelineStageFlags src_stage) {
+        vkCmdResetEvent(command_buffer_, event, src_stage);
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& wait_events(const std::vector<VkEvent>& events, Transition<VkPipelineStageFlags> stage_transition,
+        const std::optional<barrier::MemoryBarriers>& memory_barriers = std::nullopt,
+        const std::optional<barrier::BufferMemoryBarriers>& buffer_barriers = std::nullopt,
+        const std::optional<barrier::ImageMemoryBarriers>& image_barriers = std::nullopt
+    ) {
+        uint32_t mb_count = memory_barriers.has_value() ? size_u32(memory_barriers.value().barriers_.size()) : 0;
+        const VkMemoryBarrier* mb = memory_barriers.has_value() ? memory_barriers.value().barriers_.data() : nullptr;
+        uint32_t bb_count = buffer_barriers.has_value() ? size_u32(buffer_barriers.value().barriers_.size()) : 0;
+        const VkBufferMemoryBarrier* bb = buffer_barriers.has_value() ? buffer_barriers.value().barriers_.data() : nullptr;
+        uint32_t ib_count = image_barriers.has_value() ? size_u32(image_barriers.value().barriers_.size()) : 0;
+        const VkImageMemoryBarrier* ib = image_barriers.has_value() ? image_barriers.value().barriers_.data() : nullptr;
+
+        vkCmdWaitEvents(command_buffer_, size_u32(events.size()), events.data(), stage_transition.src, stage_transition.dst,
+            mb_count, mb, bb_count, bb, ib_count, ib
+        );
 
         return *this;
     }
 
     // copy commands
 
+    [[nodiscard]]
+    auto& blit_image(VkImage src_image, VkImage dst_image, Transition<VkImageLayout> layout_transition, const std::vector<VkImageBlit>& regions, VkFilter filter) {
+        vkCmdBlitImage(command_buffer_, src_image, layout_transition.src, dst_image, layout_transition.dst, size_u32(regions.size()), regions.data(), filter);
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& copy(VkBuffer src_buffer, VkBuffer dst_buffer, const std::vector<VkBufferCopy>& regions) {
+        vkCmdCopyBuffer(command_buffer_, src_buffer, dst_buffer, size_u32(regions.size()), regions.data());
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& copy(VkImage src_image, VkImage dst_image, Transition<VkImageLayout> layout_transition, const std::vector<VkImageCopy>& regions) {
+        vkCmdCopyImage(command_buffer_, src_image, layout_transition.src, dst_image, layout_transition.dst, size_u32(regions.size()), regions.data());
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& copy(VkBuffer src_buffer, VkImage dst_image, VkImageLayout dst_layout, const std::vector<VkBufferImageCopy>& regions) {
+        vkCmdCopyBufferToImage(command_buffer_, src_buffer, dst_image, dst_layout, size_u32(regions.size()), regions.data());
+
+        return *this;
+    }
+
+    [[nodiscard]]
+    auto& copy(VkImage src_image, VkImageLayout src_layout, VkBuffer dst_buffer, const std::vector<VkBufferImageCopy>& regions) {
+        vkCmdCopyImageToBuffer(command_buffer_, src_image, src_layout, dst_buffer, size_u32(regions.size()), regions.data());
+
+        return *this;
+    }
+
     // query commands
+
     [[nodiscard]]
     auto& begin_query(VkQueryPool pool, uint32_t index, VkQueryControlFlags flags = 0) {
         vkCmdBeginQuery(command_buffer_, pool, index, flags);
@@ -154,6 +229,7 @@ public:
     // dynamic state commands
 
     // end record (must call)
+
     void end_record() {
         vkEndCommandBuffer(command_buffer_);
     }
