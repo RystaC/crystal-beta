@@ -13,6 +13,8 @@ class CommandPool {
     VkCommandPool command_pool_;
 
 public:
+    using object_type = VkCommandPool;
+
     CommandPool(std::shared_ptr<objects::Device> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
     ~CommandPool() noexcept {
         vkDestroyCommandPool(*device_, command_pool_, nullptr);

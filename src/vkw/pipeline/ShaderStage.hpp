@@ -67,6 +67,26 @@ public:
         ) {}
 };
 
+class GraphicShaderStage {
+    std::vector<ShaderStage> shaders_;
+
+public:
+    GraphicShaderStage(ShaderStage vertex_shader, ShaderStage fragment_shader,
+        std::optional<ShaderStage> geometry_shader = std::nullopt,
+        std::optional<ShaderStage> tessellation_control_shader = std::nullopt, std::optional<ShaderStage> tessellation_evaluation_shader
+        /*, std::optional<ShaderStage> mesh_shader, std::optional<ShaderStage> task_shader*/
+    ) {
+
+    }
+};
+
+class ComputeShaderStage {
+    ShaderStage shader_;
+
+public:
+    ComputeShaderStage(ShaderStage compute_shader) : shader_(compute_shader) {}
+};
+
 }
 
 }

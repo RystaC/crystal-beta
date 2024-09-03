@@ -15,6 +15,8 @@ class DescriptorSet {
     static constexpr VkDescriptorType descriptor_type_ = DescType;
 
 public:
+    using object_type = VkDescriptorSet;
+
     DescriptorSet(std::shared_ptr<object::Device> device, const VkDescriptorPool& descriptor_pool, VkDescriptorSet&& descriptor_set) noexcept : device_(device), descriptor_pool_(descriptor_pool), descriptor_set_(descriptor_set) {}
 
     operator VkDescriptorSet() const noexcept { return descriptor_set_; }

@@ -12,6 +12,8 @@ class Pipeline {
     VkPipeline pipeline_;
 
 public:
+    using object_type = VkPipeline;
+
     Pipeline(std::shared_ptr<objects::Device> device, VkPipeline&& pipeline) noexcept : device_(device), pipeline_(pipeline) {}
     ~Pipeline() noexcept {
         vkDestroyPipeline(*device_, pipeline_, nullptr);

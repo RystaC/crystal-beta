@@ -12,6 +12,8 @@ class Sampler {
     VkSampler sampler_;
 
 public:
+    using object_type = VkSampler;
+
     Sampler(std::shared_ptr<objects::Device> device, VkSampler&& sampler) noexcept : device_(device), sampler_(sampler) {}
     ~Sampler() noexcept {
         vkDestroySampler(*device_, sampler_, nullptr);

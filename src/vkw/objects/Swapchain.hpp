@@ -18,6 +18,8 @@ class Swapchain {
     uint32_t width_, height_;
 
 public:
+    using object_type = VkSwapchainKHR;
+
     Swapchain(std::shared_ptr<objects::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept :
         device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), width_(width), height_(height)
     {}

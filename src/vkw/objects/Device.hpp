@@ -10,6 +10,8 @@ class Device {
     VkDevice device_;
 
 public:
+    using object_type = VkDevice;
+
     Device(VkDevice&& device) noexcept : device_(device) {}
     ~Device() noexcept {
         vkDestroyDevice(device_, nullptr);

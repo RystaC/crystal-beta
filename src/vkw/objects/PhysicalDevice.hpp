@@ -12,15 +12,19 @@ class PhysicalDevice {
     VkPhysicalDevice physical_device_;
     VkPhysicalDeviceProperties device_properties_;
     VkPhysicalDeviceMemoryProperties memory_properties_;
+    VkPhysicalDeviceFeatures device_features_;
     std::vector<VkQueueFamilyProperties> queue_family_properties_;
 
 public:
     friend vkw::Device;
     
+    using object_type = VkPhysicalDevice;
+    
     PhysicalDevice() = default;
-    PhysicalDevice(VkPhysicalDevice&& physical_device) noexcept : physical_device_(physical_device), device_properties_(), memory_properties_(), queue_family_properties_() {
+    PhysicalDevice(VkPhysicalDevice&& physical_device) noexcept : physical_device_(physical_device) {
         vkGetPhysicalDeviceProperties(physical_device_, &device_properties_);
         vkGetPhysicalDeviceMemoryProperties(physical_device_, &memory_properties_);
+        vkGetPhysicalDeviceFeatures(physical_device_, &device_features_);
 
         uint32_t queue_prop_count{};
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device_, &queue_prop_count, nullptr);

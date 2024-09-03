@@ -13,6 +13,8 @@ class Framebuffer {
     VkFramebuffer framebuffer_;
 
 public:
+    using object_type = VkFramebuffer;
+
     Framebuffer(std::shared_ptr<objects::Device> device, VkFramebuffer&& framebuffer) noexcept : device_(device), framebuffer_(framebuffer) {}
     ~Framebuffer() noexcept {
         vkDestroyFramebuffer(*device_, framebuffer_, nullptr);

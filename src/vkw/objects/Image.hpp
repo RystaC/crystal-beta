@@ -15,6 +15,8 @@ class Image {
     VkFormat format_;
 
 public:
+    using object_type = VkImage;
+
     Image(std::shared_ptr<objects::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
     ~Image() noexcept {
         vkFreeMemory(*device_, memory_, nullptr);

@@ -22,7 +22,7 @@ namespace vkw {
 // utility functions
 inline uint32_t size_u32(size_t s) { return static_cast<uint32_t>(s); }
 
-template<typename T, typename U>
+template<typename T, typename U = T::object_type>
 inline std::vector<U> detach(const std::vector<T>& wrapper_vector) {
     std::vector<U> dst(wrapper_vector.size());
 
@@ -32,5 +32,12 @@ inline std::vector<U> detach(const std::vector<T>& wrapper_vector) {
 
     return dst;
 }
+
+template<typename T>
+struct Transition {
+    T src, dst;
+
+    Transition(T s, T d) : src(s), dst(d) {}
+};
 
 }

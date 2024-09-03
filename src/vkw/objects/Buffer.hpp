@@ -34,9 +34,10 @@ class Buffer {
     VkBuffer buffer_;
     VkDeviceMemory memory_;
 
-    using value_type_ = T;
-
 public:
+    using value_type = T;
+    using object_type = VkBuffer;
+
     Buffer(std::shared_ptr<objects::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
     ~Buffer() noexcept {
         vkFreeMemory(*device_, memory_, nullptr);

@@ -104,6 +104,8 @@ class CommandBuffer {
     VkCommandBuffer command_buffer_;
 
 public:
+    using object_type = VkCommandBuffer;
+
     CommandBuffer(std::shared_ptr<objects::Device> device, const VkCommandPool& command_pool, VkCommandBuffer&& command_buffer) noexcept : device_(device), command_pool_(command_pool), command_buffer_(command_buffer) {}
     ~CommandBuffer() noexcept {
         vkFreeCommandBuffers(*device_, command_pool_, 1, &command_buffer_);

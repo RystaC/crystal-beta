@@ -12,6 +12,8 @@ class PipelineLayout {
     VkPipelineLayout layout_;
 
 public:
+    using object_type = VkPipelineLayout;
+
     PipelineLayout(std::shared_ptr<objects::Device> device, VkPipelineLayout&& layout) noexcept : device_(device), layout_(layout) {}
     ~PipelineLayout() noexcept {
         vkDestroyPipelineLayout(*device_, layout_, nullptr);
