@@ -21,6 +21,12 @@ public:
 
     operator VkFence() const noexcept { return fence_; }
 
+    auto status() const {
+        auto status = vkGetFenceStatus(*device_, fence_);
+
+        return status;
+    }
+
     auto wait(uint64_t timeout) {
         return vkWaitForFences(*device_, 1u, &fence_, VK_TRUE, timeout);
     }

@@ -24,31 +24,30 @@ bool Instance::init(const std::vector<const char*>& extensions, const std::vecto
     VkInstance instance{};
     CHECK_VK_RESULT(vkCreateInstance(&instance_info, nullptr, &instance), return false;);
 
-    instance_ = std::make_shared<InstanceEntity>(std::move(instance));
+    instance_ = std::make_shared<objects::Instance>(std::move(instance));
 
     return true;
 }
 
-std::vector<PhysicalDevice> Instance::enum_physical_devices() const {
+std::vector<objects::PhysicalDevice> Instance::enum_physical_devices() const {
     uint32_t device_count{};
 
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, nullptr), return {};);
     std::vector<VkPhysicalDevice> devices(device_count);
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, devices.data()), return {};);
 
-    std::vector<PhysicalDevice> device_wrappers(devices.size());
+    std::vector<objects::PhysicalDevice> device_wrappers(devices.size());
 
-    std::transform(devices.begin(), devices.end(), device_wrappers.begin(), [](auto& d) { return PhysicalDevice(std::move(d)); });
+    std::transform(devices.begin(), devices.end(), device_wrappers.begin(), [](auto& d) { return objects::PhysicalDevice(std::move(d)); });
 
     return device_wrappers;
 }
 
-std::unique_ptr<Surface> Instance::create_surface_SDL(SDL_Window* window) const {
+objects::Surface Instance::create_surface_SDL(SDL_Window* window) const {
     VkSurfaceKHR surface{};
     auto result = SDL_Vulkan_CreateSurface(window, *instance_, &surface);
-    if(result != SDL_TRUE) return {};
 
-    return std::make_unique<Surface>(instance_, std::move(surface));
+    return objects::Surface(instance_, std::move(surface));
 }
 
 }

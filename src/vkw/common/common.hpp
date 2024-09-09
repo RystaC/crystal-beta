@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -36,6 +37,10 @@ struct Transition {
     T src, dst;
 
     Transition(T s, T d) : src(s), dst(d) {}
+};
+
+struct Resolution {
+    uint32_t width, height;
 };
 
 }

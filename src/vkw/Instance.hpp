@@ -10,8 +10,7 @@ class Instance {
     std::shared_ptr<objects::Instance> instance_;
 
 public:
-    Instance() noexcept : instance_(nullptr) {}
-    ~Instance() noexcept {}
+    Instance() noexcept {}
 
     static uint32_t version() {
         uint32_t version{};

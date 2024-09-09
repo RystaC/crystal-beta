@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common/common.hpp"
+#include "../physical_device/SurfaceProperties.hpp"
 
 namespace vkw {
 
@@ -10,10 +11,46 @@ namespace objects {
 
 class PhysicalDevice {
     VkPhysicalDevice physical_device_;
+    // version, ID, type, name, limits and sparse properties
     VkPhysicalDeviceProperties device_properties_;
+    // memory types and memory heaps
     VkPhysicalDeviceMemoryProperties memory_properties_;
+    // device specific features
     VkPhysicalDeviceFeatures device_features_;
+    // queue types and counts
     std::vector<VkQueueFamilyProperties> queue_family_properties_;
+
+    VkFormatProperties format_properties_(VkFormat format) {
+        VkFormatProperties properties{};
+
+        vkGetPhysicalDeviceFormatProperties(physical_device_, format, &properties);
+
+        return properties;
+    }
+
+    VkImageFormatProperties image_format_properties_(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) {
+        VkImageFormatProperties properties{};
+
+        vkGetPhysicalDeviceImageFormatProperties(physical_device_, format, type, tiling, usage, flags, &properties);
+
+        return properties;
+    }
+
+    physical_device::SurfaceProperties surface_capabilities_(VkSurfaceKHR surface, uint32_t queue_family_index) {
+        uint32_t format_count{}, present_mode_count{};
+
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface, &format_count, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface, &present_mode_count, nullptr);
+
+        physical_device::SurfaceProperties properties(format_count, present_mode_count);
+
+        vkGetPhysicalDeviceSurfaceSupportKHR(physical_device_, queue_family_index, surface, &properties.supported);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface, &properties.capabilities);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface, &format_count, properties.formats.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface, &present_mode_count, properties.present_modes.data());
+
+        return properties;
+    }
 
 public:
     friend vkw::Device;

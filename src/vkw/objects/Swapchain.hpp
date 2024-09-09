@@ -13,13 +13,14 @@ class Swapchain {
     std::shared_ptr<objects::Device> device_;
     VkSwapchainKHR swapchain_;
     std::vector<VkImage> images_;
+    VkFormat format_;
     uint32_t width_, height_;
 
 public:
     using object_type = VkSwapchainKHR;
 
-    Swapchain(std::shared_ptr<objects::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, uint32_t width, uint32_t height) noexcept :
-        device_(device), swapchain_(swapchain), images_(images), width_(width), height_(height)
+    Swapchain(std::shared_ptr<objects::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, VkFormat format, uint32_t width, uint32_t height) noexcept :
+        device_(device), swapchain_(swapchain), images_(images), format_(format), width_(width), height_(height)
     {}
     ~Swapchain() noexcept {
         vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
@@ -42,7 +43,7 @@ public:
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = images_[i],
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = VK_FORMAT_B8G8R8A8_UNORM,
+                .format = format_,
                 .components = {
                     .r = VK_COMPONENT_SWIZZLE_IDENTITY,
                     .g = VK_COMPONENT_SWIZZLE_IDENTITY,

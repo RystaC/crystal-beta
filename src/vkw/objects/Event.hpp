@@ -20,6 +20,12 @@ public:
     }
 
     operator VkEvent() const noexcept { return event_; }
+
+    auto status() const {
+        auto status = vkGetEventStatus(*device_, event_);
+
+        return status;
+    }
 };
 
 }

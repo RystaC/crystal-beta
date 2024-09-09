@@ -2,7 +2,8 @@
 
 #include "../common/common.hpp"
 #include "Device.hpp"
-#include "DescriptorSet.hpp"
+#include "DescriptorSetLayout.hpp"
+#include "DescriptorSets.hpp"
 
 namespace vkw {
 
@@ -22,19 +23,25 @@ public:
 
     operator VkDescriptorPool() const noexcept { return pool_; }
 
-    template<VkDescriptorType DescType>
-    std::unique_ptr<DescriptorSet<DescType>> allocate_descriptor_set(const VkDescriptorSetLayout& layout) {
+    DescriptorSets allocate_descriptor_sets(const std::vector<DescriptorSetLayout>& layouts) {
+        auto layouts_detached = detach(layouts);
+
         VkDescriptorSetAllocateInfo allocate_info {
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = descriptor_pool_,
-            .descriptorSetCount = 1u,
-            .pSetLayouts = &layout,
+            .descriptorPool = pool_,
+            .descriptorSetCount = size_u32(layouts_detached.size()),
+            .pSetLayouts = layouts_detached.data(),
         };
 
-        VkDescriptorSet descriptor_set{};
-        CHECK_VK_RESULT(vkAllocateDescriptorSets(*device_, &allocate_info, &descriptor_set), return {};);
+        std::vector<VkDescriptorSet> sets(layouts.size());
+        vkAllocateDescriptorSets(*device_, &allocate_info, sets.data());
 
-        return std::make_unique<DescriptorSet<DescType>>(device_, descriptor_pool_, std::move(descriptor_set));
+        std::vector<DescriptorSet> descriptor_sets(layouts.size());
+        for(size_t i = 0; i < descriptor_sets.size(); ++i) {
+            descriptor_sets[i] = {sets[i], layouts[i].type_};
+        }
+
+        return DescriptorSets(device_, pool_, std::move(descriptor_sets));
     }
 };
 
