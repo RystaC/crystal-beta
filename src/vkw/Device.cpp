@@ -98,4 +98,77 @@ objects::Swapchain Device::create_swapchain(const objects::Surface& surface, uin
     return objects::Swapchain(device_, std::move(swapchain), std::move(images), std::move(image_views), desired_format.format, extent);
 }
 
+objects::DeviceMemory Device::allocate_memory(VkDeviceSize size, uint32_t memory_type_index) {
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = size,
+        .memoryTypeIndex = memory_type_index,
+    };
+
+    VkDeviceMemory memory{};
+    vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
+
+    return objects::DeviceMemory(device_, std::move(memory));
+}
+
+VkDeviceMemory Device::allocate_memory_with_requirements_(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags desired_properties) {
+    uint32_t memory_type_index = std::numeric_limits<uint32_t>::max();
+    auto& memory_properties = physical_device_.memory_properties_;
+    uint32_t type_bits = 1;
+    for(uint32_t i = 0; i < memory_properties.memoryTypeCount; ++i) {
+        if((requirements.memoryTypeBits & type_bits) != 0) {
+            if((memory_properties.memoryTypes[i].propertyFlags & desired_properties) != 0) {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+    if(memory_type_index == std::numeric_limits<uint32_t>::max()) {
+        std::cerr << "[vkw::Device::allocate_memory_with_requirements_] ERROR: cannot find memory type with resource requirements and desired properties." << std::endl;
+        return VK_NULL_HANDLE;
+    }
+
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = memory_type_index,
+    };
+
+    VkDeviceMemory memory{};
+    vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
+
+    return memory;
+}
+
+objects::Image Device::create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties) {
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = {
+            .width = extent_2d.width,
+            .height = extent_2d.height,
+            .depth = 1,
+        },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VkImage image{};
+    vkCreateImage(*device_, &image_info, nullptr, &image);
+
+    auto requirements = query_memory_requirements_(image);
+    auto device_memory = allocate_memory_with_requirements_(requirements, desired_properties);
+
+    vkBindImageMemory(*device_, image, device_memory, 0);
+
+    return objects::Image(device_, std::move(image), std::move(device_memory), format);
+}
+
+
 }

@@ -7,6 +7,9 @@
 #include "objects/Queue.hpp"
 #include "objects/Surface.hpp"
 #include "objects/Swapchain.hpp"
+#include "objects/DeviceMemory.hpp"
+#include "objects/Buffer.hpp"
+#include "objects/Image.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -17,6 +20,24 @@ class Device {
     objects::PhysicalDevice& physical_device_;
 
     std::unordered_map<uint32_t, uint32_t> queue_counts_;
+
+    template<typename T>
+    VkMemoryRequirements query_memory_requirements_(const T& resource) {
+        VkMemoryRequirements requirements{};
+        if constexpr(std::is_same_v<T, VkBuffer>) {
+            vkGetBufferMemoryRequirements(*device_, resource, &requirements);
+        }
+        else if constexpr(std::is_same_v<T, VkImage>) {
+            vkGetImageMemoryRequirements(*device_, resource, &requirements);
+        }
+        else {
+            static_assert([]{ return false; }, "[vkw::Device::query_memory_requirements_] ERROR: invalid resource type, expected VkBuffer or VkImage.");
+        }
+
+        return requirements;
+    }
+
+    VkDeviceMemory allocate_memory_with_requirements_(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags desired_properties);
 
 public:
     Device(objects::PhysicalDevice& p_device) noexcept : physical_device_(p_device) {}
@@ -44,6 +65,36 @@ public:
     std::vector<objects::Queue> create_queues(uint32_t queue_family_index);
 
     objects::Swapchain create_swapchain(const objects::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent);
+
+    objects::DeviceMemory allocate_memory(VkDeviceSize size, uint32_t memory_type_index);
+
+    template<typename T>
+    objects::Buffer<T> create_buffer_with_data(const std::vector<T>& buffer_data, VkBufferUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        VkBufferCreateInfo buffer_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = sizeof(T) * buffer_data.size(),
+            .usage = usage,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        };
+
+        VkBuffer buffer{};
+        vkCreateBuffer(*device_, &buffer_info, nullptr, &buffer);
+
+        auto memory_requirements = query_memory_requirements_(buffer);
+        auto device_memory = allocate_memory_with_requirements_(memory_requirements, desired_properties);
+
+        uint8_t* memory_pointer{};
+        vkMapMemory(*device_, device_memory, 0, sizeof(T) * buffer_data.size(), 0, reinterpret_cast<void**>(&memory_pointer));
+        std::memcpy(memory_pointer, buffer_data.data(), sizeof(T) * buffer_data.size());
+        vkUnmapMemory(*device_, device_memory);
+
+        vkBindBufferMemory(*device_, buffer, device_memory, 0);
+
+        return objects::Buffer<T>(device_, std::move(buffer), std::move(device_memory));
+    }
+
+    objects::Image create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
 };
 
 }
