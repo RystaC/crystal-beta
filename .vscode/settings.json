@@ -84,6 +84,8 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "codecvt": "cpp",
-        "semaphore": "cpp"
+        "semaphore": "cpp",
+        "barrier": "cpp",
+        "xhash": "cpp"
     }
 }

@@ -9,13 +9,17 @@ namespace objects {
 
 class Queue {
     VkQueue queue_;
+    uint32_t family_index_;
 
 public:
     using object_type = VkQueue;
 
-    Queue(VkQueue&& queue) noexcept : queue_(queue) {}
+    Queue() noexcept {}
+    Queue(VkQueue&& queue, uint32_t family_index) noexcept : queue_(queue), family_index_(family_index) {}
 
     operator VkQueue() const noexcept { return queue_; }
+
+    auto& family_index() const noexcept { return family_index_; }
 
     VkResult wait() {
         auto res = vkQueueWaitIdle(queue_);

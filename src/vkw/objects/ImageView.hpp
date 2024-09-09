@@ -14,6 +14,7 @@ class ImageView {
 public:
     using object_type = VkImageView;
 
+    ImageView() noexcept {}
     ImageView(std::shared_ptr<objects::Device> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
     ~ImageView() noexcept {
         vkDestroyImageView(*device_, view_, nullptr);

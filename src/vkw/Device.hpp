@@ -4,6 +4,9 @@
 
 #include "objects/Device.hpp"
 #include "objects/PhysicalDevice.hpp"
+#include "objects/Queue.hpp"
+#include "objects/Surface.hpp"
+#include "objects/Swapchain.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -37,6 +40,10 @@ public:
     }
 
     bool init(const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+
+    std::vector<objects::Queue> create_queues(uint32_t queue_family_index);
+
+    objects::Swapchain create_swapchain(const objects::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent);
 };
 
 }

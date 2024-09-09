@@ -25,7 +25,7 @@ public:
 
     operator VkImage() const noexcept { return image_; }
 
-    std::unique_ptr<ImageView> create_image_view(VkImageAspectFlags aspect) {
+    ImageView create_image_view(VkImageAspectFlags aspect) {
         VkImageViewCreateInfo view_info {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image_,
@@ -47,9 +47,9 @@ public:
         };
 
         VkImageView image_view{};
-        CHECK_VK_RESULT(vkCreateImageView(*device_, &view_info, nullptr, &image_view), return {};);
+        vkCreateImageView(*device_, &view_info, nullptr, &image_view);
 
-        return std::make_unique<ImageView>(device_, std::move(image_view));
+        return ImageView(device_, std::move(image_view));
     }
 };
 

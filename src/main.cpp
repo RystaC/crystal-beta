@@ -123,9 +123,9 @@ int main(int argc, char** argv) {
 
     std::cerr << std::endl;
 
+    auto queue_family_index = physical_devices[0].find_queue_family(VK_QUEUE_GRAPHICS_BIT);
     auto device = std::make_unique<vkw::Device>(physical_devices[0]);
     {
-        auto queue_family_index = physical_devices[0].find_queue_family(VK_QUEUE_GRAPHICS_BIT);
         vkw::queue::CreateInfos queue_create_infos{};
         queue_create_infos.add(queue_family_index, {0.0f});
 
@@ -140,33 +140,14 @@ int main(int argc, char** argv) {
             std::cerr << "device initialization is failed. exit." << std::endl;
             std::exit(EXIT_FAILURE);
         }
-
-        device->debug_queues();
     }
 
-    // auto device = std::make_unique<vkw::Device>();
-    // {
-    //     auto queue_family_index = physical_device[0].find_queue_family(VK_QUEUE_GRAPHICS_BIT);
+    std::cerr << std::endl << "create device queue for graphics..." << std::endl;
+    auto main_queues = device->create_queues(queue_family_index);
+    std::cerr << "queue family index = " << main_queues[0].family_index() << ", size = " << main_queues.size() << std::endl;
 
-    //     std::vector<const char*> extensions = {
-    //         "VK_KHR_swapchain",
-    //     };
-    //     std::vector<const char*> layers = {
-    //         "VK_LAYER_KHRONOS_validation",
-    //     };
-
-    //     auto res = device->init(std::move(physical_device[0]), queue_family_index, extensions, layers);
-    //     if(!res) {
-    //         std::cerr << "[crystal-beta] ERROR: failed to initialize Vulkan device. exit." << std::endl;
-    //         std::exit(EXIT_FAILURE);
-    //     }
-    // }
-
-    // auto swapchain = device->create_swapchain(*surface, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, WINDOW_WIDTH, WINDOW_HEIGHT);
-    // if(!swapchain) {
-    //     std::cerr << "[crystal-beta] ERROR: failed to create swapchain. exit." << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
+    std::cerr << std::endl << "create swapchain..." << std::endl;
+    auto swapchain = device->create_swapchain(surface, queue_family_index, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, {WINDOW_WIDTH, WINDOW_HEIGHT});
 
     // auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     // auto depth_buffer_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
