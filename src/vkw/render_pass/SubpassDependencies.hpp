@@ -14,15 +14,15 @@ class SubpassDependencies {
 public:
     friend Device;
 
-    auto& add(uint32_t src_index, uint32_t dst_index, VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask, VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask, VkDependencyFlags dependency_flags) {
+    auto& add(Transition<uint32_t> subpass_transition, Transition<VkPipelineStageFlags> stage_transition, Transition<VkAccessFlags> access_transition, VkDependencyFlags dependency_flags) {
         dependencies_.emplace_back(
             VkSubpassDependency {
-                .srcSubpass = src_index,
-                .dstSubpass = dst_index,
-                .srcStageMask = src_stage_mask,
-                .dstStageMask = dst_stage_mask,
-                .srcAccessMask = src_access_mask,
-                .dstAccessMask = dst_access_mask,
+                .srcSubpass = subpass_transition.src,
+                .dstSubpass = subpass_transition.dst,
+                .srcStageMask = stage_transition.src,
+                .dstStageMask = stage_transition.dst,
+                .srcAccessMask = access_transition.src,
+                .dstAccessMask = access_transition.dst,
                 .dependencyFlags = dependency_flags,
             }
         );

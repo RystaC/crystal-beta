@@ -14,6 +14,7 @@ class Semaphore {
 public:
     using object_type = VkSemaphore;
 
+    Semaphore() noexcept {}
     Semaphore(std::shared_ptr<objects::Device> device, VkSemaphore&& semaphore) noexcept : device_(device), semaphore_(semaphore) {}
     ~Semaphore() noexcept {
         vkDestroySemaphore(*device_, semaphore_, nullptr); 

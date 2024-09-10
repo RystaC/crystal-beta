@@ -170,5 +170,63 @@ objects::Image Device::create_image(const VkExtent2D& extent_2d, VkFormat format
     return objects::Image(device_, std::move(image), std::move(device_memory), format);
 }
 
+objects::RenderPass Device::create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies) {
+    VkRenderPassCreateInfo render_pass_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = size_u32(attachment_descriptions.descs_.size()),
+        .pAttachments = attachment_descriptions.descs_.data(),
+        .subpassCount = size_u32(subpass_descriptions.subpasses_.size()),
+        .pSubpasses = subpass_descriptions.subpasses_.data(),
+        .dependencyCount = subpass_dependencies.has_value() ? size_u32(subpass_dependencies.value().dependencies_.size()) : 0,
+        .pDependencies = subpass_dependencies.has_value() ? subpass_dependencies.value().dependencies_.data() : nullptr,
+    };
+
+    VkRenderPass render_pass{};
+    vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass);
+
+    return objects::RenderPass(device_, std::move(render_pass));
+}
+
+objects::Framebuffer Device::create_framebuffer(const objects::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent) {
+    VkFramebufferCreateInfo framebuffer_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .renderPass = render_pass,
+        .attachmentCount = size_u32(attachments.size()),
+        .pAttachments = attachments.data(),
+        .width = extent.width,
+        .height = extent.height,
+        .layers = 1,
+    };
+
+    VkFramebuffer framebuffer{};
+    vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
+
+    return objects::Framebuffer(device_, std::move(framebuffer));
+}
+
+objects::ShaderModule Device::create_shader_module(const std::filesystem::path& spirv_path) {
+    std::ifstream ifs(spirv_path, std::ios::binary | std::ios::ate);
+    if(ifs.fail()) {
+        std::cerr << "[vkw::Device::create_shader_module] ERROR: cound not read file: " << spirv_path << std::endl;
+    }
+
+    auto binary_size = static_cast<size_t>(ifs.tellg());
+    ifs.seekg(0, std::ios::beg);
+
+    std::vector<char> binary_data(binary_size);
+    ifs.read(binary_data.data(), binary_size);
+    ifs.close();
+
+    VkShaderModuleCreateInfo module_info = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = binary_size,
+        .pCode = reinterpret_cast<uint32_t*>(binary_data.data()),
+    };
+
+    VkShaderModule shader_module{};
+    vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module);
+
+    return objects::ShaderModule(device_, std::move(shader_module));
+}
 
 }

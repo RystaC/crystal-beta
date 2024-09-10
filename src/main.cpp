@@ -149,102 +149,92 @@ int main(int argc, char** argv) {
     std::cerr << std::endl << "create swapchain..." << std::endl;
     auto swapchain = device->create_swapchain(surface, queue_family_index, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, {WINDOW_WIDTH, WINDOW_HEIGHT});
 
-    auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
+    auto position_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto position_buffer_view = position_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto normal_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto normal_buffer_view = normal_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto albedo_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    auto albedo_buffer_view = albedo_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
 
-    // auto depth_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    // auto depth_buffer_view = depth_buffer->create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
+    vkw::render_pass::AttachmentDescriptions deferred_attachment_descs{};
+    deferred_attachment_descs
+    // attachment 0: swapchain image
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    )
+    // attachment 1: depth buffer
+    .add(
+        VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}
+    )
+    // attachment 2: g-buffer position
+    .add(
+        VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
+    )
+    // attachment 3: g-buffer normal
+    .add(
+        VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
+    )
+    // attachment 4: g-buffer albedo
+    .add(
+        VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
+    );
 
-    // auto position_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    // auto position_output_view = position_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    vkw::render_pass::AttachmentReferences geometry_output_refs{};
+    geometry_output_refs
+    .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    .add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+    .add(4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkw::render_pass::AttachmentReferences geometry_depth_ref{};
+    geometry_depth_ref
+    .add(1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    vkw::render_pass::AttachmentReferences light_input_refs{};
+    light_input_refs
+    .add(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    .add(3, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    .add(4, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    vkw::render_pass::AttachmentReferences light_output_refs{};
+    light_output_refs
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    // auto normal_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    // auto normal_output_view = normal_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    vkw::render_pass::SubpassDescriptions deferred_subpass_descs{};
+    // subpass 0: geometry pass
+    deferred_subpass_descs.add()
+    .output_color_attachments(geometry_output_refs)
+    .output_depth_attachment(geometry_depth_ref)
+    .end();
+    // subpass 1: lighting pass
+    deferred_subpass_descs.add()
+    .input_attachments(light_input_refs)
+    .output_color_attachments(light_output_refs)
+    .end();
 
-    // auto albedo_buffer = device->create_image(swapchain->width(), swapchain->height(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    // auto albedo_output_view = albedo_buffer->create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    vkw::render_pass::SubpassDependencies deferred_pass_depends{};
+    deferred_pass_depends
+    .add(
+        {0, 1},
+        {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT},
+        {VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT},
+        VK_DEPENDENCY_BY_REGION_BIT
+    );
 
-    // vkw::AttachmentDescriptions attachment_descs{};
-    // attachment_descs
-    // // swapchain image
-    // .add(
-    //     VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, 
-    //     VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
-    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
-    //     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    // )
-    // // depth buffer output
-    // .add(
-    //     VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-    //     VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    // )
-    // // position buffer output
-    // .add(
-    //     VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-    //     VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-    // )
-    // // normal buffer output
-    // .add(
-    //     VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-    //     VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-    // )
-    // // albedo buffer output
-    // .add(
-    //     VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
-    //     VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-    //     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-    // );
-
-    // vkw::AttachmentReferences first_output_refs{};
-    // first_output_refs
-    // .add(2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    // .add(3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    // .add(4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    // vkw::AttachmentReferences second_input_refs{};
-    // second_input_refs
-    // .add(2, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    // .add(3, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    // .add(4, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    // vkw::AttachmentReferences second_output_refs{};
-    // second_output_refs
-    // .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    // vkw::SubpassDescriptions subpass_descs{};
-    // subpass_descs
-    // // first pass
-    // .add(
-    //     VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //     {},
-    //     first_output_refs,
-    //     {},
-    //     VkAttachmentReference { .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL },
-    //     {}
-    // )
-    // // second pass
-    // .add(
-    //     VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //     second_input_refs,
-    //     second_output_refs,
-    //     {},
-    //     {},
-    //     {}
-    // );
-
-    // vkw::SubpassDependencies depends{};
-    // depends.add(
-    //     0, 1, 
-    //     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-    //     VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-    //     VK_DEPENDENCY_BY_REGION_BIT
-    // );
-
-    // auto render_pass = device->create_render_pass(attachment_descs, subpass_descs, depends);
+    auto deferred_render_pass = device->create_render_pass(deferred_attachment_descs, deferred_subpass_descs, deferred_pass_depends);
 
     // vkw::AttachmentDescriptions debug_attachment_descs{};
     // debug_attachment_descs
@@ -268,23 +258,25 @@ int main(int argc, char** argv) {
 
     // auto debug_render_pass = device->create_render_pass(debug_attachment_descs, debug_subpass, {});
 
-    // std::vector<std::unique_ptr<vkw::Framebuffer>> framebuffers(swapchain->image_view_size());
-    // framebuffers[0] = device->create_framebuffer(
-    //     *render_pass,
-    //     {
-    //         swapchain->image_view(0), *depth_buffer_view,
-    //         *position_output_view, *normal_output_view, *albedo_output_view,
-    //     },
-    //     swapchain->width(), swapchain->height()
-    // );
-    // framebuffers[1] = device->create_framebuffer(
-    //     *render_pass,
-    //     {
-    //         swapchain->image_view(1), *depth_buffer_view,
-    //         *position_output_view, *normal_output_view, *albedo_output_view,
-    //     },
-    //     swapchain->width(), swapchain->height()
-    // );
+    std::vector<vkw::objects::Framebuffer> deferred_framebuffers(swapchain.size());
+    deferred_framebuffers[0] = 
+    device->create_framebuffer(
+        deferred_render_pass,
+        {
+            swapchain.image_view(0), depth_buffer_view,
+            position_buffer_view, normal_buffer_view, albedo_buffer_view,
+        },
+        swapchain.extent()
+    );
+    deferred_framebuffers[1] = 
+    device->create_framebuffer(
+        deferred_render_pass,
+        {
+            swapchain.image_view(1), depth_buffer_view,
+            position_buffer_view, normal_buffer_view, albedo_buffer_view,
+        },
+        swapchain.extent()
+    );
 
     // std::vector<std::unique_ptr<vkw::Framebuffer>> debug_framebuffers(swapchain->image_view_size());
     // debug_framebuffers[0] = device->create_framebuffer(*debug_render_pass, { swapchain->image_view(0) }, swapchain->width(), swapchain->height());

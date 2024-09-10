@@ -14,6 +14,7 @@ class DeviceMemory {
 public:
     using object_type = VkDeviceMemory;
 
+    DeviceMemory() noexcept {}
     DeviceMemory(std::shared_ptr<objects::Device> device, VkDeviceMemory&& memory) noexcept : device_(device), memory_(memory) {}
     ~DeviceMemory() noexcept {
         vkFreeMemory(*device_, memory_, nullptr);

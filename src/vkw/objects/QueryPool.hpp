@@ -14,6 +14,7 @@ class QueryPool {
 public:
     using object_type = VkQueryPool;
 
+    QueryPool() noexcept {}
     QueryPool(std::shared_ptr<objects::Device> device, VkQueryPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~QueryPool() noexcept {
         vkDestroyQueryPool(*device_, pool_, nullptr);

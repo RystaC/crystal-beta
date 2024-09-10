@@ -16,6 +16,7 @@ class DescriptorPool {
 public:
     using object_type = VkDescriptorPool;
 
+    DescriptorPool() noexcept {}
     DescriptorPool(std::shared_ptr<objects::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~DescriptorPool() noexcept {
         vkDestroyDescriptorPool(*device_, pool_, nullptr);

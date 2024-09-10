@@ -14,6 +14,7 @@ class Fence {
 public:
     using object_type = VkFence;
 
+    Fence() noexcept {}
     Fence(std::shared_ptr<objects::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
     ~Fence() noexcept {
         vkDestroyFence(*device_, fence_, nullptr);

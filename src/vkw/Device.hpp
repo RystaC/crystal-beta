@@ -10,8 +10,16 @@
 #include "objects/DeviceMemory.hpp"
 #include "objects/Buffer.hpp"
 #include "objects/Image.hpp"
+#include "objects/RenderPass.hpp"
+#include "objects/Framebuffer.hpp"
+#include "objects/ShaderModule.hpp"
 
 #include "queue/CreateInfos.hpp"
+
+#include "render_pass/AttachmentDescriptions.hpp"
+#include "render_pass/AttachmentReferences.hpp"
+#include "render_pass/SubpassDescriptions.hpp"
+#include "render_pass/SubpassDependencies.hpp"
 
 namespace vkw {
 
@@ -95,6 +103,11 @@ public:
 
     objects::Image create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+    objects::RenderPass create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies = std::nullopt);
+
+    objects::Framebuffer create_framebuffer(const objects::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent);
+
+    objects::ShaderModule create_shader_module(const std::filesystem::path& spirv_path);
 };
 
 }

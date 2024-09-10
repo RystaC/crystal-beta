@@ -14,6 +14,7 @@ class ShaderModule {
 public:
     using object_type = VkShaderModule;
 
+    ShaderModule() noexcept {}
     ShaderModule(std::shared_ptr<objects::Device> device, VkShaderModule&& shader_module) noexcept : device_(device), shader_module_(shader_module) {}
     ~ShaderModule() noexcept {
         vkDestroyShaderModule(*device_, shader_module_, nullptr);

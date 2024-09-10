@@ -57,7 +57,7 @@ public:
     
     using object_type = VkPhysicalDevice;
     
-    PhysicalDevice() = default;
+    PhysicalDevice() noexcept {}
     PhysicalDevice(VkPhysicalDevice&& physical_device) noexcept : physical_device_(physical_device) {
         vkGetPhysicalDeviceProperties(physical_device_, &device_properties_);
         vkGetPhysicalDeviceMemoryProperties(physical_device_, &memory_properties_);

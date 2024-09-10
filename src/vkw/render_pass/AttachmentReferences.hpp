@@ -6,13 +6,14 @@ namespace vkw {
 
 namespace render_pass {
 
-class SubpassDescriptions;
+class SubpassDescription_;
 
 class AttachmentReferences {
+    public:
     std::vector<VkAttachmentReference> refs_;
 
 public:
-    friend SubpassDescriptions;
+    friend SubpassDescription_;
 
     auto& add(uint32_t attachment_index, VkImageLayout internal_layout = VK_IMAGE_LAYOUT_UNDEFINED) {
         refs_.emplace_back(

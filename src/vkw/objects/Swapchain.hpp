@@ -32,6 +32,8 @@ public:
 
     operator VkSwapchainKHR() const noexcept { return swapchain_; }
 
+    auto size() const noexcept { return images_.size(); }
+
     const auto& image(size_t i) const { return images_[i]; }
     const auto& image_view(size_t i) const { return image_views_[i]; }
 
