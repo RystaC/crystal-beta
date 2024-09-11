@@ -6,10 +6,14 @@ namespace vkw {
 
 namespace pipeline {
 
+class GraphicsPipelineStates;
+
 class TessellationState {
     VkPipelineTessellationStateCreateInfo state_;
 
 public:
+    friend GraphicsPipelineStates;
+    
     TessellationState(uint32_t points) :
         state_(
             VkPipelineTessellationStateCreateInfo {

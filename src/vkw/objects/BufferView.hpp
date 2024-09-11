@@ -17,7 +17,7 @@ public:
     BufferView() noexcept {}
     BufferView(std::shared_ptr<objects::Device> device, VkBufferView&& buffer_view) noexcept : device_(device), buffer_view_(buffer_view) {}
     ~BufferView() noexcept {
-        vkDestroyBufferView(*device_, buffer_view_, nullptr);
+        if(device_) vkDestroyBufferView(*device_, buffer_view_, nullptr);
     }
     BufferView(const BufferView& rhs) = delete;
     auto& operator=(const BufferView& rhs) = delete;

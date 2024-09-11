@@ -17,7 +17,7 @@ public:
     RenderPass() noexcept {}
     RenderPass(std::shared_ptr<objects::Device> device, VkRenderPass&& render_pass) noexcept : device_(device), render_pass_(render_pass) {}
     ~RenderPass() noexcept {
-        vkDestroyRenderPass(*device_, render_pass_, nullptr);
+        if(device_) vkDestroyRenderPass(*device_, render_pass_, nullptr);
     }
     RenderPass(const RenderPass& rhs) = delete;
     auto& operator=(const RenderPass& rhs) = delete;

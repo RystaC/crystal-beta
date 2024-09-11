@@ -6,10 +6,14 @@ namespace vkw {
 
 namespace pipeline {
 
+class GraphicsPipelineStates;
+
 class DynamicState {
     VkPipelineDynamicStateCreateInfo state_;
 
 public:
+    friend GraphicsPipelineStates;
+    
     DynamicState(const std::vector<VkDynamicState>& dynamic_states) :
         state_(
             VkPipelineDynamicStateCreateInfo {

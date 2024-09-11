@@ -36,11 +36,15 @@ public:
     }
 };
 
+class GraphicsPipelineStates;
+
 class ColorBlendState {
     VkPipelineColorBlendStateCreateInfo state_;
 
 public:
-    ColorBlendState(VkBool32 logic_op_enable, VkLogicOp logic_op, const ColorBlendAttachmentStates& attachments, const std::array<float, 4>& blend_constants = {0.0f, 0.0f, 0.0f, 0.0f}) :
+    friend GraphicsPipelineStates;
+    
+    ColorBlendState(const ColorBlendAttachmentStates& attachments, VkBool32 logic_op_enable = VK_FALSE, VkLogicOp logic_op = VK_LOGIC_OP_NO_OP, const glm::vec4& blend_constants = {0.0f, 0.0f, 0.0f, 0.0f}) :
         state_(
             VkPipelineColorBlendStateCreateInfo {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -48,7 +52,7 @@ public:
                 .logicOp = logic_op,
                 .attachmentCount = size_u32(attachments.states_.size()),
                 .pAttachments = attachments.states_.data(),
-                .blendConstants = { blend_constants[0], blend_constants[1], blend_constants[2], blend_constants[3] },
+                .blendConstants = { blend_constants.r, blend_constants.g, blend_constants.b, blend_constants.a },
             }
         ) {}
 };

@@ -17,7 +17,7 @@ public:
     Event() noexcept {}
     Event(std::shared_ptr<objects::Device> device, VkEvent&& event) noexcept : device_(device), event_(event) {}
     ~Event() noexcept {
-        vkDestroyEvent(*device_, event_, nullptr);
+        if(device_) vkDestroyEvent(*device_, event_, nullptr);
     }
     Event(const Event& rhs) = delete;
     auto& operator=(const Event& rhs) = delete;

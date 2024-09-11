@@ -17,7 +17,7 @@ public:
     ImageView() noexcept {}
     ImageView(std::shared_ptr<objects::Device> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
     ~ImageView() noexcept {
-        vkDestroyImageView(*device_, view_, nullptr);
+        if(device_) vkDestroyImageView(*device_, view_, nullptr);
     }
     ImageView(const ImageView& rhs) = delete;
     auto& operator=(const ImageView& rhs) = delete;

@@ -18,7 +18,7 @@ public:
     CommandPool() noexcept {}
     CommandPool(std::shared_ptr<objects::Device> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
     ~CommandPool() noexcept {
-        vkDestroyCommandPool(*device_, command_pool_, nullptr);
+        if(device_) vkDestroyCommandPool(*device_, command_pool_, nullptr);
     }
     CommandPool(const CommandPool& rhs) = delete;
     auto& operator=(const CommandPool& rhs) = delete;

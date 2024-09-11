@@ -41,8 +41,10 @@ public:
     Buffer() noexcept {}
     Buffer(std::shared_ptr<objects::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
     ~Buffer() noexcept {
-        vkFreeMemory(*device_, memory_, nullptr);
-        vkDestroyBuffer(*device_, buffer_, nullptr);
+        if(device_) {
+            vkFreeMemory(*device_, memory_, nullptr);
+            vkDestroyBuffer(*device_, buffer_, nullptr);
+        }
     }
     Buffer(const Buffer<T>& rhs) = delete;
     auto& operator=(const Buffer<T>& rhs) = delete;

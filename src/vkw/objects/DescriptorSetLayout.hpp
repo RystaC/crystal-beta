@@ -22,7 +22,7 @@ public:
     DescriptorSetLayout() noexcept {}
     DescriptorSetLayout(std::shared_ptr<objects::Device> device, VkDescriptorSetLayout&& layout, VkDescriptorType type) noexcept : device_(device), layout_(layout), type_(type) {}
     ~DescriptorSetLayout() noexcept {
-        vkDestroyDescriptorSetLayout(*device_, layout_, nullptr);
+        if(device_) vkDestroyDescriptorSetLayout(*device_, layout_, nullptr);
     }
     DescriptorSetLayout(const DescriptorSetLayout& rhs) = delete;
     auto& operator=(const DescriptorSetLayout& rhs) = delete;

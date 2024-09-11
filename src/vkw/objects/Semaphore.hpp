@@ -17,7 +17,7 @@ public:
     Semaphore() noexcept {}
     Semaphore(std::shared_ptr<objects::Device> device, VkSemaphore&& semaphore) noexcept : device_(device), semaphore_(semaphore) {}
     ~Semaphore() noexcept {
-        vkDestroySemaphore(*device_, semaphore_, nullptr); 
+        if(device_) vkDestroySemaphore(*device_, semaphore_, nullptr); 
     }
     Semaphore(const Semaphore& rhs) = delete;
     auto& operator=(const Semaphore& rhs) = delete;

@@ -17,7 +17,7 @@ public:
     Fence() noexcept {}
     Fence(std::shared_ptr<objects::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
     ~Fence() noexcept {
-        vkDestroyFence(*device_, fence_, nullptr);
+        if(device_) vkDestroyFence(*device_, fence_, nullptr);
     }
     Fence(const Fence& rhs) = delete;
     auto& operator=(const Fence& rhs) = delete;

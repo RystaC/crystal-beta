@@ -4,8 +4,6 @@
 
 namespace vkw {
 
-class Device;
-
 namespace pipeline {
 
 class SpecializationConstants;
@@ -30,13 +28,15 @@ public:
     }
 };
 
-class ShaderStage;
+class GraphicsShaderStages;
+class ComputeShaderStage;
 
 class SpecializationConstants {
     VkSpecializationInfo specialization_;
 
 public:
-    friend ShaderStage;
+    friend GraphicsShaderStages;
+    friend ComputeShaderStage;
 
     template<typename T>
     SpecializationConstants(const SpecializationMapEntries& entries, const std::vector<T>& data) :
@@ -51,40 +51,102 @@ public:
     {}
 };
 
-class ShaderStage {
-    VkPipelineShaderStageCreateInfo stage_;
+class GraphicsPipelineStates;
+
+class GraphicsShaderStages {
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stages_;
 
 public:
-    ShaderStage(VkShaderStageFlagBits stage, const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") :
-        stage_(
+    friend GraphicsPipelineStates;
+
+    auto& vertex_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stages_.emplace_back(
             VkPipelineShaderStageCreateInfo {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                .stage = stage,
+                .stage = VK_SHADER_STAGE_VERTEX_BIT,
                 .module = shader_module,
                 .pName = entry_point,
                 .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
             }
-        ) {}
-};
+        );
 
-class GraphicShaderStage {
-    std::vector<ShaderStage> shaders_;
+        return *this;
+    }
 
-public:
-    GraphicShaderStage(ShaderStage vertex_shader, ShaderStage fragment_shader,
-        std::optional<ShaderStage> geometry_shader = std::nullopt,
-        std::optional<ShaderStage> tessellation_control_shader = std::nullopt, std::optional<ShaderStage> tessellation_evaluation_shader
-        /*, std::optional<ShaderStage> mesh_shader, std::optional<ShaderStage> task_shader*/
-    ) {
+    auto& fragment_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stages_.emplace_back(
+            VkPipelineShaderStageCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                .module = shader_module,
+                .pName = entry_point,
+                .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
+            }
+        );
 
+        return *this;
+    }
+
+    auto& geometry_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stages_.emplace_back(
+            VkPipelineShaderStageCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_GEOMETRY_BIT,
+                .module = shader_module,
+                .pName = entry_point,
+                .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
+            }
+        );
+
+        return *this;
+    }
+
+    auto& tessellation_control_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stages_.emplace_back(
+            VkPipelineShaderStageCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+                .module = shader_module,
+                .pName = entry_point,
+                .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
+            }
+        );
+
+        return *this;
+    }
+
+    auto& tessellation_evaluation_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stages_.emplace_back(
+            VkPipelineShaderStageCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+                .module = shader_module,
+                .pName = entry_point,
+                .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
+            }
+        );
+
+        return *this;
     }
 };
 
+class ComputePipelineStates;
+
 class ComputeShaderStage {
-    ShaderStage shader_;
+    VkPipelineShaderStageCreateInfo shader_stage_;
 
 public:
-    ComputeShaderStage(ShaderStage compute_shader) : shader_(compute_shader) {}
+    friend ComputePipelineStates;
+
+    void compute_shader(const VkShaderModule& shader_module, const std::optional<SpecializationConstants>& specialization_constants = std::nullopt, const char* entry_point = "main") {
+        shader_stage_ = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+            .module = shader_module,
+            .pName = entry_point,
+            .pSpecializationInfo = specialization_constants.has_value() ? &specialization_constants.value().specialization_ : nullptr,
+        };
+    }
 };
 
 }

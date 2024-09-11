@@ -24,10 +24,12 @@ public:
         device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), format_(format), extent_(extent)
     {}
     ~Swapchain() noexcept {
-        for(size_t i = 0; i < image_views_.size(); ++i) {
-            vkDestroyImageView(*device_, image_views_[i], nullptr);
+        if(device_) {
+            for(size_t i = 0; i < image_views_.size(); ++i) {
+                vkDestroyImageView(*device_, image_views_[i], nullptr);
+            }
+            vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
         }
-        vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
     }
     Swapchain(const Swapchain& rhs) = delete;
     auto& operator=(const Swapchain& rhs) = delete;

@@ -16,6 +16,8 @@
 #include "objects/DescriptorSetLayout.hpp"
 #include "objects/DescriptorPool.hpp"
 #include "objects/PipelineLayout.hpp"
+#include "objects/PipelineCache.hpp"
+#include "objects/Pipeline.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -28,6 +30,9 @@
 #include "descriptor/WriteDescriptorSets.hpp"
 
 #include "pipeline_layout/CreateInfo.hpp"
+
+#include "pipeline/GraphicsPipelineStates.hpp"
+#include "pipeline/ComputePipelineStates.hpp"
 
 namespace vkw {
 
@@ -121,10 +126,17 @@ public:
 
     objects::DescriptorPool create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool);
 
-    // TODO: handle for desctriptor set copies
+    // TODO: deal with desctriptor set copies
     void update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets);
 
     objects::PipelineLayout create_pipeline_layout(const pipeline_layout::CreateInfo& info);
+
+    objects::PipelineCache create_pipeline_cache();
+    objects::PipelineCache create_pipeline_cache(const std::filesystem::path& cache_path);
+
+    // TODO: deal with multiple pipeline creattion
+    objects::Pipeline create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache = VK_NULL_HANDLE);
+    objects::Pipeline create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache = VK_NULL_HANDLE);
 };
 
 }

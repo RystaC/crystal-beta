@@ -15,6 +15,8 @@
 #include <vulkan/vulkan.h>
 #include <SDL2/SDL_vulkan.h>
 
+#include <glm/glm.hpp>
+
 namespace vkw {
 
 // utility macros

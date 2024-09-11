@@ -17,7 +17,7 @@ public:
     QueryPool() noexcept {}
     QueryPool(std::shared_ptr<objects::Device> device, VkQueryPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~QueryPool() noexcept {
-        vkDestroyQueryPool(*device_, pool_, nullptr);
+        if(device_) vkDestroyQueryPool(*device_, pool_, nullptr);
     }
     QueryPool(const QueryPool& rhs) = delete;
     auto& operator=(const QueryPool& rhs) = delete;

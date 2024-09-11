@@ -17,7 +17,7 @@ public:
     PipelineLayout() noexcept {}
     PipelineLayout(std::shared_ptr<objects::Device> device, VkPipelineLayout&& layout) noexcept : device_(device), layout_(layout) {}
     ~PipelineLayout() noexcept {
-        vkDestroyPipelineLayout(*device_, layout_, nullptr);
+        if(device_) vkDestroyPipelineLayout(*device_, layout_, nullptr);
     }
     PipelineLayout(const PipelineLayout& rhs) = delete;
     auto& operator=(const PipelineLayout& rhs) = delete;

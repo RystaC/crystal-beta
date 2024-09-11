@@ -18,20 +18,12 @@ public:
     Framebuffer() noexcept {}
     Framebuffer(std::shared_ptr<objects::Device> device, VkFramebuffer&& framebuffer) noexcept : device_(device), framebuffer_(framebuffer) {}
     ~Framebuffer() noexcept {
-        vkDestroyFramebuffer(*device_, framebuffer_, nullptr);
+        if(device_) vkDestroyFramebuffer(*device_, framebuffer_, nullptr);
     }
     Framebuffer(const Framebuffer& rhs) = delete;
     auto& operator=(const Framebuffer& rhs) = delete;
-    // TODO: implement for other objects like this
-    Framebuffer(Framebuffer&& rhs) noexcept {
-        *this = std::move(rhs);
-    }
-    Framebuffer& operator=(Framebuffer&& rhs) noexcept {
-        device_ = rhs.device_;
-        framebuffer_ = rhs.framebuffer_;
-        rhs.framebuffer_ = VK_NULL_HANDLE;
-        return *this;
-    }
+    Framebuffer(Framebuffer&& rhs) noexcept = default;
+    Framebuffer& operator=(Framebuffer&& rhs) noexcept = default;
 
     operator VkFramebuffer() const noexcept { return framebuffer_; }
 };

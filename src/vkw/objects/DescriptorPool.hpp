@@ -19,7 +19,7 @@ public:
     DescriptorPool() noexcept {}
     DescriptorPool(std::shared_ptr<objects::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~DescriptorPool() noexcept {
-        vkDestroyDescriptorPool(*device_, pool_, nullptr);
+        if(device_) vkDestroyDescriptorPool(*device_, pool_, nullptr);
     }
     DescriptorPool(const DescriptorPool& rhs) = delete;
     auto& operator=(const DescriptorPool& rhs) = delete;

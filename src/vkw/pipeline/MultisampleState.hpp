@@ -6,10 +6,14 @@ namespace vkw {
 
 namespace pipeline {
 
+class GraphicsPipelineStates;
+
 class MultisampleState {
     VkPipelineMultisampleStateCreateInfo state_;
 
 public:
+    friend GraphicsPipelineStates;
+    
     MultisampleState(VkSampleCountFlagBits samples, VkBool32 sample_shading_enable = VK_FALSE, float min_sample_shading = 0.0f, const std::optional<std::vector<VkSampleMask>>& sample_mask = std::nullopt, VkBool32 alpha_to_coverage_enable = VK_FALSE, VkBool32 alpha_to_one_enable = VK_FALSE) :
         state_(
             VkPipelineMultisampleStateCreateInfo {

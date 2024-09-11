@@ -17,7 +17,7 @@ public:
     Sampler() noexcept {}
     Sampler(std::shared_ptr<objects::Device> device, VkSampler&& sampler) noexcept : device_(device), sampler_(sampler) {}
     ~Sampler() noexcept {
-        vkDestroySampler(*device_, sampler_, nullptr);
+        if(device_) vkDestroySampler(*device_, sampler_, nullptr);
     }
     Sampler(const Sampler& rhs) = delete;
     auto& operator=(const Sampler& rhs) = delete;

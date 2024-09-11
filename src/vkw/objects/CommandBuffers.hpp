@@ -19,7 +19,7 @@ public:
 
     CommandBuffers(std::shared_ptr<objects::Device> device, const VkCommandPool& command_pool, std::vector<VkCommandBuffer>&& command_buffers) noexcept : device_(device), command_pool_(command_pool), command_buffers_(command_buffers) {}
     ~CommandBuffers() noexcept {
-        vkFreeCommandBuffers(*device_, command_pool_, size_u32(command_buffers_.size()), command_buffers_.data());
+        if(device_) vkFreeCommandBuffers(*device_, command_pool_, size_u32(command_buffers_.size()), command_buffers_.data());
     }
     CommandBuffers(const CommandBuffers& rhs) = delete;
     auto& operator=(const CommandBuffers& rhs) = delete;

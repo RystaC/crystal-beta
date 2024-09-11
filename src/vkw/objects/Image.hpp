@@ -20,8 +20,10 @@ public:
     Image() noexcept {}
     Image(std::shared_ptr<objects::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
     ~Image() noexcept {
-        vkFreeMemory(*device_, memory_, nullptr);
-        vkDestroyImage(*device_, image_, nullptr);
+        if(device_) {
+            vkFreeMemory(*device_, memory_, nullptr);
+            vkDestroyImage(*device_, image_, nullptr);
+        }
     }
     Image(const Image& rhs) = delete;
     auto& operator=(const Image& rhs) = delete;

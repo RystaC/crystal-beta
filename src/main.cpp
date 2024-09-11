@@ -325,72 +325,89 @@ int main(int argc, char** argv) {
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
     auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info);
 
-    // vkw::VertexInputBindingDescriptions bind_descs{};
-    // bind_descs
-    // .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
-    // .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
+    std::cerr << std::endl << "create pipelines..." << std::endl;
 
-    // vkw::VertexInputAttributeDescriptions attr_descs{};
-    // attr_descs
-    // .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
-    // .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
-    // .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
-    // .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
+    vkw::pipeline::GraphicsShaderStages geometry_shader_stages{};
+    geometry_shader_stages
+    .vertex_shader(geometry_vertex_shader)
+    .fragment_shader(geometry_fragment_shader);
 
-    // std::vector<VkViewport> viewports = {
-    //     {0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT, 0.0f, 1.0f},
-    // };
-    // std::vector<VkRect2D> scissors = {
-    //     {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}},
-    // };
+    vkw::pipeline::VertexInputBindingDescriptions geometry_input_bindings{};
+    geometry_input_bindings
+    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::VertexInputAttributeDescriptions geometry_input_attributes{};
+    geometry_input_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
+    .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
+    vkw::pipeline::VertexInputState geometry_vertex_input_state(geometry_input_bindings, geometry_input_attributes);
 
-    // std::vector<VkPipelineColorBlendAttachmentState> first_blend_attachment_states = {
-    //     { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
-    //     { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
-    //     { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
-    // };
+    vkw::pipeline::InputAssemblyState geometry_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    // std::vector<VkPipelineColorBlendAttachmentState> second_blend_attachment_states = {
-    //     { .blendEnable = VK_FALSE, .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
-    // };
+    vkw::pipeline::ViewportState geometry_viewport_state({0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT}, {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}});
 
-    // auto first_pipeline_states = vkw::GraphicsPipelineStates()
-    //     .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *first_vertex_shader, "main")
-    //     .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *first_fragment_shader, "main")
-    //     .vertex_input_state(bind_descs, attr_descs)
-    //     .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-    //     .viewport_state(viewports, scissors)
-    //     .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
-    //     .multisample_state(VK_SAMPLE_COUNT_1_BIT)
-    //     .depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE)
-    //     .color_blend_state(first_blend_attachment_states);
+    vkw::pipeline::RasterizarionState geometry_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
 
-    // auto second_pipeline_states = vkw::GraphicsPipelineStates()
-    //     .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, *second_vertex_shader, "main")
-    //     .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, *second_fragment_shader, "main")
-    //     .input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-    //     .viewport_state(viewports, scissors)
-    //     .rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f)
-    //     .multisample_state(VK_SAMPLE_COUNT_1_BIT)
-    //     .depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE)
-    //     .color_blend_state(second_blend_attachment_states);
+    vkw::pipeline::MultisampleState geometry_multisample_state(VK_SAMPLE_COUNT_1_BIT);
 
-    // vkw::VertexInputBindingDescriptions debug_bind_descs{};
-    // debug_bind_descs
-    // .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
-    // .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE)
-    // .add(2, sizeof(DebugInstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::DepthStencilState geometry_depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
 
-    // vkw::VertexInputAttributeDescriptions debug_attr_descs{};
-    // debug_attr_descs
-    // .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
-    // .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
-    // .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
-    // .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate))
-    // .add(4, 2, VK_FORMAT_R32G32B32_SFLOAT, offsetof(DebugInstanceBufferData, scale));
+    vkw::pipeline::ColorBlendAttachmentStates geometry_blend_attachment_states{};
+    geometry_blend_attachment_states
+    .add()
+    .add()
+    .add();
+    vkw::pipeline::ColorBlendState geometory_color_blend_state(geometry_blend_attachment_states);
 
-    // auto first_pipeline = device->create_graphics_pipeline({}, constant_ranges, first_pipeline_states, *render_pass, 0);
-    // auto second_pipeline = device->create_graphics_pipeline(descriptor_layouts, {}, second_pipeline_states, *render_pass, 1);
+    vkw::pipeline::GraphicsPipelineStates geometry_pipeline_state{};
+    geometry_pipeline_state
+    .shader_stages(geometry_shader_stages)
+    .vertex_input(geometry_vertex_input_state)
+    .input_assembly(geometry_input_assembly_state)
+    .viewport(geometry_viewport_state)
+    .rasterization(geometry_rasterization_state)
+    .multisample(geometry_multisample_state)
+    .depth_stencil(geometry_depth_stencil_state)
+    .color_blend(geometory_color_blend_state);
+
+
+    auto geometry_pipeline = device->create_pipeline(geometry_pipeline_state, geometry_pipeline_layout, deferred_render_pass, 0);
+
+    vkw::pipeline::GraphicsShaderStages light_shader_stages{};
+    light_shader_stages
+    .vertex_shader(light_vertex_shader)
+    .fragment_shader(light_fragment_shader);
+
+    vkw::pipeline::VertexInputState light_vertex_input_state{};
+
+    vkw::pipeline::InputAssemblyState light_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+
+    vkw::pipeline::ViewportState light_viewport_state({0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT}, {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}});
+
+    vkw::pipeline::RasterizarionState light_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+
+    vkw::pipeline::MultisampleState light_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+
+    vkw::pipeline::DepthStencilState light_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+
+    vkw::pipeline::ColorBlendAttachmentStates light_blend_attachment_states{};
+    light_blend_attachment_states.add();
+    vkw::pipeline::ColorBlendState light_color_blend_state(light_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates light_pipeline_states{};
+    light_pipeline_states
+    .shader_stages(light_shader_stages)
+    .vertex_input(light_vertex_input_state)
+    .input_assembly(light_input_assembly_state)
+    .viewport(light_viewport_state)
+    .rasterization(light_rasterization_state)
+    .multisample(light_multisample_state)
+    .depth_stencil(light_depth_stencil_state)
+    .color_blend(light_color_blend_state);
+
+    auto light_pipeline = device->create_pipeline(light_pipeline_states, light_pipeline_layout, deferred_render_pass, 1);
 
     // auto command_pool = device->create_command_pool();
     // if(!command_pool) {

@@ -6,10 +6,14 @@ namespace vkw {
 
 namespace pipeline {
 
+class GraphicsPipelineStates;
+
 class InputAssemblyState {
     VkPipelineInputAssemblyStateCreateInfo state_;
 
 public:
+    friend GraphicsPipelineStates;
+    
     InputAssemblyState(VkPrimitiveTopology topology) :
         state_(
             VkPipelineInputAssemblyStateCreateInfo {

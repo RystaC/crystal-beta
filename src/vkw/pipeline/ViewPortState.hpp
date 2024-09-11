@@ -6,18 +6,23 @@ namespace vkw {
 
 namespace pipeline {
 
+class GraphicsPipelineStates;
+
 class ViewportState {
     VkPipelineViewportStateCreateInfo state_;
 
 public:
-    ViewportState(const std::vector<VkViewport>& viewports, const std::vector<VkRect2D>& scissors) :
+    friend GraphicsPipelineStates;
+    
+    // TODO: support multi viewport feature
+    ViewportState(const VkViewport& viewport, const VkRect2D& scissor) :
         state_(
             VkPipelineViewportStateCreateInfo {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-                .viewportCount = size_u32(viewports.size()),
-                .pViewports = viewports.data(),
-                .scissorCount = size_u32(scissors.size()),
-                .pScissors = scissors.data(),
+                .viewportCount = 1,
+                .pViewports = &viewport,
+                .scissorCount = 1,
+                .pScissors = &scissor,
             }
         ) {}
 };

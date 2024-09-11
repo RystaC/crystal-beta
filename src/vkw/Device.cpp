@@ -283,4 +283,64 @@ objects::PipelineLayout Device::create_pipeline_layout(const pipeline_layout::Cr
     return objects::PipelineLayout(device_, std::move(layout));
 }
 
+objects::PipelineCache Device::create_pipeline_cache() {
+    VkPipelineCacheCreateInfo cache_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .initialDataSize = 0,
+        .pInitialData = nullptr,
+    };
+
+    VkPipelineCache cache{};
+    vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+
+    return objects::PipelineCache(device_, std::move(cache));
+}
+
+objects::PipelineCache Device::create_pipeline_cache(const std::filesystem::path& cache_path) {
+    std::ifstream ifs(cache_path, std::ios::binary | std::ios::ate);
+    if(ifs.fail()) {
+        std::cerr << "[vkw::Device::create_pipeline_cache] ERROR: cound not read file: " << cache_path << std::endl;
+    }
+
+    auto binary_size = static_cast<size_t>(ifs.tellg());
+    ifs.seekg(0, std::ios::beg);
+
+    std::vector<char> binary_data(binary_size);
+    ifs.read(binary_data.data(), binary_size);
+    ifs.close();
+
+    VkPipelineCacheCreateInfo cache_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .initialDataSize = binary_size,
+        .pInitialData = reinterpret_cast<void*>(binary_data.data()),
+    };
+
+    VkPipelineCache cache{};
+    vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+
+    return objects::PipelineCache(device_, std::move(cache));
+}
+
+objects::Pipeline Device::create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache) {
+    VkGraphicsPipelineCreateInfo pipeline_info = pipeline_states.pipeline_info_;
+    pipeline_info.layout = pipeline_layout;
+    pipeline_info.renderPass = render_pass;
+    pipeline_info.subpass = subpass_index;
+
+    VkPipeline pl{};
+    vkCreateGraphicsPipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+
+    return objects::Pipeline(device_, std::move(pl));
+}
+
+objects::Pipeline Device::create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache) {
+    VkComputePipelineCreateInfo pipeline_info = pipeline_states.pipeline_info_;
+    pipeline_info.layout = pipeline_layout;
+
+    VkPipeline pl{};
+    vkCreateComputePipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+
+    return objects::Pipeline(device_, std::move(pl));
+}
+
 }

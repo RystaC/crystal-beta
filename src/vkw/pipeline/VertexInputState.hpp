@@ -45,10 +45,15 @@ public:
     }
 };
 
+class GraphicsPipelineStates;
+
 class VertexInputState {
     VkPipelineVertexInputStateCreateInfo state_;
 
 public:
+    friend GraphicsPipelineStates;
+    
+    VertexInputState() noexcept : state_{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO} {}
     VertexInputState(const VertexInputBindingDescriptions& bindings, const VertexInputAttributeDescriptions& attributes) :
         state_(
             VkPipelineVertexInputStateCreateInfo {

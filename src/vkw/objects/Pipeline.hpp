@@ -17,7 +17,7 @@ public:
     Pipeline() noexcept {}
     Pipeline(std::shared_ptr<objects::Device> device, VkPipeline&& pipeline) noexcept : device_(device), pipeline_(pipeline) {}
     ~Pipeline() noexcept {
-        vkDestroyPipeline(*device_, pipeline_, nullptr);
+        if(device_) vkDestroyPipeline(*device_, pipeline_, nullptr);
     }
     Pipeline(const Pipeline& rhs) = delete;
     auto& operator=(const Pipeline& rhs) = delete;

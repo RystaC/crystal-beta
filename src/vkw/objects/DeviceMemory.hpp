@@ -17,7 +17,7 @@ public:
     DeviceMemory() noexcept {}
     DeviceMemory(std::shared_ptr<objects::Device> device, VkDeviceMemory&& memory) noexcept : device_(device), memory_(memory) {}
     ~DeviceMemory() noexcept {
-        vkFreeMemory(*device_, memory_, nullptr);
+        if(device_) vkFreeMemory(*device_, memory_, nullptr);
     }
     DeviceMemory(const DeviceMemory& rhs) = delete;
     auto& operator=(const DeviceMemory& rhs) = delete;
