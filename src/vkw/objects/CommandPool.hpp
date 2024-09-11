@@ -8,7 +8,7 @@ namespace vkw {
 
 namespace objects {
 
-class CommandPool {
+class CommandPool final {
     std::shared_ptr<objects::Device> device_;
     VkCommandPool command_pool_;
 
@@ -20,6 +20,10 @@ public:
     ~CommandPool() noexcept {
         vkDestroyCommandPool(*device_, command_pool_, nullptr);
     }
+    CommandPool(const CommandPool& rhs) = delete;
+    auto& operator=(const CommandPool& rhs) = delete;
+    CommandPool(CommandPool&& rhs) = default;
+    CommandPool& operator=(CommandPool&& rhs) = default;
 
     CommandBuffers allocate_command_buffers(uint32_t buffer_count = 1) {
         VkCommandBufferAllocateInfo allocate_info {

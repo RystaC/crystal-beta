@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Surface {
+class Surface final {
     std::shared_ptr<objects::Instance> instance_;
     VkSurfaceKHR surface_;
 
@@ -19,6 +19,10 @@ public:
     ~Surface() noexcept {
         vkDestroySurfaceKHR(*instance_, surface_, nullptr);
     }
+    Surface(const Surface& rhs) = delete;
+    auto& operator=(const Surface& rhs) = delete;
+    Surface(Surface&& rhs) = default;
+    Surface& operator=(Surface&& rhs) = default;
 
     operator VkSurfaceKHR() const noexcept { return surface_; }
 };

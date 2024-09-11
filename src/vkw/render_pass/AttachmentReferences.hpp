@@ -9,7 +9,6 @@ namespace render_pass {
 class SubpassDescription_;
 
 class AttachmentReferences {
-    public:
     std::vector<VkAttachmentReference> refs_;
 
 public:

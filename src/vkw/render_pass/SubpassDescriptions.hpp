@@ -60,7 +60,6 @@ public:
 };
 
 class SubpassDescriptions {
-    public:
     std::vector<VkSubpassDescription> subpasses_;
 
 public:

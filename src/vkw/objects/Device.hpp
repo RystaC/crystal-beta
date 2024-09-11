@@ -6,7 +6,7 @@ namespace vkw {
 
 namespace objects {
 
-class Device {
+class Device final {
     VkDevice device_;
 
 public:
@@ -16,6 +16,10 @@ public:
     ~Device() noexcept {
         vkDestroyDevice(device_, nullptr);
     }
+    Device(const Device& rhs) = delete;
+    auto& operator=(const Device& rhs) = delete;
+    Device(Device&& rhs) = default;
+    Device& operator=(Device&& rhs) = default;
 
     operator VkDevice() const noexcept { return device_; }
 };

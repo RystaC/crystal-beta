@@ -6,7 +6,7 @@ namespace vkw {
 
 namespace objects {
 
-class Instance {
+class Instance final {
     VkInstance instance_;
 
 public:
@@ -16,6 +16,10 @@ public:
     ~Instance() noexcept {
         vkDestroyInstance(instance_, nullptr);
     }
+    Instance(const Instance& rhs) = delete;
+    auto& operator=(const Instance& rhs) = delete;
+    Instance(Instance&& rhs) = default;
+    Instance& operator=(Instance&& rhs) = default;
 
     operator VkInstance() const noexcept { return instance_; }
 };

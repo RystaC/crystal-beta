@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Pipeline {
+class Pipeline final {
     std::shared_ptr<objects::Device> device_;
     VkPipeline pipeline_;
 
@@ -19,6 +19,10 @@ public:
     ~Pipeline() noexcept {
         vkDestroyPipeline(*device_, pipeline_, nullptr);
     }
+    Pipeline(const Pipeline& rhs) = delete;
+    auto& operator=(const Pipeline& rhs) = delete;
+    Pipeline(Pipeline&& rhs) = default;
+    Pipeline& operator=(Pipeline&& rhs) = default;
 
     operator VkPipeline() const noexcept { return pipeline_; }
 };

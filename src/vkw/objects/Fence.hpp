@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Fence {
+class Fence final {
     std::shared_ptr<objects::Device> device_;
     VkFence fence_;
 
@@ -19,6 +19,10 @@ public:
     ~Fence() noexcept {
         vkDestroyFence(*device_, fence_, nullptr);
     }
+    Fence(const Fence& rhs) = delete;
+    auto& operator=(const Fence& rhs) = delete;
+    Fence(Fence&& rhs) = default;
+    Fence& operator=(Fence&& rhs) = default;
 
     operator VkFence() const noexcept { return fence_; }
 

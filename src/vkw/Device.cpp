@@ -229,4 +229,58 @@ objects::ShaderModule Device::create_shader_module(const std::filesystem::path& 
     return objects::ShaderModule(device_, std::move(shader_module));
 }
 
+objects::DescriptorSetLayout Device::create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings) {
+    VkDescriptorSetLayoutCreateInfo layout_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = size_u32(layout_bindings.bindings_.size()),
+        .pBindings = layout_bindings.bindings_.data(),
+    };
+
+    VkDescriptorSetLayout layout{};
+    vkCreateDescriptorSetLayout(*device_, &layout_info, nullptr, &layout);
+
+    return objects::DescriptorSetLayout(device_, std::move(layout), layout_bindings.type_);
+}
+
+objects::DescriptorPool Device::create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool) {
+    std::vector<VkDescriptorPoolSize> pool_sizes(layouts_for_pool.size());
+    for(size_t i = 0; i < pool_sizes.size(); ++i) {
+        pool_sizes[i] = {
+            .type = layouts_for_pool[i].type_,
+            .descriptorCount = size_u32(layouts_for_pool[i].bindings_.size()),
+        };
+    }
+
+    VkDescriptorPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = size_u32(pool_sizes.size()),
+        .poolSizeCount = size_u32(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data(),
+    };
+
+    VkDescriptorPool descriptor_pool{};
+    vkCreateDescriptorPool(*device_, &pool_info, nullptr, &descriptor_pool);
+
+    return objects::DescriptorPool(device_, std::move(descriptor_pool));
+}
+
+void Device::update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets) {
+    vkUpdateDescriptorSets(*device_, size_u32(write_descriptor_sets.writes_.size()), write_descriptor_sets.writes_.data(), 0, nullptr);
+}
+
+objects::PipelineLayout Device::create_pipeline_layout(const pipeline_layout::CreateInfo& info) {
+    VkPipelineLayoutCreateInfo layout_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = size_u32(info.layouts_.size()),
+        .pSetLayouts = info.layouts_.empty() ? nullptr : info.layouts_.data(),
+        .pushConstantRangeCount = size_u32(info.ranges_.size()),
+        .pPushConstantRanges = info.ranges_.empty() ? nullptr : info.ranges_.data(),
+    };
+
+    VkPipelineLayout layout{};
+    vkCreatePipelineLayout(*device_, &layout_info, nullptr, &layout);
+
+    return objects::PipelineLayout(device_, std::move(layout));
+}
+
 }

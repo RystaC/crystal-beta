@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Semaphore {
+class Semaphore final {
     std::shared_ptr<objects::Device> device_;
     VkSemaphore semaphore_;
 
@@ -19,6 +19,10 @@ public:
     ~Semaphore() noexcept {
         vkDestroySemaphore(*device_, semaphore_, nullptr); 
     }
+    Semaphore(const Semaphore& rhs) = delete;
+    auto& operator=(const Semaphore& rhs) = delete;
+    Semaphore(Semaphore&& rhs) = default;
+    Semaphore& operator=(Semaphore&& rhs) = default;
 
     operator VkSemaphore() const noexcept { return semaphore_; }
 };

@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class RenderPass {
+class RenderPass final {
     std::shared_ptr<objects::Device> device_;
     VkRenderPass render_pass_;
 
@@ -19,6 +19,10 @@ public:
     ~RenderPass() noexcept {
         vkDestroyRenderPass(*device_, render_pass_, nullptr);
     }
+    RenderPass(const RenderPass& rhs) = delete;
+    auto& operator=(const RenderPass& rhs) = delete;
+    RenderPass(RenderPass&& rhs) = default;
+    RenderPass& operator=(RenderPass&& rhs) = default;
 
     operator VkRenderPass() const noexcept { return render_pass_; }
 };

@@ -5,6 +5,12 @@
 
 namespace vkw {
 
+namespace descriptor {
+
+class WriteDescriptorSets;
+
+}
+
 namespace objects {
 
 struct DescriptorSet {
@@ -12,7 +18,7 @@ struct DescriptorSet {
     VkDescriptorType type;
 };
 
-class DescriptorSets {
+class DescriptorSets final {
     std::shared_ptr<objects::Device> device_;
     const VkDescriptorPool& pool_;
 
@@ -22,11 +28,15 @@ class DescriptorSets {
     std::vector<DescriptorSet> sets_;
 
 public:
+    friend vkw::descriptor::WriteDescriptorSets;
+    
     DescriptorSets(std::shared_ptr<objects::Device> device, const VkDescriptorPool& pool, std::vector<DescriptorSet>&& sets) noexcept : device_(device), pool_(pool), sets_(sets) {}
 
     const auto& operator[](size_t i) const& { return sets_[i]; }
     auto& operator[](size_t i) & { return sets_[i]; }
     auto operator[](size_t i) && { return sets_[i]; }
+
+    auto size() const noexcept { return sets_.size(); }
 };
 
 }

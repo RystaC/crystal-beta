@@ -29,7 +29,7 @@ struct DrawIndexedIndirectBufferData {
 namespace objects {
 
 template<typename T>
-class Buffer {
+class Buffer final {
     std::shared_ptr<objects::Device> device_;
     VkBuffer buffer_;
     VkDeviceMemory memory_;
@@ -44,6 +44,10 @@ public:
         vkFreeMemory(*device_, memory_, nullptr);
         vkDestroyBuffer(*device_, buffer_, nullptr);
     }
+    Buffer(const Buffer<T>& rhs) = delete;
+    auto& operator=(const Buffer<T>& rhs) = delete;
+    Buffer(Buffer<T>&& rhs) = default;
+    Buffer<T>& operator=(Buffer<T>&& rhs) = default;
 
     operator VkBuffer() const noexcept { return buffer_; }
 };

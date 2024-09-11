@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Queue {
+class Queue final {
     VkQueue queue_;
     uint32_t family_index_;
 

@@ -9,7 +9,7 @@ class Device;
 
 namespace objects {
 
-class PhysicalDevice {
+class PhysicalDevice final {
     VkPhysicalDevice physical_device_;
     // version, ID, type, name, limits and sparse properties
     VkPhysicalDeviceProperties device_properties_;

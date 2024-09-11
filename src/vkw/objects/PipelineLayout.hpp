@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class PipelineLayout {
+class PipelineLayout final {
     std::shared_ptr<objects::Device> device_;
     VkPipelineLayout layout_;
 
@@ -19,7 +19,10 @@ public:
     ~PipelineLayout() noexcept {
         vkDestroyPipelineLayout(*device_, layout_, nullptr);
     }
-
+    PipelineLayout(const PipelineLayout& rhs) = delete;
+    auto& operator=(const PipelineLayout& rhs) = delete;
+    PipelineLayout(PipelineLayout&& rhs) = default;
+    PipelineLayout& operator=(PipelineLayout&& rhs) = default;
 
     operator VkPipelineLayout() const noexcept { return layout_; }
 };

@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Sampler {
+class Sampler final {
     std::shared_ptr<objects::Device> device_;
     VkSampler sampler_;
 
@@ -19,6 +19,10 @@ public:
     ~Sampler() noexcept {
         vkDestroySampler(*device_, sampler_, nullptr);
     }
+    Sampler(const Sampler& rhs) = delete;
+    auto& operator=(const Sampler& rhs) = delete;
+    Sampler(Sampler&& rhs) = default;
+    Sampler& operator=(Sampler&& rhs) = default;
 
     operator VkSampler() const noexcept { return sampler_; }
 };

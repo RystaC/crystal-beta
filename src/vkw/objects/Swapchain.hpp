@@ -9,7 +9,7 @@ namespace vkw {
 
 namespace objects {
 
-class Swapchain {
+class Swapchain final {
     std::shared_ptr<objects::Device> device_;
     VkSwapchainKHR swapchain_;
     std::vector<VkImage> images_;
@@ -29,6 +29,10 @@ public:
         }
         vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
     }
+    Swapchain(const Swapchain& rhs) = delete;
+    auto& operator=(const Swapchain& rhs) = delete;
+    Swapchain(Swapchain&& rhs) = default;
+    Swapchain& operator=(Swapchain&& rhs) = default;
 
     operator VkSwapchainKHR() const noexcept { return swapchain_; }
 

@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class Event {
+class Event final {
     std::shared_ptr<objects::Device> device_;
     VkEvent event_;
 
@@ -19,6 +19,10 @@ public:
     ~Event() noexcept {
         vkDestroyEvent(*device_, event_, nullptr);
     }
+    Event(const Event& rhs) = delete;
+    auto& operator=(const Event& rhs) = delete;
+    Event(Event&& rhs) = default;
+    Event& operator=(Event&& rhs) = default;
 
     operator VkEvent() const noexcept { return event_; }
 

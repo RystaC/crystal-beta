@@ -13,6 +13,9 @@
 #include "objects/RenderPass.hpp"
 #include "objects/Framebuffer.hpp"
 #include "objects/ShaderModule.hpp"
+#include "objects/DescriptorSetLayout.hpp"
+#include "objects/DescriptorPool.hpp"
+#include "objects/PipelineLayout.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -20,6 +23,11 @@
 #include "render_pass/AttachmentReferences.hpp"
 #include "render_pass/SubpassDescriptions.hpp"
 #include "render_pass/SubpassDependencies.hpp"
+
+#include "descriptor/DescriptorSetLayoutBindings.hpp"
+#include "descriptor/WriteDescriptorSets.hpp"
+
+#include "pipeline_layout/CreateInfo.hpp"
 
 namespace vkw {
 
@@ -108,6 +116,15 @@ public:
     objects::Framebuffer create_framebuffer(const objects::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent);
 
     objects::ShaderModule create_shader_module(const std::filesystem::path& spirv_path);
+
+    objects::DescriptorSetLayout create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings);
+
+    objects::DescriptorPool create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool);
+
+    // TODO: handle for desctriptor set copies
+    void update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets);
+
+    objects::PipelineLayout create_pipeline_layout(const pipeline_layout::CreateInfo& info);
 };
 
 }

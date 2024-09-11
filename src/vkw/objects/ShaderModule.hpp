@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class ShaderModule {
+class ShaderModule final {
     std::shared_ptr<objects::Device> device_;
     VkShaderModule shader_module_;
 
@@ -19,6 +19,10 @@ public:
     ~ShaderModule() noexcept {
         vkDestroyShaderModule(*device_, shader_module_, nullptr);
     }
+    ShaderModule(const ShaderModule& rhs) = delete;
+    auto& operator=(const ShaderModule& rhs) = delete;
+    ShaderModule(ShaderModule&& rhs) = default;
+    ShaderModule& operator=(ShaderModule&& rhs) = default;
 
     operator VkShaderModule() const noexcept { return shader_module_; }
 };

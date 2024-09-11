@@ -7,7 +7,7 @@ namespace vkw {
 
 namespace objects {
 
-class DeviceMemory {
+class DeviceMemory final {
     std::shared_ptr<objects::Device> device_;
     VkDeviceMemory memory_;
 
@@ -19,6 +19,10 @@ public:
     ~DeviceMemory() noexcept {
         vkFreeMemory(*device_, memory_, nullptr);
     }
+    DeviceMemory(const DeviceMemory& rhs) = delete;
+    auto& operator=(const DeviceMemory& rhs) = delete;
+    DeviceMemory(DeviceMemory&& rhs) = default;
+    DeviceMemory& operator=(DeviceMemory&& rhs) = default;
 
     operator VkDeviceMemory() const noexcept { return memory_; }
 };

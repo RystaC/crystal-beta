@@ -8,7 +8,7 @@ namespace vkw {
 
 namespace objects {
 
-class Image {
+class Image final {
     std::shared_ptr<objects::Device> device_;
     VkImage image_;
     VkDeviceMemory memory_;
@@ -23,6 +23,10 @@ public:
         vkFreeMemory(*device_, memory_, nullptr);
         vkDestroyImage(*device_, image_, nullptr);
     }
+    Image(const Image& rhs) = delete;
+    auto& operator=(const Image& rhs) = delete;
+    Image(Image&& rhs) = default;
+    Image& operator=(Image&& rhs) = default;
 
     operator VkImage() const noexcept { return image_; }
 
