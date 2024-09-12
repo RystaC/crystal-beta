@@ -18,6 +18,10 @@
 #include "objects/PipelineLayout.hpp"
 #include "objects/PipelineCache.hpp"
 #include "objects/Pipeline.hpp"
+#include "objects/CommandPool.hpp"
+#include "objects/Event.hpp"
+#include "objects/Fence.hpp"
+#include "objects/Semaphore.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -137,6 +141,12 @@ public:
     // TODO: deal with multiple pipeline creattion
     objects::Pipeline create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache = VK_NULL_HANDLE);
     objects::Pipeline create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache = VK_NULL_HANDLE);
+
+    objects::CommandPool create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index);
+
+    objects::Event create_event();
+    objects::Fence create_fence(bool signaled = false);
+    objects::Semaphore create_semaphore();
 };
 
 }

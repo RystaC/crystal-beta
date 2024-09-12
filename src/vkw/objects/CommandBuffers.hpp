@@ -7,6 +7,12 @@
 
 namespace vkw {
 
+namespace queue {
+
+class SubmitInfos;
+
+}
+
 namespace objects {
 
 class CommandBuffers final {
@@ -15,7 +21,7 @@ class CommandBuffers final {
     std::vector<VkCommandBuffer> command_buffers_;
 
 public:
-    using object_type = VkCommandBuffer;
+    friend queue::SubmitInfos;
 
     CommandBuffers(std::shared_ptr<objects::Device> device, const VkCommandPool& command_pool, std::vector<VkCommandBuffer>&& command_buffers) noexcept : device_(device), command_pool_(command_pool), command_buffers_(command_buffers) {}
     ~CommandBuffers() noexcept {

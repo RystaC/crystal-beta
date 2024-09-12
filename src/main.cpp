@@ -409,46 +409,62 @@ int main(int argc, char** argv) {
 
     auto light_pipeline = device->create_pipeline(light_pipeline_states, light_pipeline_layout, deferred_render_pass, 1);
 
-    // auto command_pool = device->create_command_pool();
-    // if(!command_pool) {
-    //     std::cerr << "[crystal-beta] ERROR: failed to create command pool. exit." << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
+    std::cerr << std::endl << "create command pool..." << std::endl;
+    auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
 
-    // auto command_buffer = command_pool->allocate_command_buffer();
-    // if(!command_buffer) {
-    //     std::cerr << "[crystal-beta] ERROR: failed to allocate command buffer. exit." << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
+    std::cerr << std::endl << "allocate command buffer..." << std::endl;
+    auto command_buffer = command_pool.allocate_command_buffers();
 
-    // auto fence = device->create_fence();
-    // if(!fence) {
-    //     std::cerr << "[crystal-beta] ERROR: failed to create fence. exit." << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
+    std::cerr << std::endl << "create fence..." << std::endl;
+    auto fence = device->create_fence();
 
-    // command_buffer->record_commands(
-    //     [&](vkw::CommandBufferCommands& c) {
-    //         c
-    //         .barrier_image(swapchain->image(0),
-    //             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //             VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT,
-    //             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    //         )
-    //         .barrier_image(swapchain->image(1),
-    //             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //             VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT,
-    //             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    //         )
-    //         ;
-    //     }
-    // );
+    vkw::barrier::ImageMemoryBarriers initial_image_barriers{};
+    initial_image_barriers
+    .add(
+        swapchain.image(0), {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1, },
+        { VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT },
+        { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR }
+    )
+    .add(
+        swapchain.image(1), {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1, },
+        { VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_MEMORY_READ_BIT },
+        { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR }
+    );
 
-    // device->submit_commands(*command_buffer, *fence);
-    // fence->wait(UINT64_MAX);
-    // fence->reset();
+    command_buffer.begin_record(0)
+    .pipeline_barrier(
+        { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
+        0, std::nullopt, std::nullopt, initial_image_barriers
+    )
+    .end_record();
 
-    // uint32_t current_index = swapchain->next_image_index(*fence);
+    vkw::queue::SubmitInfos submit_info{};
+    submit_info.add(command_buffer);
+
+    main_queues[0].submit(submit_info, fence);
+
+    fence.wait();
+    fence.reset();
+
+    auto current_image_index = swapchain.next_image_index(fence);
+
+    app->main_loop(
+        [&]() {
+            VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
+            std::vector<VkClearValue> clear_values = {
+                // 0: swapchain image
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                // 1: depth buffer
+                { .depthStencil = {1.0f, 0} },
+                // 2: g-buffer position
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                // 3: g-buffer normal
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+                // 4: g-buffer albedo
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+            };
+        }
+    );
 
     // app->main_loop(
     //     [&](){
@@ -512,8 +528,6 @@ int main(int argc, char** argv) {
     //         current_index = swapchain->next_image_index(*fence);
     //     }
     // );
-
-    app->main_loop([&](){});
 
     return 0;
 }

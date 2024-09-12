@@ -25,7 +25,7 @@ public:
     CommandPool(CommandPool&& rhs) = default;
     CommandPool& operator=(CommandPool&& rhs) = default;
 
-    CommandBuffers allocate_command_buffers(uint32_t buffer_count = 1) {
+    CommandBuffers allocate_command_buffers(VkCommandBufferLevel level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, uint32_t buffer_count = 1) {
         VkCommandBufferAllocateInfo allocate_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = command_pool_,

@@ -32,7 +32,7 @@ public:
         return status;
     }
 
-    auto wait(uint64_t timeout) {
+    auto wait(uint64_t timeout = std::numeric_limits<uint64_t>::max()) {
         return vkWaitForFences(*device_, 1u, &fence_, VK_TRUE, timeout);
     }
 

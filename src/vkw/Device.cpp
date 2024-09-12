@@ -343,4 +343,51 @@ objects::Pipeline Device::create_pipeline(const pipeline::ComputePipelineStates&
     return objects::Pipeline(device_, std::move(pl));
 }
 
+objects::CommandPool Device::create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index) {
+    VkCommandPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = flags,
+        .queueFamilyIndex = queue_family_index,
+    };
+
+    VkCommandPool pool{};
+    vkCreateCommandPool(*device_, &pool_info, nullptr, &pool);
+
+    return objects::CommandPool(device_, std::move(pool));
+}
+
+objects::Event Device::create_event() {
+    VkEventCreateInfo event_info = {
+        .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
+    };
+
+    VkEvent event{};
+    vkCreateEvent(*device_, &event_info, nullptr, &event);
+
+    return objects::Event(device_, std::move(event));
+}
+
+objects::Fence Device::create_fence(bool signaled) {
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : static_cast<VkFenceCreateFlags>(0),
+    };
+
+    VkFence fence{};
+    vkCreateFence(*device_, &fence_info, nullptr, &fence);
+
+    return objects::Fence(device_, std::move(fence));
+}
+
+objects::Semaphore Device::create_semaphore() {
+    VkSemaphoreCreateInfo semaphore_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+    };
+
+    VkSemaphore semaphore{};
+    vkCreateSemaphore(*device_, &semaphore_info, nullptr, &semaphore);
+
+    return objects::Semaphore(device_, std::move(semaphore));
+}
+
 }
