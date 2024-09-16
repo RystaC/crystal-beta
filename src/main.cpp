@@ -174,21 +174,21 @@ int main(int argc, char** argv) {
     // attachment 2: g-buffer position
     .add(
         VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
     )
     // attachment 3: g-buffer normal
     .add(
         VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
     )
     // attachment 4: g-buffer albedo
     .add(
         VK_FORMAT_R32G32B32A32_SFLOAT, VK_SAMPLE_COUNT_1_BIT,
-        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
         {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}
     );
@@ -256,12 +256,13 @@ int main(int argc, char** argv) {
     );
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_first.vert.glsl.spirv");
-    auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_first.frag.glsl.spirv");
-    auto light_vertex_shader = device->create_shader_module("shaders/deferred_second.vert.glsl.spirv");
-    auto light_fragment_shader = device->create_shader_module("shaders/deferred_second.frag.glsl.spirv");
+    auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv");
+    auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv");
+    auto light_vertex_shader = device->create_shader_module("shaders/deferred_light.vert.glsl.spirv");
+    auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv");
 
     auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
+    // auto mesh = meshes::Mesh::cube();
 
     std::vector<InstanceBufferData> instance_data = {
         { glm::vec3(-2.0f, 0.0f, 0.0f) },
@@ -331,7 +332,6 @@ int main(int argc, char** argv) {
     geometry_shader_stages
     .vertex_shader(geometry_vertex_shader)
     .fragment_shader(geometry_fragment_shader);
-
     vkw::pipeline::VertexInputBindingDescriptions geometry_input_bindings{};
     geometry_input_bindings
     .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
@@ -343,17 +343,18 @@ int main(int argc, char** argv) {
     .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
     .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
     vkw::pipeline::VertexInputState geometry_vertex_input_state(geometry_input_bindings, geometry_input_attributes);
-
     vkw::pipeline::InputAssemblyState geometry_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-    vkw::pipeline::ViewportState geometry_viewport_state({0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT}, {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}});
-
+    vkw::pipeline::ViewportState geometry_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
     vkw::pipeline::RasterizarionState geometry_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
-
     vkw::pipeline::MultisampleState geometry_multisample_state(VK_SAMPLE_COUNT_1_BIT);
-
     vkw::pipeline::DepthStencilState geometry_depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
-
     vkw::pipeline::ColorBlendAttachmentStates geometry_blend_attachment_states{};
     geometry_blend_attachment_states
     .add()
@@ -379,19 +380,19 @@ int main(int argc, char** argv) {
     light_shader_stages
     .vertex_shader(light_vertex_shader)
     .fragment_shader(light_fragment_shader);
-
     vkw::pipeline::VertexInputState light_vertex_input_state{};
-
     vkw::pipeline::InputAssemblyState light_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-    vkw::pipeline::ViewportState light_viewport_state({0.0f, 0.0f, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT}, {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}});
-
-    vkw::pipeline::RasterizarionState light_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
-
+    vkw::pipeline::ViewportState light_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState light_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
     vkw::pipeline::MultisampleState light_multisample_state(VK_SAMPLE_COUNT_1_BIT);
-
     vkw::pipeline::DepthStencilState light_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
-
     vkw::pipeline::ColorBlendAttachmentStates light_blend_attachment_states{};
     light_blend_attachment_states.add();
     vkw::pipeline::ColorBlendState light_color_blend_state(light_blend_attachment_states);
@@ -431,6 +432,7 @@ int main(int argc, char** argv) {
         { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR }
     );
 
+    std::cerr << std::endl << "initialize image layouts..." << std::endl;
     command_buffer.begin_record(0)
     .pipeline_barrier(
         { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
@@ -445,6 +447,9 @@ int main(int argc, char** argv) {
 
     fence.wait();
     fence.reset();
+
+    command_buffer.reset(0);
+    std::cerr << "done." << std::endl;
 
     auto current_image_index = swapchain.next_image_index(fence);
 
@@ -463,71 +468,45 @@ int main(int argc, char** argv) {
                 // 4: g-buffer albedo
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
             };
+
+            glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(1.0f));
+            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
+            projection[1][1] *= -1;
+
+            PushConstantData push_constant_data {
+                model, view, projection,
+            };
+
+            command_buffer.begin_record(0)
+            .begin_render_pass(deferred_framebuffers[current_image_index], deferred_render_pass, render_area, clear_values)
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, geometry_pipeline)
+            .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
+            .bind_vertex_buffers(0, {vertex_buffer, instance_buffer})
+            .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(mesh.indices().size()), 2)
+            .next_subpass()
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets.sets())
+            .draw(3, 1)
+            .end_render_pass()
+            .end_record();
+
+            vkw::queue::SubmitInfos render_submit_info{};
+            render_submit_info.add(command_buffer);
+
+            main_queues[0].submit(render_submit_info, fence);
+
+            fence.wait();
+            fence.reset();
+
+            command_buffer.reset(0);
+
+            main_queues[0].present({swapchain}, {current_image_index});
+
+            current_image_index = swapchain.next_image_index(fence);
         }
     );
-
-    // app->main_loop(
-    //     [&](){
-    //         VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
-    //         std::vector<VkClearValue> clear_values = {
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .depthStencil = {1.0f, 0} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //         };
-
-    //         std::vector<VkClearValue> debug_clear_values = {
-    //             { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
-    //         };
-
-    //         glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(1.0f));
-    //         glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    //         glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
-    //         projection[1][1] *= -1;
-
-    //         PushConstantData push_constant_data {
-    //             model, view, projection,
-    //         };
-
-    //         std::vector<VkDescriptorSet> descriptor_sets = {
-    //             *second_descriptor_set 
-    //         };
-
-    //         command_buffer->record_commands(
-    //             [&](vkw::CommandBufferCommands& c) {
-    //                 c
-    //                 .begin_render_pass(*(framebuffers[current_index]), *render_pass, render_area, clear_values)
-    //                 // .bind_graphics_pipeline(pipeline->pipeline())
-    //                 .bind_graphics_pipeline(first_pipeline->pipeline())
-    //                 // .bind_descriptor_set(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->layout(), *descriptor_sets[current_index])
-    //                 // .push_constants(pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(PushConstantData), &push_constant_data)
-    //                 .push_constants(first_pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
-    //                 .bind_vertex_buffer(0, *vertex_buffer)
-    //                 .bind_vertex_buffer(1, *instance_buffer)
-    //                 .bind_index_buffer(*index_buffer, VK_INDEX_TYPE_UINT16)
-    //                 .draw_indexed((uint32_t)mesh.indices().size(), 2)
-    //                 .next_subpass()
-    //                 .bind_graphics_pipeline(second_pipeline->pipeline())
-    //                 .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, second_pipeline->layout(), descriptor_sets)
-    //                 .draw(3, 1)
-    //                 .end_render_pass()
-    //             }
-    //         );
-
-    //         device->submit_commands(*command_buffer, *fence);
-    //         fence->wait(UINT64_MAX);
-
-    //         device->present(*swapchain, current_index);
-
-    //         fence->reset();
-
-    //         current_index = swapchain->next_image_index(*fence);
-    //     }
-    // );
 
     return 0;
 }

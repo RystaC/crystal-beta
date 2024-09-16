@@ -37,6 +37,15 @@ public:
     auto operator[](size_t i) && { return sets_[i]; }
 
     auto size() const noexcept { return sets_.size(); }
+
+    std::vector<VkDescriptorSet> sets() {
+        std::vector<VkDescriptorSet> s(sets_.size());
+        for(size_t i = 0; i < s.size(); ++i) {
+            s[i] = sets_[i].set;
+        }
+
+        return s;
+    }
 };
 
 }

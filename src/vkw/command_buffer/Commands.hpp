@@ -47,7 +47,7 @@ public:
     // binding commands
 
     [[nodiscard]]
-    auto& bind_pipline(VkPipelineBindPoint bind_point, VkPipeline pipeline) {
+    auto& bind_pipeline(VkPipelineBindPoint bind_point, VkPipeline pipeline) {
         vkCmdBindPipeline(command_buffer_, bind_point, pipeline);
         return *this;
     }

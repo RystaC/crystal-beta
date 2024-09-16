@@ -38,7 +38,7 @@ public:
 
     auto size() const noexcept { return command_buffers_.size(); }
 
-    command_buffer::Commands begin_record(size_t index = 0) {
+    command_buffer::Commands begin_record(size_t index) {
         VkCommandBufferBeginInfo begin_info {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         };
@@ -46,6 +46,10 @@ public:
         vkBeginCommandBuffer(command_buffers_[index], &begin_info);
 
         return command_buffer::Commands(command_buffers_[index]);
+    }
+
+    void reset(size_t index) {
+        vkResetCommandBuffer(command_buffers_[0], static_cast<VkCommandBufferResetFlags>(0));
     }
 };
 
