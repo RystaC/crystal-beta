@@ -46,12 +46,7 @@ public:
         std::vector<VkDescriptorSet> sets(layouts.size());
         vkAllocateDescriptorSets(*device_, &allocate_info, sets.data());
 
-        std::vector<DescriptorSet> descriptor_sets(layouts.size());
-        for(size_t i = 0; i < descriptor_sets.size(); ++i) {
-            descriptor_sets[i] = {sets[i], layouts_t[i]};
-        }
-
-        return DescriptorSets(device_, pool_, std::move(descriptor_sets));
+        return DescriptorSets(device_, pool_, std::move(sets), std::move(layouts_t));
     }
 };
 

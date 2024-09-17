@@ -56,15 +56,15 @@ class WriteDescriptorSets {
 public:
     friend vkw::Device;
 
-    auto& add(const objects::DescriptorSet& set, uint32_t bind_index, uint32_t array_index, const BufferInfos& buffer_infos) {
+    auto& add(const std::pair<VkDescriptorSet, VkDescriptorType>& set, uint32_t bind_index, uint32_t array_index, const BufferInfos& buffer_infos) {
         writes_.emplace_back(
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = set.set,
+                .dstSet = set.first,
                 .dstBinding = bind_index,
                 .dstArrayElement = array_index,
                 .descriptorCount = size_u32(buffer_infos.infos_.size()),
-                .descriptorType = set.type,
+                .descriptorType = set.second,
                 .pBufferInfo = buffer_infos.infos_.data(),
             }
         );
@@ -72,15 +72,15 @@ public:
         return *this;
     }
 
-    auto& add(const objects::DescriptorSet& set, uint32_t bind_index, uint32_t array_index, const ImageInfos& image_infos) {
+    auto& add(const std::pair<VkDescriptorSet, VkDescriptorType>& set, uint32_t bind_index, uint32_t array_index, const ImageInfos& image_infos) {
         writes_.emplace_back(
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = set.set,
+                .dstSet = set.first,
                 .dstBinding = bind_index,
                 .dstArrayElement = array_index,
                 .descriptorCount = size_u32(image_infos.infos_.size()),
-                .descriptorType = set.type,
+                .descriptorType = set.second,
                 .pImageInfo = image_infos.infos_.data(),
             }
         );
@@ -88,15 +88,15 @@ public:
         return *this;
     }
 
-    auto& add(const objects::DescriptorSet& set, uint32_t bind_index, uint32_t array_index, const std::vector<VkBufferView>& buffer_views) {
+    auto& add(const std::pair<VkDescriptorSet, VkDescriptorType>& set, uint32_t bind_index, uint32_t array_index, const std::vector<VkBufferView>& buffer_views) {
         writes_.emplace_back(
             VkWriteDescriptorSet {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = set.set,
+                .dstSet = set.first,
                 .dstBinding = bind_index,
                 .dstArrayElement = array_index,
                 .descriptorCount = size_u32(buffer_views.size()),
-                .descriptorType = set.type,
+                .descriptorType = set.second,
                 .pTexelBufferView = buffer_views.data(),
             }
         );

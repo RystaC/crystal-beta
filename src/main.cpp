@@ -22,10 +22,9 @@ struct PushConstantData {
     glm::mat4 model, view, projection;
 };
 
-constexpr uint32_t MAX_LIGHTS = 3;
+constexpr uint32_t MAX_LIGHTS = 16;
 
-struct UniformBufferData {
-    alignas(16) glm::vec3 camera_position;
+struct LightsData {
     alignas(16) glm::vec3 ambient;
     alignas(16) struct {
         alignas(16) glm::vec3 position;
@@ -265,42 +264,52 @@ int main(int argc, char** argv) {
     // auto mesh = meshes::Mesh::cube();
 
     std::vector<InstanceBufferData> instance_data = {
-        { glm::vec3(-2.0f, 0.0f, 0.0f) },
-        { glm::vec3(2.0f, 0.0f, 0.0f) },
+        { glm::vec3(2.0f, 2.0f, 2.0f) },
+        { glm::vec3(2.0f, 2.0f, -2.0f) },
+        { glm::vec3(2.0f, -2.0f, 2.0f) },
+        { glm::vec3(2.0f, -2.0f, -2.0f) },
+        { glm::vec3(-2.0f, 2.0f, 2.0f) },
+        { glm::vec3(-2.0f, 2.0f, -2.0f) },
+        { glm::vec3(-2.0f, -2.0f, 2.0f) },
+        { glm::vec3(-2.0f, -2.0f, -2.0f) },
     };
 
-    // std::vector<UniformBufferData> uniform_data = {
-    //     { 
-    //         glm::vec3(0.0f, 0.0f, -0.5f),
-    //         glm::vec3(0.2f),
-    //         {
-    //             { glm::vec3(5.0f, 5.0f, -5.0f), glm::vec3(1.0f, 0.0f, 0.0f) },
-    //             { glm::vec3(0.0f, 5.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f) },
-    //             { glm::vec3(-5.0f, 5.0f, 5.0f), glm::vec3(0.0f, 0.0f, 1.0f) },
-    //         },
-    //     }
-    // };
+    std::vector<LightsData> light_uniform_buffer_data = {
+        LightsData {
+            .ambient = glm::vec3(0.2f),
+            .lights = {
+                { .position = glm::vec3(-5.0f), .color = glm::vec3(1.0f, 0.0f, 0.0f) },
+                { .position = glm::vec3(5.0f), .color = glm::vec3(0.0f, 1.0f, 0.0f) },
+                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(0.0f, 0.0f, 1.0f) },
+            },
+        }
+    };
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto instance_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-    // auto uniform_buffer = device->create_buffer_with_data(uniform_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-    vkw::descriptor::DescriptorSetLayoutBindings light_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
-    light_layout_bindings
+    vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+    light_attachment_layout_bindings
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
     .add(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
     .add(2, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
+    vkw::descriptor::DescriptorSetLayoutBindings light_uniform_layout_bindings(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    light_uniform_layout_bindings
+    .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
-    auto light_descriptor_layout = device->create_descriptor_set_layout(light_layout_bindings);
+    auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
+    auto light_uniform_descriptor_layout = device->create_descriptor_set_layout(light_uniform_layout_bindings);
 
     std::cerr << std::endl << "create descriptor pool..." << std::endl;
-    auto light_descriptor_pool = device->create_descriptor_pool({light_layout_bindings});
+    auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings});
 
     std::cerr << std::endl << "allocate descriptor sets..." << std::endl;
-    auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_descriptor_layout});
+    auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout});
     std::cerr << "size of descriptor sets = " << light_descriptor_sets.size() << std::endl;
 
     vkw::descriptor::ImageInfos light_image_infos{};
@@ -308,8 +317,13 @@ int main(int argc, char** argv) {
     .add(position_buffer_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     .add(normal_buffer_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
     .add(albedo_buffer_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    vkw::descriptor::BufferInfos light_buffer_infos{};
+    light_buffer_infos
+    .add(light_uniform_buffer, 0, sizeof(LightsData));
     vkw::descriptor::WriteDescriptorSets light_writes{};
-    light_writes.add(light_descriptor_sets[0], 0, 0, light_image_infos);
+    light_writes
+    .add(light_descriptor_sets[0], 0, 0, light_image_infos)
+    .add(light_descriptor_sets[1], 0, 0, light_buffer_infos);
 
     std::cerr << std::endl << "update descriptor sets..." << std::endl;
     device->update_descriptor_sets(light_writes);
@@ -320,7 +334,8 @@ int main(int argc, char** argv) {
 
     vkw::pipeline_layout::CreateInfo light_layout_info{};
     light_layout_info
-    .add_descriptor_set_layout(light_descriptor_layout);
+    .add_descriptor_set_layout(light_attachment_descriptor_layout)
+    .add_descriptor_set_layout(light_uniform_descriptor_layout);
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
@@ -484,7 +499,7 @@ int main(int argc, char** argv) {
             .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
             .bind_vertex_buffers(0, {vertex_buffer, instance_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
-            .draw_indexed(vkw::size_u32(mesh.indices().size()), 2)
+            .draw_indexed(vkw::size_u32(mesh.indices().size()), vkw::size_u32(instance_data.size()))
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets.sets())

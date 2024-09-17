@@ -10,6 +10,8 @@ namespace vkw {
 
 namespace command_buffer {
 
+// TODO: deal with command recording from different place. maybe merged into command buffer class
+
 class Commands {
     const VkCommandBuffer& command_buffer_;
 

@@ -13,11 +13,6 @@ class WriteDescriptorSets;
 
 namespace objects {
 
-struct DescriptorSet {
-    VkDescriptorSet set;
-    VkDescriptorType type;
-};
-
 class DescriptorSets final {
     std::shared_ptr<objects::Device> device_;
     const VkDescriptorPool& pool_;
@@ -25,27 +20,19 @@ class DescriptorSets final {
     // NOTE: separate descriptor set and descriptor type may be better for freeing descriptor sets
     // (required array of descriptor sets)
 
-    std::vector<DescriptorSet> sets_;
+    std::vector<VkDescriptorSet> sets_;
+    std::vector<VkDescriptorType> types_;
 
 public:
     friend vkw::descriptor::WriteDescriptorSets;
     
-    DescriptorSets(std::shared_ptr<objects::Device> device, const VkDescriptorPool& pool, std::vector<DescriptorSet>&& sets) noexcept : device_(device), pool_(pool), sets_(sets) {}
+    DescriptorSets(std::shared_ptr<objects::Device> device, const VkDescriptorPool& pool, std::vector<VkDescriptorSet>&& sets, std::vector<VkDescriptorType>&& types) noexcept : device_(device), pool_(pool), sets_(sets), types_(types) {}
 
-    const auto& operator[](size_t i) const& { return sets_[i]; }
-    auto& operator[](size_t i) & { return sets_[i]; }
-    auto operator[](size_t i) && { return sets_[i]; }
+    const std::pair<VkDescriptorSet, VkDescriptorType> operator[](size_t i) const& { return { sets_[i], types_[i] }; }
 
     auto size() const noexcept { return sets_.size(); }
 
-    std::vector<VkDescriptorSet> sets() {
-        std::vector<VkDescriptorSet> s(sets_.size());
-        for(size_t i = 0; i < s.size(); ++i) {
-            s[i] = sets_[i].set;
-        }
-
-        return s;
-    }
+    auto& sets() const noexcept { return sets_; }
 };
 
 }
