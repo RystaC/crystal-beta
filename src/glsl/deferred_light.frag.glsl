@@ -1,6 +1,7 @@
 #version 450
 
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec4 out_specular;
+layout(location = 1) out vec4 out_color;
 
 layout(set = 0, binding = 0, input_attachment_index = 0) uniform subpassInput input_position;
 layout(set = 0, binding = 1, input_attachment_index = 1) uniform subpassInput input_normal;
@@ -29,6 +30,7 @@ void main() {
     vec3 N = normalize(normal);
     vec3 V = normalize(camera_pos - position);
 
+    vec3 spec = vec3(0.0f);
     vec3 color = vec3(0.0f);
 
     // ambient
@@ -43,8 +45,9 @@ void main() {
         // specilar
         vec3 H = normalize(V + L);
         float NdotH = max(dot(N, H), 0.0f);
-        color += vec3(1.0f) * pow(NdotH, 64.0f);
+        spec += vec3(1.0f) * pow(NdotH, 64.0f);
     }
 
+    out_specular = vec4(clamp(spec, 0.0f, 1.0f), 1.0f);
     out_color = vec4(clamp(color, 0.0f, 1.0f), 1.0f);
 }

@@ -45,7 +45,7 @@ public:
             .mapEntryCount = size_u32(entries.entries_.size()),
             .pMapEntries = entries.entries_.data(),
             .dataSize = sizeof(T) * data.size(),
-            .pData = reinterpret_cast<void*>(data.data()),
+            .pData = reinterpret_cast<const void*>(data.data()),
         }
     )
     {}
