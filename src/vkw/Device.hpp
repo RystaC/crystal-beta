@@ -10,6 +10,7 @@
 #include "objects/DeviceMemory.hpp"
 #include "objects/Buffer.hpp"
 #include "objects/Image.hpp"
+#include "objects/Sampler.hpp"
 #include "objects/RenderPass.hpp"
 #include "objects/Framebuffer.hpp"
 #include "objects/ShaderModule.hpp"
@@ -119,6 +120,8 @@ public:
     }
 
     objects::Image create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    objects::Sampler create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v);
 
     objects::RenderPass create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies = std::nullopt);
 

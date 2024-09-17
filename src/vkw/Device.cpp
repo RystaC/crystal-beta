@@ -170,6 +170,21 @@ objects::Image Device::create_image(const VkExtent2D& extent_2d, VkFormat format
     return objects::Image(device_, std::move(image), std::move(device_memory), format);
 }
 
+objects::Sampler Device::create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v) {
+    VkSamplerCreateInfo sampler_info = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter = mag_filter,
+        .minFilter = min_filter,
+        .addressModeU = address_mode_u,
+        .addressModeV = address_mode_v,
+    };
+
+    VkSampler sampler{};
+    vkCreateSampler(*device_, &sampler_info, nullptr, &sampler);
+
+    return objects::Sampler(device_, std::move(sampler));
+}
+
 objects::RenderPass Device::create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies) {
     VkRenderPassCreateInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,

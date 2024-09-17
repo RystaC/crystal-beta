@@ -154,14 +154,21 @@ int main(int argc, char** argv) {
     auto albedo_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     auto albedo_buffer_view = albedo_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
 
+    auto blur_vertical_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    auto blur_vertical_image_view = blur_vertical_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto blur_horizontal_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    auto blur_horizontal_image_view = blur_horizontal_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+
+    auto blur_sampler = device->create_sampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
     vkw::render_pass::AttachmentDescriptions deferred_attachment_descs{};
     deferred_attachment_descs
-    // attachment 0: swapchain image
+    // attachment 0: image for blur path (vertical)
     .add(
-        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
     )
     // attachment 1: depth buffer
     .add(
@@ -230,35 +237,70 @@ int main(int argc, char** argv) {
         VK_DEPENDENCY_BY_REGION_BIT
     );
 
+    // vertical blur render pass
+    vkw::render_pass::AttachmentDescriptions blur_vertical_attachment{};
+    blur_vertical_attachment
+    // attachment 0: output image (image for horizontal blur)
+    .add(
+        VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}
+    );
+
+    vkw::render_pass::AttachmentReferences blur_vertical_attachment_ref{};
+    blur_vertical_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions blur_vertical_subpass{};
+    blur_vertical_subpass.add()
+    .output_color_attachments(blur_vertical_attachment_ref);
+
+    // horizontal blur render pass
+    vkw::render_pass::AttachmentDescriptions blur_horizontal_attachment{};
+    blur_horizontal_attachment
+    // attachment 0: output image (image for swapchain)
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences blur_horizontal_attachment_ref{};
+    blur_horizontal_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions blur_horizontal_subpass{};
+    blur_horizontal_subpass.add()
+    .output_color_attachments(blur_horizontal_attachment_ref);
+
     std::cerr << std::endl << "create render pass..." << std::endl;
     auto deferred_render_pass = device->create_render_pass(deferred_attachment_descs, deferred_subpass_descs, deferred_pass_depends);
+    auto blur_vertical_render_pass = device->create_render_pass(blur_vertical_attachment, blur_vertical_subpass);
+    auto blur_horizontal_render_pass = device->create_render_pass(blur_horizontal_attachment, blur_horizontal_subpass);
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
-    std::vector<vkw::objects::Framebuffer> deferred_framebuffers(swapchain.size());
-    deferred_framebuffers[0] = 
-    device->create_framebuffer(
-        deferred_render_pass,
+    auto deferred_framebuffer = device->create_framebuffer(deferred_render_pass,
         {
-            swapchain.image_view(0), depth_buffer_view,
+            blur_vertical_image_view, depth_buffer_view,
             position_buffer_view, normal_buffer_view, albedo_buffer_view,
         },
         swapchain.extent()
     );
-    deferred_framebuffers[1] = 
-    device->create_framebuffer(
-        deferred_render_pass,
-        {
-            swapchain.image_view(1), depth_buffer_view,
-            position_buffer_view, normal_buffer_view, albedo_buffer_view,
-        },
-        swapchain.extent()
-    );
+
+    auto blur_vertical_framebuffer = device->create_framebuffer(blur_vertical_render_pass, {blur_horizontal_image_view}, swapchain.extent());
+    std::vector<vkw::objects::Framebuffer> blur_horizontal_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        blur_horizontal_framebuffers[i] = device->create_framebuffer(blur_horizontal_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+    }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv");
     auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv");
-    auto light_vertex_shader = device->create_shader_module("shaders/deferred_light.vert.glsl.spirv");
+    auto plane_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
     auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv");
+    auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv");
 
     auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     // auto mesh = meshes::Mesh::cube();
@@ -291,26 +333,43 @@ int main(int argc, char** argv) {
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
+    // deferred path set 0: g-buffer inputs
     vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
     light_attachment_layout_bindings
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
     .add(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
     .add(2, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
+    // deferred path set 1: lights uniform buffer
     vkw::descriptor::DescriptorSetLayoutBindings light_uniform_layout_bindings(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     light_uniform_layout_bindings
+    .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    // vertical blur path set 0: input image of scene
+    vkw::descriptor::DescriptorSetLayoutBindings blur_vertical_layout_bindings(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    blur_vertical_layout_bindings
+    .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    // horizontal blur path set 0: input image of vertical blurred image
+    vkw::descriptor::DescriptorSetLayoutBindings blur_horizontal_layout_bindings(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    blur_horizontal_layout_bindings
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
     auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
     auto light_uniform_descriptor_layout = device->create_descriptor_set_layout(light_uniform_layout_bindings);
+    auto blur_vertical_descriptor_layout = device->create_descriptor_set_layout(blur_vertical_layout_bindings);
+    auto blur_horizontal_descriptor_layout = device->create_descriptor_set_layout(blur_horizontal_layout_bindings);
 
     std::cerr << std::endl << "create descriptor pool..." << std::endl;
     auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings});
+    auto blur_vertical_descriptor_pool = device->create_descriptor_pool({blur_vertical_layout_bindings});
+    auto blur_horizontal_descriptor_pool = device->create_descriptor_pool({blur_horizontal_layout_bindings});
 
     std::cerr << std::endl << "allocate descriptor sets..." << std::endl;
     auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout});
-    std::cerr << "size of descriptor sets = " << light_descriptor_sets.size() << std::endl;
+    auto blur_vertical_descriptor_sets = blur_vertical_descriptor_pool.allocate_descriptor_sets({blur_vertical_descriptor_layout});
+    auto blur_horizontal_descriptor_sets = blur_horizontal_descriptor_pool.allocate_descriptor_sets({blur_horizontal_descriptor_layout});
 
     vkw::descriptor::ImageInfos light_image_infos{};
     light_image_infos
@@ -325,8 +384,24 @@ int main(int argc, char** argv) {
     .add(light_descriptor_sets[0], 0, 0, light_image_infos)
     .add(light_descriptor_sets[1], 0, 0, light_buffer_infos);
 
+    vkw::descriptor::ImageInfos blur_vertical_image_info{};
+    blur_vertical_image_info
+    .add(blur_vertical_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, blur_sampler);
+    vkw::descriptor::WriteDescriptorSets blur_vertical_writes{};
+    blur_vertical_writes
+    .add(blur_vertical_descriptor_sets[0], 0, 0, blur_vertical_image_info);
+
+    vkw::descriptor::ImageInfos blur_horizontal_image_info{};
+    blur_horizontal_image_info
+    .add(blur_horizontal_image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, blur_sampler);
+    vkw::descriptor::WriteDescriptorSets blur_horizontal_writes{};
+    blur_horizontal_writes
+    .add(blur_horizontal_descriptor_sets[0], 0, 0, blur_horizontal_image_info);
+
     std::cerr << std::endl << "update descriptor sets..." << std::endl;
     device->update_descriptor_sets(light_writes);
+    device->update_descriptor_sets(blur_vertical_writes);
+    device->update_descriptor_sets(blur_horizontal_writes);
 
     vkw::pipeline_layout::CreateInfo geometry_layout_info{};
     geometry_layout_info
@@ -337,9 +412,19 @@ int main(int argc, char** argv) {
     .add_descriptor_set_layout(light_attachment_descriptor_layout)
     .add_descriptor_set_layout(light_uniform_descriptor_layout);
 
+    vkw::pipeline_layout::CreateInfo blur_vertical_layout_info{};
+    blur_vertical_layout_info
+    .add_descriptor_set_layout(blur_vertical_descriptor_layout);
+
+    vkw::pipeline_layout::CreateInfo blur_horizontal_layout_info{};
+    blur_horizontal_layout_info
+    .add_descriptor_set_layout(blur_horizontal_descriptor_layout);
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
     auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info);
+    auto blur_vertical_pipeline_layout = device->create_pipeline_layout(blur_vertical_layout_info);
+    auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info);
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -393,7 +478,7 @@ int main(int argc, char** argv) {
 
     vkw::pipeline::GraphicsShaderStages light_shader_stages{};
     light_shader_stages
-    .vertex_shader(light_vertex_shader)
+    .vertex_shader(plane_vertex_shader)
     .fragment_shader(light_fragment_shader);
     vkw::pipeline::VertexInputState light_vertex_input_state{};
     vkw::pipeline::InputAssemblyState light_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -424,6 +509,85 @@ int main(int argc, char** argv) {
     .color_blend(light_color_blend_state);
 
     auto light_pipeline = device->create_pipeline(light_pipeline_states, light_pipeline_layout, deferred_render_pass, 1);
+
+    std::vector<bool> blur_vertical_constant_data = { false };
+    std::vector<bool> blur_horizontal_constant_data = { true };
+
+    vkw::pipeline::SpecializationMapEntries blur_constant_entry{};
+    blur_constant_entry
+    .add_entry(0, 0, sizeof(bool));
+    vkw::pipeline::SpecializationConstants blur_vertical_constant(blur_constant_entry, blur_vertical_constant_data);
+    vkw::pipeline::SpecializationConstants blur_horizontal_constant(blur_constant_entry, blur_horizontal_constant_data);
+
+    // blur vertical pipeline states
+    vkw::pipeline::GraphicsShaderStages blur_vertical_shader_stages{};
+    blur_vertical_shader_stages
+    .vertex_shader(plane_vertex_shader)
+    .fragment_shader(blur_fragment_shader, blur_vertical_constant);
+    vkw::pipeline::VertexInputState blur_vertical_vertex_input_state{};
+    vkw::pipeline::InputAssemblyState blur_vertical_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkw::pipeline::ViewportState blur_vertical_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState blur_vertical_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState blur_vertical_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState blur_vertical_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates blur_vertical_blend_attachment_states{};
+    blur_vertical_blend_attachment_states.add();
+    vkw::pipeline::ColorBlendState blur_vertical_color_blend_state(blur_vertical_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates blur_vertical_pipeline_states{};
+    blur_vertical_pipeline_states
+    .shader_stages(blur_vertical_shader_stages)
+    .vertex_input(blur_vertical_vertex_input_state)
+    .input_assembly(blur_vertical_input_assembly_state)
+    .viewport(blur_vertical_viewport_state)
+    .rasterization(blur_vertical_rasterization_state)
+    .multisample(blur_vertical_multisample_state)
+    .depth_stencil(blur_vertical_depth_stencil_state)
+    .color_blend(blur_vertical_color_blend_state);
+
+    auto blur_vertical_pipeline = device->create_pipeline(blur_vertical_pipeline_states, blur_vertical_pipeline_layout, blur_vertical_render_pass, 0);
+
+    // blur horizontal pipeline states
+    vkw::pipeline::GraphicsShaderStages blur_horizontal_shader_stages{};
+    blur_horizontal_shader_stages
+    .vertex_shader(plane_vertex_shader)
+    .fragment_shader(blur_fragment_shader, blur_horizontal_constant);
+    vkw::pipeline::VertexInputState blur_horizontal_vertex_input_state{};
+    vkw::pipeline::InputAssemblyState blur_horizontal_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkw::pipeline::ViewportState blur_horizontal_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState blur_horizontal_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState blur_horizontal_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState blur_horizontal_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates blur_horizontal_blend_attachment_states{};
+    blur_horizontal_blend_attachment_states.add();
+    vkw::pipeline::ColorBlendState blur_horizontal_color_blend_state(blur_horizontal_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates blur_horizontal_pipeline_states{};
+    blur_horizontal_pipeline_states
+    .shader_stages(blur_horizontal_shader_stages)
+    .vertex_input(blur_horizontal_vertex_input_state)
+    .input_assembly(blur_horizontal_input_assembly_state)
+    .viewport(blur_horizontal_viewport_state)
+    .rasterization(blur_horizontal_rasterization_state)
+    .multisample(blur_horizontal_multisample_state)
+    .depth_stencil(blur_horizontal_depth_stencil_state)
+    .color_blend(blur_horizontal_color_blend_state);
+
+    auto blur_horizontal_pipeline = device->create_pipeline(blur_horizontal_pipeline_states, blur_horizontal_pipeline_layout, blur_horizontal_render_pass, 0);
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
@@ -472,7 +636,7 @@ int main(int argc, char** argv) {
         [&]() {
             VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
             std::vector<VkClearValue> clear_values = {
-                // 0: swapchain image
+                // 0: output image
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
                 // 1: depth buffer
                 { .depthStencil = {1.0f, 0} },
@@ -481,6 +645,10 @@ int main(int argc, char** argv) {
                 // 3: g-buffer normal
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
                 // 4: g-buffer albedo
+                { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
+            };
+
+            std::vector<VkClearValue> blur_clear_value = {
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
             };
 
@@ -494,15 +662,29 @@ int main(int argc, char** argv) {
             };
 
             command_buffer.begin_record(0)
-            .begin_render_pass(deferred_framebuffers[current_image_index], deferred_render_pass, render_area, clear_values)
+            // deferred geometry path
+            .begin_render_pass(deferred_framebuffer, deferred_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, geometry_pipeline)
             .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
             .bind_vertex_buffers(0, {vertex_buffer, instance_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
             .draw_indexed(vkw::size_u32(mesh.indices().size()), vkw::size_u32(instance_data.size()))
+            // deferred light path
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets.sets())
+            .draw(3, 1)
+            .end_render_pass()
+            // need barrier
+            // blur vertical path
+            .begin_render_pass(blur_vertical_framebuffer, blur_vertical_render_pass, render_area, blur_clear_value)
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline)
+            .draw(3, 1)
+            .end_render_pass()
+            // need barrier
+            // blur horizontal path
+            .begin_render_pass(blur_horizontal_framebuffers[current_image_index], blur_horizontal_render_pass, render_area, blur_clear_value)
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline)
             .draw(3, 1)
             .end_render_pass()
             .end_record();
