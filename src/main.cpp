@@ -379,6 +379,9 @@ int main(int argc, char** argv) {
     // storage buffer for compute shader test
     std::vector<float> compute_buffer_data(128, 0.0f);
     auto compute_buffer = device->create_buffer_with_data(compute_buffer_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    // atomic counter buffer
+    std::vector<uint32_t> atomic_counter_data(1, 0);
+    auto atomic_counter = device->create_buffer_with_data(atomic_counter_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     // deferred path set 0: g-buffer inputs
     vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
@@ -411,7 +414,8 @@ int main(int argc, char** argv) {
     // compute shader test set 0: storage buffer
     vkw::descriptor::DescriptorSetLayoutBindings compute_layout_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     compute_layout_bindings
-    .add(0, 1, VK_SHADER_STAGE_COMPUTE_BIT);
+    .add(0, 1, VK_SHADER_STAGE_COMPUTE_BIT)
+    .add(1, 1, VK_SHADER_STAGE_COMPUTE_BIT);
 
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
     auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
@@ -472,7 +476,8 @@ int main(int argc, char** argv) {
 
     vkw::descriptor::BufferInfos compute_buffer_info{};
     compute_buffer_info
-    .add(compute_buffer, 0, sizeof(float) * compute_buffer_data.size());
+    .add(compute_buffer, 0, sizeof(float) * compute_buffer_data.size())
+    .add(atomic_counter, 0, sizeof(uint32_t));
     vkw::descriptor::WriteDescriptorSets compute_writes{};
     compute_writes
     .add(compute_descriptor_sets[0], 0, 0, compute_buffer_info);
@@ -770,7 +775,7 @@ int main(int argc, char** argv) {
     command_buffer.begin_record(0)
     .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline)
     .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline_layout, 0, compute_descriptor_sets.sets())
-    .dispatch(256, 1, 1)
+    .dispatch(1, 1, 1)
     .end_record();
 
     vkw::queue::SubmitInfos compute_submit_info{};
@@ -786,9 +791,11 @@ int main(int argc, char** argv) {
     std::cerr << "done." << std::endl;
 
     device->copy_buffer_device_to_host(compute_buffer, compute_buffer_data);
+    device->copy_buffer_device_to_host(atomic_counter, atomic_counter_data);
     for(size_t i = 0; i < compute_buffer_data.size(); ++i) {
         std::cerr << "compute buffer [" << i << "] = " << compute_buffer_data[i] << std::endl;
     }
+    std::cerr << "atomic counter = " << atomic_counter_data[0] << std::endl;
 
     auto current_image_index = swapchain.next_image_index(fence);
 
