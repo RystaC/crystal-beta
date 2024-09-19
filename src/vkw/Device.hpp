@@ -119,6 +119,14 @@ public:
         return objects::Buffer<T>(device_, std::move(buffer), std::move(device_memory));
     }
 
+    template<typename T>
+    void copy_buffer_device_to_host(const objects::Buffer<T>& src_buffer, std::vector<T>& dst_data) {
+        uint8_t* pointer{};
+        vkMapMemory(*device_, src_buffer.memory_, 0, sizeof(T) * dst_data.size(), 0, reinterpret_cast<void**>(&pointer));
+        std::memcpy(dst_data.data(), pointer, sizeof(T) * dst_data.size());
+        vkUnmapMemory(*device_, src_buffer.memory_);
+    }
+
     objects::Image create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     objects::Sampler create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v);

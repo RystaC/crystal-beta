@@ -145,6 +145,7 @@ int main(int argc, char** argv) {
     auto swapchain = device->create_swapchain(surface, queue_family_index, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, {WINDOW_WIDTH, WINDOW_HEIGHT});
 
     std::cerr << std::endl << "create images..." << std::endl;
+    // images for rendering
     auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
     auto position_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
@@ -342,6 +343,7 @@ int main(int argc, char** argv) {
     auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv");
     auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv");
     auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv");
+    auto compute_shader_module = device->create_shader_module("shaders/compute_test.comp.glsl.spirv");
 
     auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     // auto mesh = meshes::Mesh::cube();
@@ -374,6 +376,10 @@ int main(int argc, char** argv) {
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
+    // storage buffer for compute shader test
+    std::vector<float> compute_buffer_data(128, 0.0f);
+    auto compute_buffer = device->create_buffer_with_data(compute_buffer_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
     // deferred path set 0: g-buffer inputs
     vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
     light_attachment_layout_bindings
@@ -402,24 +408,32 @@ int main(int argc, char** argv) {
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
     .add(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
+    // compute shader test set 0: storage buffer
+    vkw::descriptor::DescriptorSetLayoutBindings compute_layout_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    compute_layout_bindings
+    .add(0, 1, VK_SHADER_STAGE_COMPUTE_BIT);
+
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
     auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
     auto light_uniform_descriptor_layout = device->create_descriptor_set_layout(light_uniform_layout_bindings);
     auto blur_vertical_descriptor_layout = device->create_descriptor_set_layout(blur_vertical_layout_bindings);
     auto blur_horizontal_descriptor_layout = device->create_descriptor_set_layout(blur_horizontal_layout_bindings);
     auto merge_descriptor_layout = device->create_descriptor_set_layout(merge_layout_bindings);
+    auto compute_descriptor_layout = device->create_descriptor_set_layout(compute_layout_bindings);
 
     std::cerr << std::endl << "create descriptor pool..." << std::endl;
     auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings});
     auto blur_vertical_descriptor_pool = device->create_descriptor_pool({blur_vertical_layout_bindings});
     auto blur_horizontal_descriptor_pool = device->create_descriptor_pool({blur_horizontal_layout_bindings});
     auto merge_descriptor_pool = device->create_descriptor_pool({merge_layout_bindings});
+    auto compute_descriptor_pool = device->create_descriptor_pool({compute_layout_bindings});
 
     std::cerr << std::endl << "allocate descriptor sets..." << std::endl;
     auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout});
     auto blur_vertical_descriptor_sets = blur_vertical_descriptor_pool.allocate_descriptor_sets({blur_vertical_descriptor_layout});
     auto blur_horizontal_descriptor_sets = blur_horizontal_descriptor_pool.allocate_descriptor_sets({blur_horizontal_descriptor_layout});
     auto merge_descriptor_sets = merge_descriptor_pool.allocate_descriptor_sets({merge_descriptor_layout});
+    auto compute_descriptor_sets = compute_descriptor_pool.allocate_descriptor_sets({compute_descriptor_layout});
 
     vkw::descriptor::ImageInfos light_image_infos{};
     light_image_infos
@@ -456,11 +470,19 @@ int main(int argc, char** argv) {
     merge_writes
     .add(merge_descriptor_sets[0], 0, 0, merge_image_infos);
 
+    vkw::descriptor::BufferInfos compute_buffer_info{};
+    compute_buffer_info
+    .add(compute_buffer, 0, sizeof(float) * compute_buffer_data.size());
+    vkw::descriptor::WriteDescriptorSets compute_writes{};
+    compute_writes
+    .add(compute_descriptor_sets[0], 0, 0, compute_buffer_info);
+
     std::cerr << std::endl << "update descriptor sets..." << std::endl;
     device->update_descriptor_sets(light_writes);
     device->update_descriptor_sets(blur_vertical_writes);
     device->update_descriptor_sets(blur_horizontal_writes);
     device->update_descriptor_sets(merge_writes);
+    device->update_descriptor_sets(compute_writes);
 
     vkw::pipeline_layout::CreateInfo geometry_layout_info{};
     geometry_layout_info
@@ -483,12 +505,17 @@ int main(int argc, char** argv) {
     merge_layout_info
     .add_descriptor_set_layout(merge_descriptor_layout);
 
+    vkw::pipeline_layout::CreateInfo compute_layout_info{};
+    compute_layout_info
+    .add_descriptor_set_layout(compute_descriptor_layout);
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
     auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info);
     auto blur_vertical_pipeline_layout = device->create_pipeline_layout(blur_vertical_layout_info);
     auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info);
     auto merge_pipeline_layout = device->create_pipeline_layout(merge_layout_info);
+    auto compute_pipeline_layout = device->create_pipeline_layout(compute_layout_info);
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -690,6 +717,13 @@ int main(int argc, char** argv) {
 
     auto merge_pipeline = device->create_pipeline(merge_pipeline_states, merge_pipeline_layout, merge_render_pass, 0);
 
+    vkw::pipeline::ComputeShaderStage compute_shader_stage{};
+    compute_shader_stage
+    .compute_shader(compute_shader_module);
+    vkw::pipeline::ComputePipelineStates compute_pipeline_states(compute_shader_stage);
+
+    auto compute_pipeline = device->create_pipeline(compute_pipeline_states, compute_pipeline_layout);
+
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
 
@@ -721,7 +755,8 @@ int main(int argc, char** argv) {
     .end_record();
 
     vkw::queue::SubmitInfos submit_info{};
-    submit_info.add(command_buffer);
+    submit_info
+    .add(command_buffer);
 
     main_queues[0].submit(submit_info, fence);
 
@@ -730,6 +765,30 @@ int main(int argc, char** argv) {
 
     command_buffer.reset(0);
     std::cerr << "done." << std::endl;
+
+    std::cerr << std::endl << "lauch compute shader..." << std::endl;
+    command_buffer.begin_record(0)
+    .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline)
+    .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline_layout, 0, compute_descriptor_sets.sets())
+    .dispatch(256, 1, 1)
+    .end_record();
+
+    vkw::queue::SubmitInfos compute_submit_info{};
+    compute_submit_info
+    .add(command_buffer);
+
+    main_queues[0].submit(compute_submit_info, fence);
+
+    fence.wait();
+    fence.reset();
+
+    command_buffer.reset(0);
+    std::cerr << "done." << std::endl;
+
+    device->copy_buffer_device_to_host(compute_buffer, compute_buffer_data);
+    for(size_t i = 0; i < compute_buffer_data.size(); ++i) {
+        std::cerr << "compute buffer [" << i << "] = " << compute_buffer_data[i] << std::endl;
+    }
 
     auto current_image_index = swapchain.next_image_index(fence);
 

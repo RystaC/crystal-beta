@@ -26,6 +26,8 @@ struct DrawIndexedIndirectBufferData {
     uint32_t first_instance;
 };
 
+class Device;
+
 namespace objects {
 
 template<typename T>
@@ -37,6 +39,8 @@ class Buffer final {
 public:
     using value_type = T;
     using object_type = VkBuffer;
+
+    friend vkw::Device;
 
     Buffer() noexcept {}
     Buffer(std::shared_ptr<objects::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
