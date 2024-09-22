@@ -22,6 +22,11 @@ struct PushConstantData {
     glm::mat4 model, view, projection;
 };
 
+struct FrustumPushConstantData {
+    glm::mat4 view_proj;
+    glm::mat4 inv_view_proj;
+};
+
 constexpr uint32_t MAX_LIGHTS = 16;
 
 struct LightsData {
@@ -311,11 +316,51 @@ int main(int argc, char** argv) {
     .output_color_attachments(merge_attachment_ref)
     .end();
 
+    // debug frustum render pass
+    vkw::render_pass::AttachmentDescriptions frustum_attachment{};
+    frustum_attachment
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences frustum_attachment_ref{};
+    frustum_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions frustum_subpass{};
+    frustum_subpass.add()
+    .output_color_attachments(frustum_attachment_ref)
+    .end();
+
+    // debug bounding box render pass
+    vkw::render_pass::AttachmentDescriptions bounding_box_attachment{};
+    bounding_box_attachment
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences bounding_box_attachment_ref{};
+    bounding_box_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions bounding_box_subpass{};
+    bounding_box_subpass.add()
+    .output_color_attachments(bounding_box_attachment_ref)
+    .end();
+
     std::cerr << std::endl << "create render pass..." << std::endl;
     auto deferred_render_pass = device->create_render_pass(deferred_attachment_descs, deferred_subpass_descs, deferred_pass_depends);
     auto blur_vertical_render_pass = device->create_render_pass(blur_vertical_attachment, blur_vertical_subpass);
     auto blur_horizontal_render_pass = device->create_render_pass(blur_horizontal_attachment, blur_horizontal_subpass);
     auto merge_render_pass = device->create_render_pass(merge_attachment, merge_subpass);
+    auto frustum_render_pass = device->create_render_pass(frustum_attachment, frustum_subpass);
+    auto bounding_box_render_pass = device->create_render_pass(bounding_box_attachment, bounding_box_subpass);
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     auto deferred_framebuffer = device->create_framebuffer(
@@ -336,6 +381,16 @@ int main(int argc, char** argv) {
         merge_framebuffers[i] = device->create_framebuffer(merge_render_pass, {swapchain.image_view(i)}, swapchain.extent());
     }
 
+    std::vector<vkw::objects::Framebuffer> frustum_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        frustum_framebuffers[i] = device->create_framebuffer(frustum_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+    }
+
+    std::vector<vkw::objects::Framebuffer> bounding_box_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        bounding_box_framebuffers[i] = device->create_framebuffer(bounding_box_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+    }
+
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv");
     auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv");
@@ -344,9 +399,16 @@ int main(int argc, char** argv) {
     auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv");
     auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv");
     auto compute_shader_module = device->create_shader_module("shaders/compute_test.comp.glsl.spirv");
+    auto frustum_vertex_shader = device->create_shader_module("shaders/debug_frustum.vert.glsl.spirv");
+    auto frustum_fragment_shader = device->create_shader_module("shaders/debug_frustum.frag.glsl.spirv");
+    auto bounding_box_vertex_shader = device->create_shader_module("shaders/debug_bounding_box.vert.glsl.spirv");
+    auto bounding_box_fragment_shader = device->create_shader_module("shaders/debug_bounding_box.frag.glsl.spirv");
 
     // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     auto mesh = meshes::Mesh::cube();
+
+    // assume target mesh is same size cube. So no need to calculate bounding box.
+    auto bounding_box_mesh = meshes::Mesh::frame();
 
     std::vector<InstanceBufferData> instance_data{};
 
@@ -366,9 +428,21 @@ int main(int argc, char** argv) {
         LightsData {
             .ambient = glm::vec3(0.2f),
             .lights = {
-                { .position = glm::vec3(-5.0f), .color = glm::vec3(1.0f) },
-                { .position = glm::vec3(5.0f), .color = glm::vec3(1.0f) },
-                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(1.0f) },
+                { .position = glm::vec3(0.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(5.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(5.0f, 5.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, 0.0f, 5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(5.0f, 0.0f, 5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, 5.0f, 5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(5.0f, 5.0f, 5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(-5.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, -5.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(-5.0f, -5.0f, 0.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, 0.0f, -5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(-5.0f, 0.0f, -5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, -5.0f, -5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(-5.0f, -5.0f, -5.0f), .color = glm::vec3(0.5f) },
             },
         }
     };
@@ -378,6 +452,8 @@ int main(int argc, char** argv) {
     auto instance_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    auto bounding_box_vertex_buffer = device->create_buffer_with_data(bounding_box_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    auto bounding_box_index_buffer = device->create_buffer_with_data(bounding_box_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
     // storage buffer for compute shader test
     std::vector<float> compute_buffer_data(128, 0.0f);
@@ -518,6 +594,14 @@ int main(int argc, char** argv) {
     compute_layout_info
     .add_descriptor_set_layout(compute_descriptor_layout);
 
+    vkw::pipeline_layout::CreateInfo frustum_layout_info{};
+    frustum_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumPushConstantData));
+
+    vkw::pipeline_layout::CreateInfo bounding_box_layout_info{};
+    bounding_box_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData));
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
     auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info);
@@ -525,6 +609,8 @@ int main(int argc, char** argv) {
     auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info);
     auto merge_pipeline_layout = device->create_pipeline_layout(merge_layout_info);
     auto compute_pipeline_layout = device->create_pipeline_layout(compute_layout_info);
+    auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info);
+    auto bounding_box_pipeline_layout = device->create_pipeline_layout(bounding_box_layout_info);
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -726,12 +812,101 @@ int main(int argc, char** argv) {
 
     auto merge_pipeline = device->create_pipeline(merge_pipeline_states, merge_pipeline_layout, merge_render_pass, 0);
 
+    // test compute shader pipeline
     vkw::pipeline::ComputeShaderStage compute_shader_stage{};
     compute_shader_stage
     .compute_shader(compute_shader_module);
     vkw::pipeline::ComputePipelineStates compute_pipeline_states(compute_shader_stage);
 
     auto compute_pipeline = device->create_pipeline(compute_pipeline_states, compute_pipeline_layout);
+
+    // debug frustum pipeline
+    vkw::pipeline::GraphicsShaderStages frustum_shader_stages{};
+    frustum_shader_stages
+    .vertex_shader(frustum_vertex_shader)
+    .fragment_shader(frustum_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions frustum_vertex_bindings{};
+    frustum_vertex_bindings
+    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX);
+    vkw::pipeline::VertexInputAttributeDescriptions frustum_vertex_attributes{};
+    frustum_vertex_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color));
+    vkw::pipeline::VertexInputState frustum_vertex_input_state(frustum_vertex_bindings, frustum_vertex_attributes);
+    vkw::pipeline::InputAssemblyState frustum_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkw::pipeline::ViewportState frustum_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState frustum_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState frustum_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState frustum_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates frustum_blend_attachment_states{};
+    frustum_blend_attachment_states.add(VK_TRUE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+    vkw::pipeline::ColorBlendState frustum_color_blend_state(frustum_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates frustum_pipeline_states{};
+    frustum_pipeline_states
+    .shader_stages(frustum_shader_stages)
+    .vertex_input(frustum_vertex_input_state)
+    .input_assembly(frustum_input_assembly_state)
+    .viewport(frustum_viewport_state)
+    .rasterization(frustum_rasterization_state)
+    .multisample(frustum_multisample_state)
+    .depth_stencil(frustum_depth_stencil_state)
+    .color_blend(frustum_color_blend_state);
+
+    auto frustum_pipeline = device->create_pipeline(frustum_pipeline_states, frustum_pipeline_layout, frustum_render_pass, 0);
+
+    // debug bounding box pipeline
+    vkw::pipeline::GraphicsShaderStages bounding_box_shader_stages{};
+    bounding_box_shader_stages
+    .vertex_shader(bounding_box_vertex_shader)
+    .fragment_shader(bounding_box_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions bounding_box_vertex_bindings{};
+    bounding_box_vertex_bindings
+    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::VertexInputAttributeDescriptions bounding_box_vertex_attributes{};
+    bounding_box_vertex_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
+    .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
+    vkw::pipeline::VertexInputState bounding_box_vertex_input_state(bounding_box_vertex_bindings, bounding_box_vertex_attributes);
+    vkw::pipeline::InputAssemblyState bounding_box_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    vkw::pipeline::ViewportState bounding_box_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState bounding_box_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState bounding_box_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState bounding_box_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates bounding_box_blend_attachment_states{};
+    bounding_box_blend_attachment_states.add();
+    vkw::pipeline::ColorBlendState bounding_box_color_blend_state(bounding_box_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates bounding_box_pipeline_states{};
+    bounding_box_pipeline_states
+    .shader_stages(bounding_box_shader_stages)
+    .vertex_input(bounding_box_vertex_input_state)
+    .input_assembly(bounding_box_input_assembly_state)
+    .viewport(bounding_box_viewport_state)
+    .rasterization(bounding_box_rasterization_state)
+    .multisample(bounding_box_multisample_state)
+    .depth_stencil(bounding_box_depth_stencil_state)
+    .color_blend(bounding_box_color_blend_state);
+
+    auto bounding_box_pipeline = device->create_pipeline(bounding_box_pipeline_states, bounding_box_pipeline_layout, bounding_box_render_pass, 0);
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
@@ -803,7 +978,8 @@ int main(int argc, char** argv) {
 
     auto current_image_index = swapchain.next_image_index(fence);
 
-    float value_rotate = 0.0f;
+    float model_rotate = 0.0f;
+    float frustum_rotate = 0.0f;
 
     game->main_loop(
         [&]() {
@@ -827,9 +1003,10 @@ int main(int argc, char** argv) {
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
             };
 
-            value_rotate += std::numbers::pi_v<float> * game->delta_time();
+            model_rotate += std::numbers::pi_v<float> * game->delta_time();
+            frustum_rotate += std::numbers::pi_v<float> * 0.5f * game->delta_time();
 
-            glm::mat4 model = glm::rotate(glm::mat4(1.0f), value_rotate, glm::vec3(1.0f));
+            glm::mat4 model = glm::rotate(glm::mat4(1.0f), model_rotate, glm::vec3(1.0f));
             auto camera_pos = game->camera_pos();
             auto camera_dir = game->camera_dir();
             auto camera_up = game->camera_up();
@@ -837,22 +1014,34 @@ int main(int argc, char** argv) {
             glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
             projection[1][1] *= -1;
 
-            auto trans_view_proj = glm::transpose(projection * view);
-            auto v_right = trans_view_proj[0];
-            auto v_up = trans_view_proj[1];
-            auto v_forward = trans_view_proj[2];
-            auto v_pos = trans_view_proj[3];
-            glm::vec4 camera_frustum[6] = {
-                v_pos + v_right,
-                v_pos - v_right,
-                v_pos + v_up,
-                v_pos - v_up,
-                v_forward,
-                v_pos - v_forward,
+            glm::mat4 frustum_view = glm::lookAt(glm::vec3(0.0f), glm::vec3(glm::cos(frustum_rotate), 0.0f, glm::sin(frustum_rotate)), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 frustum_projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 10.0f);
+            frustum_projection[1][1] *= -1;
+
+            auto view_proj = frustum_projection * frustum_view;
+            auto row0 = view_proj[0];
+            auto row1 = view_proj[1];
+            auto row2 = view_proj[2];
+            auto row3 = view_proj[3];
+
+            glm::vec4 test_frustum[6] = {
+                row3 + row0, // left
+                row3 - row0, // right
+                row3 + row1, // bottom
+                row3 - row1, // top
+                row3 + row2, // near
+                row3 - row2, // far
             };
+
+            auto inv_view_proj = glm::inverse(frustum_projection * frustum_view);
 
             PushConstantData push_constant_data {
                 model, view, projection,
+            };
+
+            FrustumPushConstantData frustum_constant_data {
+                .view_proj = projection * view,
+                .inv_view_proj = inv_view_proj,
             };
 
             vkw::barrier::ImageMemoryBarriers blur_vertical_barrier{};
@@ -931,6 +1120,22 @@ int main(int argc, char** argv) {
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline_layout, 0, merge_descriptor_sets.sets())
             .draw(3, 1)
+            .end_render_pass()
+            // debug frustum pass
+            .begin_render_pass(frustum_framebuffers[current_image_index], frustum_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, frustum_pipeline)
+            .push_constants(frustum_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumPushConstantData), &frustum_constant_data)
+            .bind_vertex_buffers(0, {vertex_buffer})
+            .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
+            .end_render_pass()
+            // debug bounding box pass
+            .begin_render_pass(bounding_box_framebuffers[current_image_index], bounding_box_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, bounding_box_pipeline)
+            .push_constants(bounding_box_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
+            .bind_vertex_buffers(0, {bounding_box_vertex_buffer, instance_buffer})
+            .bind_index_buffer(bounding_box_index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(bounding_box_mesh.indices().size()), vkw::size_u32(instance_data.size()))
             .end_render_pass()
             .end_record();
 

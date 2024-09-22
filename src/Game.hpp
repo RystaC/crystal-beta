@@ -63,7 +63,7 @@ class Game {
     void render_();
 
     // game states
-    float yaw_ = 0.0f, pitch_ = 0.0f;
+    float yaw_ = -90.0f, pitch_ = 0.0f;
     glm::vec3 camera_pos_;
     glm::vec3 camera_dir_;
     glm::vec3 camera_right_;

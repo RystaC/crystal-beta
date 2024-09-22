@@ -44,23 +44,33 @@ void Game::process_inputs_() {
     }
 
     if(curr_key_states_[SDL_SCANCODE_A]) {
-        camera_pos_ += 2.0f * camera_right_ * delta_time_;
+        camera_pos_ -= 2.0f * camera_right_ * delta_time_;
     }
     if(curr_key_states_[SDL_SCANCODE_D]) {
-        camera_pos_ -= 2.0f * camera_right_ * delta_time_;
+        camera_pos_ += 2.0f * camera_right_ * delta_time_;
+    }
+    if(curr_key_states_[SDL_SCANCODE_S]) {
+        camera_pos_ -= 2.0f * camera_dir_ * delta_time_;
     }
     if(curr_key_states_[SDL_SCANCODE_W]) {
         camera_pos_ += 2.0f * camera_dir_ * delta_time_;
     }
-    if(curr_key_states_[SDL_SCANCODE_S]) {
-        camera_pos_ -= 2.0f * camera_dir_ * delta_time_;
+    if(get_key_state_(SDL_SCANCODE_LSHIFT) == KeyState::NONE) {
+        if(curr_key_states_[SDL_SCANCODE_SPACE]) {
+            camera_pos_ += 2.0f * camera_up_ * delta_time_;
+        }
+    }
+    else if(get_key_state_(SDL_SCANCODE_LSHIFT) == KeyState::HOLDING) {
+        if(curr_key_states_[SDL_SCANCODE_SPACE]) {
+            camera_pos_ -= 2.0f * camera_up_ * delta_time_;
+        }
     }
 
     // mouse input
     constexpr float SENSITIVITY = 0.1f;
     if(is_mouse_relative_) {
         mouse_buttons_ = SDL_GetRelativeMouseState(&mouse_x_, &mouse_y_);
-        yaw_ -= mouse_x_ * SENSITIVITY;
+        yaw_ += mouse_x_ * SENSITIVITY;
         pitch_ -= mouse_y_ * SENSITIVITY;
         if(pitch_ > 89.0f) {
             pitch_ = 89.0f;
@@ -75,16 +85,18 @@ void Game::process_inputs_() {
 
     camera_dir_ = glm::normalize(
         glm::vec3(
-            glm::sin(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_)),
-            glm::sin(glm::radians(pitch_)),
-            glm::cos(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_))
+            glm::cos(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_)),
+            // for Vulkan coordinate system
+            -glm::sin(glm::radians(pitch_)),
+            // this camera assume direction points look at
+            -glm::sin(glm::radians(yaw_)) * glm::cos(glm::radians(pitch_))
         )
     );
 
-    auto look_up = glm::vec3(0.0f, 1.0f, 0.0f);
-    camera_right_ = glm::normalize(glm::cross(look_up, camera_dir_));
+    auto look_up = glm::vec3(0.0f, -1.0f, 0.0f);
+    camera_right_ = glm::normalize(glm::cross(camera_dir_, look_up));
 
-    camera_up_ = glm::cross(camera_dir_, camera_right_);
+    camera_up_ = glm::cross(camera_right_, camera_dir_);
 }
 
 void Game::update_game_() {
