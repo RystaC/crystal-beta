@@ -14,15 +14,15 @@ layout(push_constant) uniform PushConstants {
     mat4 model;
     mat4 view;
     mat4 projection;
-} push_constants;
+};
 
 out gl_PerVertex { vec4 gl_Position; };
 
 void main() {
     mat4 mat_instance = mat4(vec4(1.0f, 0.0f, 0.0f, 0.0f), vec4(0.0f, 1.0f, 0.0f, 0.0f), vec4(0.0f, 0.0f, 1.0f, 0.0f), vec4(translate_instance, 1.0f));
     // mat4 mat_instance = mat4(1.0f);
-    out_position = vec3(mat_instance * push_constants.model * vec4(position, 1.0f));
-    out_normal = vec3(mat_instance * push_constants.model * vec4(normal, 0.0f));
+    out_position = vec3(mat_instance * model * vec4(position, 1.0f));
+    out_normal = vec3(mat_instance * model * vec4(normal, 0.0f));
     out_color = color;
-    gl_Position = push_constants.projection * push_constants.view * mat_instance * push_constants.model * vec4(position, 1.0f);
+    gl_Position = projection * view * mat_instance * model * vec4(position, 1.0f);
 }

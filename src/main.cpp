@@ -9,7 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "App.hpp"
+#include "Game.hpp"
 #include "vkw/Instance.hpp"
 #include "vkw/Device.hpp"
 
@@ -33,12 +33,12 @@ struct LightsData {
 };
 
 struct InstanceBufferData {
-    glm::vec3 translate;
+    alignas(16) glm::vec3 translate;
 };
 
 int main(int argc, char** argv) {
-    auto app = std::make_unique<App>();
-    auto result = app->init(WINDOW_WIDTH, WINDOW_HEIGHT);
+    auto game = std::make_unique<Game>();
+    auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
     if(!result) {
         std::cerr << "[crystal-beta] ERROR: failed to initialize application. exit." << std::endl;
         std::exit(EXIT_FAILURE);
@@ -72,11 +72,11 @@ int main(int argc, char** argv) {
     auto instance = std::make_unique<vkw::Instance>();
     {
         // enum least required extensions
-        auto app_extensions = app->enum_extensions();
+        auto instance_extensions = game->enum_instance_extensions();
         // activate validation layer
-        auto app_layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
+        auto instance_layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
 
-        auto res = instance->init(app_extensions, app_layers);
+        auto res = instance->init(instance_extensions, instance_layers);
         if(res) {
             std::cerr << "instance initialization is succeeded." << std::endl;
         }
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto surface = instance->create_surface_SDL(app->window());
+    auto surface = instance->create_surface_SDL(game->window());
 
     std::cerr << std::endl << "enumerate physical devices..." << std::endl;
     auto physical_devices = instance->enum_physical_devices();
@@ -345,27 +345,30 @@ int main(int argc, char** argv) {
     auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv");
     auto compute_shader_module = device->create_shader_module("shaders/compute_test.comp.glsl.spirv");
 
-    auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
-    // auto mesh = meshes::Mesh::cube();
+    // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
+    auto mesh = meshes::Mesh::cube();
 
-    std::vector<InstanceBufferData> instance_data = {
-        { glm::vec3(2.0f, 2.0f, 2.0f) },
-        { glm::vec3(2.0f, 2.0f, -2.0f) },
-        { glm::vec3(2.0f, -2.0f, 2.0f) },
-        { glm::vec3(2.0f, -2.0f, -2.0f) },
-        { glm::vec3(-2.0f, 2.0f, 2.0f) },
-        { glm::vec3(-2.0f, 2.0f, -2.0f) },
-        { glm::vec3(-2.0f, -2.0f, 2.0f) },
-        { glm::vec3(-2.0f, -2.0f, -2.0f) },
-    };
+    std::vector<InstanceBufferData> instance_data{};
+
+    for(auto x = -8; x <= 8; x += 4) {
+        for(auto y = -8; y < 8; y += 4) {
+            for(auto z = -8; z <= 8; z += 4) {
+                instance_data.emplace_back(
+                    InstanceBufferData {
+                        glm::vec3((float)x, (float)y, (float)z),
+                    }
+                );
+            }
+        }
+    }
 
     std::vector<LightsData> light_uniform_buffer_data = {
         LightsData {
             .ambient = glm::vec3(0.2f),
             .lights = {
-                { .position = glm::vec3(-5.0f), .color = glm::vec3(1.0f, 0.0f, 0.0f) },
-                { .position = glm::vec3(5.0f), .color = glm::vec3(0.0f, 1.0f, 0.0f) },
-                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(0.0f, 0.0f, 1.0f) },
+                { .position = glm::vec3(-5.0f), .color = glm::vec3(1.0f) },
+                { .position = glm::vec3(5.0f), .color = glm::vec3(1.0f) },
+                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(1.0f) },
             },
         }
     };
@@ -496,7 +499,8 @@ int main(int argc, char** argv) {
     vkw::pipeline_layout::CreateInfo light_layout_info{};
     light_layout_info
     .add_descriptor_set_layout(light_attachment_descriptor_layout)
-    .add_descriptor_set_layout(light_uniform_descriptor_layout);
+    .add_descriptor_set_layout(light_uniform_descriptor_layout)
+    .add_push_constant_range(VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3));
 
     vkw::pipeline_layout::CreateInfo blur_vertical_layout_info{};
     blur_vertical_layout_info
@@ -799,7 +803,9 @@ int main(int argc, char** argv) {
 
     auto current_image_index = swapchain.next_image_index(fence);
 
-    app->main_loop(
+    float value_rotate = 0.0f;
+
+    game->main_loop(
         [&]() {
             VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
             std::vector<VkClearValue> clear_values = {
@@ -821,10 +827,29 @@ int main(int argc, char** argv) {
                 { .color = {0.0f, 0.0f, 0.0f, 1.0f} },
             };
 
-            glm::mat4 model= glm::rotate(glm::mat4(1.0f), glm::radians((float)app->ticks()), glm::vec3(1.0f));
-            glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            value_rotate += std::numbers::pi_v<float> * game->delta_time();
+
+            glm::mat4 model = glm::rotate(glm::mat4(1.0f), value_rotate, glm::vec3(1.0f));
+            auto camera_pos = game->camera_pos();
+            auto camera_dir = game->camera_dir();
+            auto camera_up = game->camera_up();
+            glm::mat4 view = glm::lookAt(camera_pos, camera_pos + camera_dir, camera_up);
             glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
             projection[1][1] *= -1;
+
+            auto trans_view_proj = glm::transpose(projection * view);
+            auto v_right = trans_view_proj[0];
+            auto v_up = trans_view_proj[1];
+            auto v_forward = trans_view_proj[2];
+            auto v_pos = trans_view_proj[3];
+            glm::vec4 camera_frustum[6] = {
+                v_pos + v_right,
+                v_pos - v_right,
+                v_pos + v_up,
+                v_pos - v_up,
+                v_forward,
+                v_pos - v_forward,
+            };
 
             PushConstantData push_constant_data {
                 model, view, projection,
@@ -870,6 +895,7 @@ int main(int argc, char** argv) {
             // deferred light path
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
+            .push_constants(light_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera_pos)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets.sets())
             .draw(3, 1)
             .end_render_pass()

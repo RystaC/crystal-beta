@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 project(crystal_beta)
 
@@ -56,7 +56,7 @@ foreach(shader ${shader_sources})
     add_custom_command(
         OUTPUT ${spirv}
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
-        COMMAND ${glslc} ${shader} -V -o ${spirv}
+        COMMAND ${glslc} ${shader} -V --target-env spirv1.3 -o ${spirv}
         DEPENDS ${shader}
     )
     list(APPEND spirv_binaries ${spirv})

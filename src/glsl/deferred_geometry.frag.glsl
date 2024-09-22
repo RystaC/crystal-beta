@@ -12,4 +12,5 @@ void main() {
     out_position = vec4(position, 1.0f);
     out_normal = vec4(normal, 1.0f);
     out_albedo = vec4((normal + 1.0f) / 2.0f, 1.0f);
+    // out_albedo = vec4(color.rgb, 1.0f);
 }

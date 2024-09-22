@@ -19,7 +19,9 @@ layout(set = 1, binding = 0) uniform LightsData {
     Light lights[MAX_LIGHTS];
 } lights_data;
 
-const vec3 camera_pos = vec3(0.0f, 0.0f, -5.0f);
+layout(push_constant) uniform PushConstants {
+    vec3 camera_pos;
+};
 
 void main() {
     vec3 position = subpassLoad(input_position).rgb;
@@ -31,10 +33,7 @@ void main() {
     vec3 V = normalize(camera_pos - position);
 
     vec3 spec = vec3(0.0f);
-    vec3 color = vec3(0.0f);
-
-    // ambient
-    color += lights_data.ambient;
+    vec3 color = lights_data.ambient;
 
     for(int i = 0; i < MAX_LIGHTS; ++i) {
         vec3 L = normalize(lights_data.lights[i].position - position);
@@ -49,5 +48,5 @@ void main() {
     }
 
     out_specular = vec4(clamp(spec, 0.0f, 1.0f), 1.0f);
-    out_color = vec4(clamp(color, 0.0f, 1.0f), 1.0f);
+    out_color = vec4(clamp(diffuse_color * color, 0.0f, 1.0f), 1.0f);
 }
