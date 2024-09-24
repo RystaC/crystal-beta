@@ -110,7 +110,7 @@ public:
     // dispatch commands
 
     [[nodiscard]]
-    auto& dispatch(uint32_t group_x, uint32_t group_y, uint32_t group_z) {
+    auto& dispatch(uint32_t group_x = 1, uint32_t group_y = 1, uint32_t group_z = 1) {
         vkCmdDispatch(command_buffer_, group_x, group_y, group_z);
         return *this;
     }

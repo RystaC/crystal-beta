@@ -18,8 +18,19 @@
 constexpr size_t WINDOW_WIDTH = 640;
 constexpr size_t WINDOW_HEIGHT = 480;
 
-struct PushConstantData {
+struct GeometryPushConstantData {
     glm::mat4 model, view, projection;
+};
+
+struct AABB {
+    alignas(16) glm::vec3 min;
+    alignas(16) glm::vec3 max;
+};
+
+struct CullingPushConstantData {
+    glm::vec4 frustum_planes[6];
+    glm::mat4 model;
+    AABB box;
 };
 
 struct FrustumPushConstantData {
@@ -398,11 +409,11 @@ int main(int argc, char** argv) {
     auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv");
     auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv");
     auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv");
-    auto compute_shader_module = device->create_shader_module("shaders/compute_test.comp.glsl.spirv");
     auto frustum_vertex_shader = device->create_shader_module("shaders/debug_frustum.vert.glsl.spirv");
     auto frustum_fragment_shader = device->create_shader_module("shaders/debug_frustum.frag.glsl.spirv");
     auto bounding_box_vertex_shader = device->create_shader_module("shaders/debug_bounding_box.vert.glsl.spirv");
     auto bounding_box_fragment_shader = device->create_shader_module("shaders/debug_bounding_box.frag.glsl.spirv");
+    auto instance_culling_shader = device->create_shader_module("shaders/frustum_culling_instance.comp.glsl.spirv");
 
     // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     auto mesh = meshes::Mesh::cube();
@@ -413,7 +424,7 @@ int main(int argc, char** argv) {
     std::vector<InstanceBufferData> instance_data{};
 
     for(auto x = -8; x <= 8; x += 4) {
-        for(auto y = -8; y < 8; y += 4) {
+        for(auto y = -8; y <= 8; y += 4) {
             for(auto z = -8; z <= 8; z += 4) {
                 instance_data.emplace_back(
                     InstanceBufferData {
@@ -449,52 +460,66 @@ int main(int argc, char** argv) {
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    auto instance_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
     auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     auto bounding_box_vertex_buffer = device->create_buffer_with_data(bounding_box_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
     auto bounding_box_index_buffer = device->create_buffer_with_data(bounding_box_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-    // storage buffer for compute shader test
-    std::vector<float> compute_buffer_data(128, 0.0f);
-    auto compute_buffer = device->create_buffer_with_data(compute_buffer_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    // atomic counter buffer
-    std::vector<uint32_t> atomic_counter_data(1, 0);
-    auto atomic_counter = device->create_buffer_with_data(atomic_counter_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    // indirect buffer for frustum culling
+    auto instance_in_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    std::vector<InstanceBufferData> instance_data_empty(instance_data.size());
+    auto instance_out_buffer = device->create_buffer_with_data(instance_data_empty, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+
+    std::vector<VkDrawIndexedIndirectCommand> indirect_data = {
+        { vkw::size_u32(mesh.indices().size()), 0, 0, 0, 0 },
+    };
+    auto indirect_buffer = device->create_buffer_with_data(indirect_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
 
     // deferred path set 0: g-buffer inputs
     vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
     light_attachment_layout_bindings
+    // g-buffer: position
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
+    // g-buffer: normal
     .add(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
+    // g-buffer: albedo
     .add(2, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // deferred path set 1: lights uniform buffer
     vkw::descriptor::DescriptorSetLayoutBindings light_uniform_layout_bindings(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     light_uniform_layout_bindings
+    // lights
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // vertical blur path set 0: input image of scene
     vkw::descriptor::DescriptorSetLayoutBindings blur_vertical_layout_bindings(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     blur_vertical_layout_bindings
+    // input texture
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // horizontal blur path set 0: input image of vertical blurred image
     vkw::descriptor::DescriptorSetLayoutBindings blur_horizontal_layout_bindings(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     blur_horizontal_layout_bindings
+    // input texture
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // merge path set 0: input images: diffuse image and blurred spacular image
     vkw::descriptor::DescriptorSetLayoutBindings merge_layout_bindings(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     merge_layout_bindings
+    // diffuse texture
     .add(0, 1, VK_SHADER_STAGE_FRAGMENT_BIT)
+    // specular texture
     .add(1, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    // compute shader test set 0: storage buffer
-    vkw::descriptor::DescriptorSetLayoutBindings compute_layout_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-    compute_layout_bindings
+    // frustum culling set 0: storage buffer
+    vkw::descriptor::DescriptorSetLayoutBindings instance_culling_layout_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    instance_culling_layout_bindings
+    // input instance data
     .add(0, 1, VK_SHADER_STAGE_COMPUTE_BIT)
-    .add(1, 1, VK_SHADER_STAGE_COMPUTE_BIT);
+    // output instance data
+    .add(1, 1, VK_SHADER_STAGE_COMPUTE_BIT)
+    // indirect buffer
+    .add(2, 1, VK_SHADER_STAGE_COMPUTE_BIT);
 
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
     auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
@@ -502,21 +527,21 @@ int main(int argc, char** argv) {
     auto blur_vertical_descriptor_layout = device->create_descriptor_set_layout(blur_vertical_layout_bindings);
     auto blur_horizontal_descriptor_layout = device->create_descriptor_set_layout(blur_horizontal_layout_bindings);
     auto merge_descriptor_layout = device->create_descriptor_set_layout(merge_layout_bindings);
-    auto compute_descriptor_layout = device->create_descriptor_set_layout(compute_layout_bindings);
+    auto instance_culling_descriptor_layout = device->create_descriptor_set_layout(instance_culling_layout_bindings);
 
     std::cerr << std::endl << "create descriptor pool..." << std::endl;
     auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings});
     auto blur_vertical_descriptor_pool = device->create_descriptor_pool({blur_vertical_layout_bindings});
     auto blur_horizontal_descriptor_pool = device->create_descriptor_pool({blur_horizontal_layout_bindings});
     auto merge_descriptor_pool = device->create_descriptor_pool({merge_layout_bindings});
-    auto compute_descriptor_pool = device->create_descriptor_pool({compute_layout_bindings});
+    auto instance_culling_descriptor_pool = device->create_descriptor_pool({instance_culling_layout_bindings});
 
     std::cerr << std::endl << "allocate descriptor sets..." << std::endl;
     auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout});
     auto blur_vertical_descriptor_sets = blur_vertical_descriptor_pool.allocate_descriptor_sets({blur_vertical_descriptor_layout});
     auto blur_horizontal_descriptor_sets = blur_horizontal_descriptor_pool.allocate_descriptor_sets({blur_horizontal_descriptor_layout});
     auto merge_descriptor_sets = merge_descriptor_pool.allocate_descriptor_sets({merge_descriptor_layout});
-    auto compute_descriptor_sets = compute_descriptor_pool.allocate_descriptor_sets({compute_descriptor_layout});
+    auto instance_culling_descriptor_sets = instance_culling_descriptor_pool.allocate_descriptor_sets({instance_culling_descriptor_layout});
 
     vkw::descriptor::ImageInfos light_image_infos{};
     light_image_infos
@@ -553,24 +578,25 @@ int main(int argc, char** argv) {
     merge_writes
     .add(merge_descriptor_sets[0], 0, 0, merge_image_infos);
 
-    vkw::descriptor::BufferInfos compute_buffer_info{};
-    compute_buffer_info
-    .add(compute_buffer, 0, sizeof(float) * compute_buffer_data.size())
-    .add(atomic_counter, 0, sizeof(uint32_t));
-    vkw::descriptor::WriteDescriptorSets compute_writes{};
-    compute_writes
-    .add(compute_descriptor_sets[0], 0, 0, compute_buffer_info);
+    vkw::descriptor::BufferInfos instance_culling_buffer_infos{};
+    instance_culling_buffer_infos
+    .add(instance_in_buffer, 0, sizeof(InstanceBufferData) * instance_data.size())
+    .add(instance_out_buffer, 0, sizeof(InstanceBufferData) * instance_data.size())
+    .add(indirect_buffer, 0, sizeof(VkDrawIndexedIndirectCommand));
+    vkw::descriptor::WriteDescriptorSets instance_culling_writes{};
+    instance_culling_writes
+    .add(instance_culling_descriptor_sets[0], 0, 0, instance_culling_buffer_infos);
 
     std::cerr << std::endl << "update descriptor sets..." << std::endl;
     device->update_descriptor_sets(light_writes);
     device->update_descriptor_sets(blur_vertical_writes);
     device->update_descriptor_sets(blur_horizontal_writes);
     device->update_descriptor_sets(merge_writes);
-    device->update_descriptor_sets(compute_writes);
+    device->update_descriptor_sets(instance_culling_writes);
 
     vkw::pipeline_layout::CreateInfo geometry_layout_info{};
     geometry_layout_info
-    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData));
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GeometryPushConstantData));
 
     vkw::pipeline_layout::CreateInfo light_layout_info{};
     light_layout_info
@@ -590,17 +616,18 @@ int main(int argc, char** argv) {
     merge_layout_info
     .add_descriptor_set_layout(merge_descriptor_layout);
 
-    vkw::pipeline_layout::CreateInfo compute_layout_info{};
-    compute_layout_info
-    .add_descriptor_set_layout(compute_descriptor_layout);
-
     vkw::pipeline_layout::CreateInfo frustum_layout_info{};
     frustum_layout_info
     .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumPushConstantData));
 
     vkw::pipeline_layout::CreateInfo bounding_box_layout_info{};
     bounding_box_layout_info
-    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData));
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GeometryPushConstantData));
+
+    vkw::pipeline_layout::CreateInfo instance_culling_layout_info{};
+    instance_culling_layout_info
+    .add_descriptor_set_layout(instance_culling_descriptor_layout)
+    .add_push_constant_range(VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullingPushConstantData));
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
@@ -608,9 +635,9 @@ int main(int argc, char** argv) {
     auto blur_vertical_pipeline_layout = device->create_pipeline_layout(blur_vertical_layout_info);
     auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info);
     auto merge_pipeline_layout = device->create_pipeline_layout(merge_layout_info);
-    auto compute_pipeline_layout = device->create_pipeline_layout(compute_layout_info);
     auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info);
     auto bounding_box_pipeline_layout = device->create_pipeline_layout(bounding_box_layout_info);
+    auto instance_culling_pipeline_layout = device->create_pipeline_layout(instance_culling_layout_info);
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -812,14 +839,6 @@ int main(int argc, char** argv) {
 
     auto merge_pipeline = device->create_pipeline(merge_pipeline_states, merge_pipeline_layout, merge_render_pass, 0);
 
-    // test compute shader pipeline
-    vkw::pipeline::ComputeShaderStage compute_shader_stage{};
-    compute_shader_stage
-    .compute_shader(compute_shader_module);
-    vkw::pipeline::ComputePipelineStates compute_pipeline_states(compute_shader_stage);
-
-    auto compute_pipeline = device->create_pipeline(compute_pipeline_states, compute_pipeline_layout);
-
     // debug frustum pipeline
     vkw::pipeline::GraphicsShaderStages frustum_shader_stages{};
     frustum_shader_stages
@@ -908,6 +927,14 @@ int main(int argc, char** argv) {
 
     auto bounding_box_pipeline = device->create_pipeline(bounding_box_pipeline_states, bounding_box_pipeline_layout, bounding_box_render_pass, 0);
 
+    vkw::pipeline::ComputeShaderStage instance_culling_shader_stage{};
+    instance_culling_shader_stage
+    .compute_shader(instance_culling_shader);
+
+    vkw::pipeline::ComputePipelineStates instance_culling_pipeline_states(instance_culling_shader_stage);
+
+    auto instance_culling_pipeline = device->create_pipeline(instance_culling_pipeline_states, instance_culling_pipeline_layout);
+
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
 
@@ -949,32 +976,6 @@ int main(int argc, char** argv) {
 
     command_buffer.reset(0);
     std::cerr << "done." << std::endl;
-
-    std::cerr << std::endl << "lauch compute shader..." << std::endl;
-    command_buffer.begin_record(0)
-    .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline)
-    .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline_layout, 0, compute_descriptor_sets.sets())
-    .dispatch(1, 1, 1)
-    .end_record();
-
-    vkw::queue::SubmitInfos compute_submit_info{};
-    compute_submit_info
-    .add(command_buffer);
-
-    main_queues[0].submit(compute_submit_info, fence);
-
-    fence.wait();
-    fence.reset();
-
-    command_buffer.reset(0);
-    std::cerr << "done." << std::endl;
-
-    device->copy_buffer_device_to_host(compute_buffer, compute_buffer_data);
-    device->copy_buffer_device_to_host(atomic_counter, atomic_counter_data);
-    for(size_t i = 0; i < compute_buffer_data.size(); ++i) {
-        std::cerr << "compute buffer [" << i << "] = " << compute_buffer_data[i] << std::endl;
-    }
-    std::cerr << "atomic counter = " << atomic_counter_data[0] << std::endl;
 
     auto current_image_index = swapchain.next_image_index(fence);
 
@@ -1018,24 +1019,29 @@ int main(int argc, char** argv) {
             glm::mat4 frustum_projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 10.0f);
             frustum_projection[1][1] *= -1;
 
-            auto view_proj = frustum_projection * frustum_view;
+            // why need to transpose?
+            auto view_proj = glm::transpose(frustum_projection * frustum_view);
             auto row0 = view_proj[0];
             auto row1 = view_proj[1];
             auto row2 = view_proj[2];
             auto row3 = view_proj[3];
 
-            glm::vec4 test_frustum[6] = {
-                row3 + row0, // left
-                row3 - row0, // right
-                row3 + row1, // bottom
-                row3 - row1, // top
-                row3 + row2, // near
-                row3 - row2, // far
-            };
-
             auto inv_view_proj = glm::inverse(frustum_projection * frustum_view);
 
-            PushConstantData push_constant_data {
+            CullingPushConstantData instance_culling_constant_data {
+                .frustum_planes = {
+                    row3 + row0, // left
+                    row3 - row0, // right
+                    row3 + row1, // bottom
+                    row3 - row1, // top
+                    row3 + row2, // near
+                    row3 - row2, // far
+                },
+                .model = model,
+                .box = { glm::vec3(-1.0f), glm::vec3(1.0f) },
+            };
+
+            GeometryPushConstantData geometry_constant_data {
                 model, view, projection,
             };
 
@@ -1043,6 +1049,17 @@ int main(int argc, char** argv) {
                 .view_proj = projection * view,
                 .inv_view_proj = inv_view_proj,
             };
+
+            vkw::barrier::BufferMemoryBarriers instance_culling_barrier{};
+            instance_culling_barrier
+            .add(
+                instance_out_buffer, 0, sizeof(InstanceBufferData) * instance_data.size(),
+                { VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT }
+            )
+            .add(
+                indirect_buffer, 0, sizeof(VkDrawIndexedIndirectCommand),
+                { VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT }
+            );
 
             vkw::barrier::ImageMemoryBarriers blur_vertical_barrier{};
             blur_vertical_barrier
@@ -1074,13 +1091,23 @@ int main(int argc, char** argv) {
             );
 
             command_buffer.begin_record(0)
+            // instance culling path
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline)
+            .push_constants(instance_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullingPushConstantData), &instance_culling_constant_data)
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline_layout, 0, instance_culling_descriptor_sets.sets())
+            .dispatch(vkw::size_u32(instance_data.size()))
+            // need barrier
+            .pipeline_barrier(
+                { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT }, 0,
+                std::nullopt, instance_culling_barrier, std::nullopt
+            )
             // deferred geometry path
             .begin_render_pass(deferred_framebuffer, deferred_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, geometry_pipeline)
-            .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
-            .bind_vertex_buffers(0, {vertex_buffer, instance_buffer})
+            .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GeometryPushConstantData), &geometry_constant_data)
+            .bind_vertex_buffers(0, {vertex_buffer, instance_out_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
-            .draw_indexed(vkw::size_u32(mesh.indices().size()), vkw::size_u32(instance_data.size()))
+            .draw_indexed_indirect(indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand))
             // deferred light path
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
@@ -1132,8 +1159,8 @@ int main(int argc, char** argv) {
             // debug bounding box pass
             .begin_render_pass(bounding_box_framebuffers[current_image_index], bounding_box_render_pass, render_area, {})
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, bounding_box_pipeline)
-            .push_constants(bounding_box_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &push_constant_data)
-            .bind_vertex_buffers(0, {bounding_box_vertex_buffer, instance_buffer})
+            .push_constants(bounding_box_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GeometryPushConstantData), &geometry_constant_data)
+            .bind_vertex_buffers(0, {bounding_box_vertex_buffer, instance_in_buffer})
             .bind_index_buffer(bounding_box_index_buffer, VK_INDEX_TYPE_UINT16)
             .draw_indexed(vkw::size_u32(bounding_box_mesh.indices().size()), vkw::size_u32(instance_data.size()))
             .end_render_pass()
