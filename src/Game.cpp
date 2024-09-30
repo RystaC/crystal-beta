@@ -21,6 +21,10 @@ bool Game::init(int window_width, int window_height) {
 
     curr_key_states_ = SDL_GetKeyboardState(nullptr);
 
+    // initialize ticks
+    using namespace std::chrono;
+    ticks_ = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+
     return true;
 }
 
@@ -103,11 +107,18 @@ void Game::update_game_() {
     // limit frame rate (ticks + [miliseconds])
     // while(!SDL_TICKS_PASSED(SDL_GetTicks64(), ticks_ + 16));
 
-    // TODO: use std::chrono timer. can use microseconds resolution timer. (clang, VC++: nanoseconds, GCC: microseconds)
+    // resolution: miliseconds
+    // auto current_ticks = SDL_GetTicks64();
+    // auto delta_ticks = current_ticks - ticks_;
+    // delta_time_ = delta_ticks / 1000.0f;
+    // ticks_ = current_ticks;
 
-    auto current_ticks = SDL_GetTicks64();
+    // resolution: microseconds (nanoseconds can be used. but it is too fine)
+    using namespace std::chrono;
+    auto current_ticks = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
     auto delta_ticks = current_ticks - ticks_;
-    delta_time_ = delta_ticks / 1000.0f;
+    // 1 second = 10^6 microseconds
+    delta_time_ = delta_ticks / (1000.0f * 1000.0f);
     ticks_ = current_ticks;
 
     if(delta_time_ > 0.05f) {

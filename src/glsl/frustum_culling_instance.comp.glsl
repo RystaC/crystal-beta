@@ -38,7 +38,7 @@ layout(std430, set = 0, binding = 2) buffer writeonly IndirectBuffer {
     DrawIndexedIndirectBuffer indirect_buffer;
 };
 
-AABB transform_aabb(AABB src_box, mat4 transform) {
+AABB transform_aabb(const in AABB src_box, const in mat4 transform) {
     vec3 center = (src_box.min + src_box.max) / 2.0f;
 
     vec3 right = vec3(src_box.max.x - center.x, 0.0f, 0.0f);
@@ -61,7 +61,7 @@ AABB transform_aabb(AABB src_box, mat4 transform) {
     return AABB(new_box_min, new_box_max);
 }
 
-bool is_in_frustum(AABB box) {
+bool is_in_frustum(const in AABB box) {
     for(int i = 0; i < 6; ++i) {
         int r = 0;
         r += (dot(planes[i], vec4(box.min.x, box.min.y, box.min.z, 1.0f)) < 0.0f) ? 1 : 0;
@@ -80,9 +80,9 @@ bool is_in_frustum(AABB box) {
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
-    uint id = gl_GlobalInvocationID.x;
-    if(id >= instance_in.length()) return;
-    if(id == 0) {
+    uint tid = gl_GlobalInvocationID.x;
+    if(tid >= instance_in.length()) return;
+    if(tid == 0) {
         // reset indirect buffer (keep index count)
         indirect_buffer = DrawIndexedIndirectBuffer(indirect_buffer.index_count, 0, 0, 0, 0);
     }
@@ -93,7 +93,7 @@ void main() {
         vec4(1.0f, 0.0f, 0.0f, 0.0f),
         vec4(0.0f, 1.0f, 0.0f, 0.0f),
         vec4(0.0f, 0.0f, 1.0f, 0.0f),
-        vec4(instance_in[id].translate, 1.0f)
+        vec4(instance_in[tid].translate, 1.0f)
     );
 
     mat4 transform = instance_transform * model;
@@ -102,6 +102,6 @@ void main() {
     
     if(is_in_frustum(instance_box)) {
         uint index = atomicAdd(indirect_buffer.instance_count, 1);
-        instance_out[index] = instance_in[id];
+        instance_out[index] = instance_in[tid];
     }
 }

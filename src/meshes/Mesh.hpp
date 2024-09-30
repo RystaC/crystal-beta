@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <iostream>
 #include <vector>
 
 #include <cmath>
@@ -27,7 +28,18 @@ class Mesh {
 
 public:
     static Mesh load(const std::filesystem::path& path) {
+        auto extension = path.extension();
 
+        if(extension == ".obj") {
+            // load as wavefront obj
+        }
+        else if(extension == ".pmx") {
+            // load as PMX model
+        }
+        else {
+            std::cerr << "[Mesh::load] ERROR: unexpected file format: " << path << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
     }
 
     static Mesh rect();

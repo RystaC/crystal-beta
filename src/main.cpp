@@ -15,8 +15,8 @@
 
 #include "meshes/Mesh.hpp"
 
-constexpr size_t WINDOW_WIDTH = 640;
-constexpr size_t WINDOW_HEIGHT = 480;
+constexpr size_t WINDOW_WIDTH = 1280;
+constexpr size_t WINDOW_HEIGHT = 720;
 
 struct GeometryPushConstantData {
     glm::mat4 model, view, projection;
@@ -334,7 +334,7 @@ int main(int argc, char** argv) {
         VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
     );
 
     vkw::render_pass::AttachmentReferences frustum_attachment_ref{};
@@ -353,7 +353,7 @@ int main(int argc, char** argv) {
         VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
         VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        {VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
     );
 
     vkw::render_pass::AttachmentReferences bounding_box_attachment_ref{};
@@ -439,21 +439,21 @@ int main(int argc, char** argv) {
         LightsData {
             .ambient = glm::vec3(0.2f),
             .lights = {
-                { .position = glm::vec3(0.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(5.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, 5.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(5.0f, 5.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, 0.0f, 5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(5.0f, 0.0f, 5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, 5.0f, 5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(5.0f, 5.0f, 5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(-5.0f, 0.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, -5.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(-5.0f, -5.0f, 0.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, 0.0f, -5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(-5.0f, 0.0f, -5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(0.0f, -5.0f, -5.0f), .color = glm::vec3(0.5f) },
-                { .position = glm::vec3(-5.0f, -5.0f, -5.0f), .color = glm::vec3(0.5f) },
+                { .position = glm::vec3(0.0f, 0.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(15.0f, 0.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, 15.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(15.0f, 15.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, 0.0f, 15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(15.0f, 0.0f, 15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, 15.0f, 15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(15.0f, 15.0f, 15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(-15.0f, 0.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, -15.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(-15.0f, -15.0f, 0.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, 0.0f, -15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(-15.0f, 0.0f, -15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(0.0f, -15.0f, -15.0f), .color = glm::vec3(0.2f) },
+                { .position = glm::vec3(-15.0f, -15.0f, -15.0f), .color = glm::vec3(0.2f) },
             },
         }
     };

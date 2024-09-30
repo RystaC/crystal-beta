@@ -17,7 +17,7 @@ class Game {
     SDL_Window* window_;
     int window_width_, window_height_;
     SDL_Event event_;
-    uint64_t ticks_;
+    int64_t ticks_;
     float delta_time_;
     bool quit_;
 
