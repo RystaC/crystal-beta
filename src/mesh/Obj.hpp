@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-namespace meshes {
+namespace mesh {
 
 class Obj {
 

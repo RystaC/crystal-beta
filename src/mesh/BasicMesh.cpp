@@ -1,8 +1,8 @@
-#include "Mesh.hpp"
+#include "BasicMesh.hpp"
 
-namespace meshes {
+namespace mesh {
 
-Mesh Mesh::rect() {
+BasicMesh BasicMesh::rect() {
     std::vector<VertexData> vertices = {
         // z-
         { glm::vec3(-1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f) },
@@ -18,7 +18,7 @@ Mesh Mesh::rect() {
     return { std::move(vertices), std::move(indices) };
 }
 
-Mesh Mesh::cube() {
+BasicMesh BasicMesh::cube() {
     std::vector<VertexData> vertices = {
         // x+
         { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
@@ -75,7 +75,7 @@ Mesh Mesh::cube() {
     return { std::move(vertices), std::move(indices) };
 }
 
-Mesh Mesh::sphere(uint32_t row, uint32_t column, float radius) {
+BasicMesh BasicMesh::sphere(uint32_t row, uint32_t column, float radius) {
     constexpr float PI = 3.14159265359f;
 
     std::vector<VertexData> vertices{};
@@ -113,7 +113,7 @@ Mesh Mesh::sphere(uint32_t row, uint32_t column, float radius) {
     return { std::move(vertices), std::move(indices) };
 }
 
-Mesh Mesh::torus(uint32_t row, uint32_t column, float inner_radius, float outer_radius) {
+BasicMesh BasicMesh::torus(uint32_t row, uint32_t column, float inner_radius, float outer_radius) {
     constexpr float PI = 3.14159265359f;
 
     std::vector<VertexData> vertices{};
@@ -151,7 +151,7 @@ Mesh Mesh::torus(uint32_t row, uint32_t column, float inner_radius, float outer_
     return { std::move(vertices), std::move(indices) };
 }
 
-Mesh Mesh::frame() {
+BasicMesh BasicMesh::frame() {
     std::vector<VertexData> vertices = {
         { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
         { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },

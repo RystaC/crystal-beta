@@ -1,6 +1,6 @@
 #pragma once
 
-namespace meshes {
+namespace mesh {
 
 class PMX {
 

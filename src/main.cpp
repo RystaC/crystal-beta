@@ -13,7 +13,7 @@
 #include "vkw/Instance.hpp"
 #include "vkw/Device.hpp"
 
-#include "meshes/Mesh.hpp"
+#include "mesh/BasicMesh.hpp"
 
 constexpr size_t WINDOW_WIDTH = 1280;
 constexpr size_t WINDOW_HEIGHT = 720;
@@ -416,10 +416,10 @@ int main(int argc, char** argv) {
     auto instance_culling_shader = device->create_shader_module("shaders/frustum_culling_instance.comp.glsl.spirv");
 
     // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
-    auto mesh = meshes::Mesh::cube();
+    auto mesh = mesh::BasicMesh::cube();
 
     // assume target mesh is same size cube. So no need to calculate bounding box.
-    auto bounding_box_mesh = meshes::Mesh::frame();
+    auto bounding_box_mesh = mesh::BasicMesh::frame();
 
     std::vector<InstanceBufferData> instance_data{};
 
@@ -647,13 +647,13 @@ int main(int argc, char** argv) {
     .fragment_shader(geometry_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions geometry_input_bindings{};
     geometry_input_bindings
-    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(0, sizeof(mesh::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
     .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
     vkw::pipeline::VertexInputAttributeDescriptions geometry_input_attributes{};
     geometry_input_attributes
-    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
-    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
-    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexData, color))
     .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
     vkw::pipeline::VertexInputState geometry_vertex_input_state(geometry_input_bindings, geometry_input_attributes);
     vkw::pipeline::InputAssemblyState geometry_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -846,12 +846,12 @@ int main(int argc, char** argv) {
     .fragment_shader(frustum_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions frustum_vertex_bindings{};
     frustum_vertex_bindings
-    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX);
+    .add(0, sizeof(mesh::VertexData), VK_VERTEX_INPUT_RATE_VERTEX);
     vkw::pipeline::VertexInputAttributeDescriptions frustum_vertex_attributes{};
     frustum_vertex_attributes
-    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
-    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
-    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color));
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexData, color));
     vkw::pipeline::VertexInputState frustum_vertex_input_state(frustum_vertex_bindings, frustum_vertex_attributes);
     vkw::pipeline::InputAssemblyState frustum_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     vkw::pipeline::ViewportState frustum_viewport_state(
@@ -889,13 +889,13 @@ int main(int argc, char** argv) {
     .fragment_shader(bounding_box_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions bounding_box_vertex_bindings{};
     bounding_box_vertex_bindings
-    .add(0, sizeof(meshes::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(0, sizeof(mesh::VertexData), VK_VERTEX_INPUT_RATE_VERTEX)
     .add(1, sizeof(InstanceBufferData), VK_VERTEX_INPUT_RATE_INSTANCE);
     vkw::pipeline::VertexInputAttributeDescriptions bounding_box_vertex_attributes{};
     bounding_box_vertex_attributes
-    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, position))
-    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(meshes::VertexData, normal))
-    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(meshes::VertexData, color))
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexData, normal))
+    .add(2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexData, color))
     .add(3, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceBufferData, translate));
     vkw::pipeline::VertexInputState bounding_box_vertex_input_state(bounding_box_vertex_bindings, bounding_box_vertex_attributes);
     vkw::pipeline::InputAssemblyState bounding_box_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
