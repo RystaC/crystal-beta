@@ -6,10 +6,10 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Image final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkImage image_;
     VkDeviceMemory memory_;
     VkFormat format_;
@@ -18,7 +18,7 @@ public:
     using object_type = VkImage;
 
     Image() noexcept {}
-    Image(std::shared_ptr<objects::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
+    Image(std::shared_ptr<object::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
     ~Image() noexcept {
         if(device_) {
             vkFreeMemory(*device_, memory_, nullptr);
@@ -32,7 +32,7 @@ public:
 
     operator VkImage() const noexcept { return image_; }
 
-    ImageView create_image_view(VkImageAspectFlags aspect) {
+    Result<ImageView> create_image_view(VkImageAspectFlags aspect) {
         VkImageViewCreateInfo view_info {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = image_,
@@ -54,9 +54,9 @@ public:
         };
 
         VkImageView image_view{};
-        vkCreateImageView(*device_, &view_info, nullptr, &image_view);
+        auto result = vkCreateImageView(*device_, &view_info, nullptr, &image_view);
 
-        return ImageView(device_, std::move(image_view));
+        return Result(ImageView(device_, std::move(image_view)), result);
     }
 };
 

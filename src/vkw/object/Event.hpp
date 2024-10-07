@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Event final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkEvent event_;
 
 public:
     using object_type = VkEvent;
 
     Event() noexcept {}
-    Event(std::shared_ptr<objects::Device> device, VkEvent&& event) noexcept : device_(device), event_(event) {}
+    Event(std::shared_ptr<object::Device> device, VkEvent&& event) noexcept : device_(device), event_(event) {}
     ~Event() noexcept {
         if(device_) vkDestroyEvent(*device_, event_, nullptr);
     }

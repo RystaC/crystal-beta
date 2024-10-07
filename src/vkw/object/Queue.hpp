@@ -5,7 +5,7 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Queue final {
     VkQueue queue_;

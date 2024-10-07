@@ -13,17 +13,17 @@ class SubmitInfos;
 
 }
 
-namespace objects {
+namespace object {
 
 class CommandBuffers final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     const VkCommandPool& command_pool_;
     std::vector<VkCommandBuffer> command_buffers_;
 
 public:
     friend queue::SubmitInfos;
 
-    CommandBuffers(std::shared_ptr<objects::Device> device, const VkCommandPool& command_pool, std::vector<VkCommandBuffer>&& command_buffers) noexcept : device_(device), command_pool_(command_pool), command_buffers_(command_buffers) {}
+    CommandBuffers(std::shared_ptr<object::Device> device, const VkCommandPool& command_pool, std::vector<VkCommandBuffer>&& command_buffers) noexcept : device_(device), command_pool_(command_pool), command_buffers_(command_buffers) {}
     ~CommandBuffers() noexcept {
         if(device_) vkFreeCommandBuffers(*device_, command_pool_, size_u32(command_buffers_.size()), command_buffers_.data());
     }

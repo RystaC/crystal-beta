@@ -6,17 +6,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Framebuffer final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkFramebuffer framebuffer_;
 
 public:
     using object_type = VkFramebuffer;
 
     Framebuffer() noexcept {}
-    Framebuffer(std::shared_ptr<objects::Device> device, VkFramebuffer&& framebuffer) noexcept : device_(device), framebuffer_(framebuffer) {}
+    Framebuffer(std::shared_ptr<object::Device> device, VkFramebuffer&& framebuffer) noexcept : device_(device), framebuffer_(framebuffer) {}
     ~Framebuffer() noexcept {
         if(device_) vkDestroyFramebuffer(*device_, framebuffer_, nullptr);
     }

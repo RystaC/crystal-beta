@@ -2,7 +2,9 @@
 
 namespace vkw {
 
-bool Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+Result<Instance> Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+    auto instance = Instance();
+
     VkApplicationInfo application_info {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "crystal-beta demo",
@@ -21,33 +23,33 @@ bool Instance::init(const std::vector<const char*>& extensions, const std::vecto
         .ppEnabledExtensionNames = extensions.data(),
     };
 
-    VkInstance instance{};
-    CHECK_VK_RESULT(vkCreateInstance(&instance_info, nullptr, &instance), return false;);
+    VkInstance instance_entity{};
+    auto result = vkCreateInstance(&instance_info, nullptr, &instance_entity);
 
-    instance_ = std::make_shared<objects::Instance>(std::move(instance));
+    instance.instance_ = std::make_shared<object::Instance>(std::move(instance_entity));
 
-    return true;
+    return Result(Instance(std::move(instance)), result);
 }
 
-std::vector<objects::PhysicalDevice> Instance::enum_physical_devices() const {
+std::vector<object::PhysicalDevice> Instance::enum_physical_devices() const {
     uint32_t device_count{};
 
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, nullptr), return {};);
     std::vector<VkPhysicalDevice> devices(device_count);
     CHECK_VK_RESULT(vkEnumeratePhysicalDevices(*instance_, &device_count, devices.data()), return {};);
 
-    std::vector<objects::PhysicalDevice> device_wrappers(devices.size());
+    std::vector<object::PhysicalDevice> device_wrappers(devices.size());
 
-    std::transform(devices.begin(), devices.end(), device_wrappers.begin(), [](auto& d) { return objects::PhysicalDevice(std::move(d)); });
+    std::transform(devices.begin(), devices.end(), device_wrappers.begin(), [](auto& d) { return object::PhysicalDevice(std::move(d)); });
 
     return device_wrappers;
 }
 
-objects::Surface Instance::create_surface_SDL(SDL_Window* window) const {
+Result<object::Surface> Instance::create_surface_SDL(SDL_Window* window) const {
     VkSurfaceKHR surface{};
-    auto result = SDL_Vulkan_CreateSurface(window, *instance_, &surface);
+    auto result = SDL_Vulkan_CreateSurface(window, *instance_, &surface) ? VK_SUCCESS : VK_ERROR_INITIALIZATION_FAILED;
 
-    return objects::Surface(instance_, std::move(surface));
+    return Result(object::Surface(instance_, std::move(surface)), result);
 }
 
 }

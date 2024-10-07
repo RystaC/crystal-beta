@@ -5,34 +5,13 @@
 
 namespace vkw {
 
-struct DrawIndirectBufferData {
-    uint32_t group_count_x;
-    uint32_t group_count_y;
-    uint32_t group_count_z;
-};
-
-struct DispatchIndirectBufferData {
-    uint32_t vertex_count;
-    uint32_t instance_count;
-    uint32_t first_vertex;
-    uint32_t first_instance;
-};
-
-struct DrawIndexedIndirectBufferData {
-    uint32_t index_count;
-    uint32_t instance_count;
-    uint32_t first_index;
-    int32_t vertex_offset;
-    uint32_t first_instance;
-};
-
 class Device;
 
-namespace objects {
+namespace object {
 
 template<typename T>
 class Buffer final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkBuffer buffer_;
     VkDeviceMemory memory_;
 
@@ -43,7 +22,7 @@ public:
     friend vkw::Device;
 
     Buffer() noexcept {}
-    Buffer(std::shared_ptr<objects::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
+    Buffer(std::shared_ptr<object::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
     ~Buffer() noexcept {
         if(device_) {
             vkFreeMemory(*device_, memory_, nullptr);

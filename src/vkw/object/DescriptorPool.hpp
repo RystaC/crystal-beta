@@ -7,17 +7,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class DescriptorPool final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkDescriptorPool pool_;
 
 public:
     using object_type = VkDescriptorPool;
 
     DescriptorPool() noexcept {}
-    DescriptorPool(std::shared_ptr<objects::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
+    DescriptorPool(std::shared_ptr<object::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~DescriptorPool() noexcept {
         if(device_) vkDestroyDescriptorPool(*device_, pool_, nullptr);
     }
@@ -28,7 +28,7 @@ public:
 
     operator VkDescriptorPool() const noexcept { return pool_; }
 
-    DescriptorSets allocate_descriptor_sets(const std::vector<std::pair<VkDescriptorSetLayout, VkDescriptorType>>& layouts) {
+    Result<DescriptorSets> allocate_descriptor_sets(const std::vector<std::pair<VkDescriptorSetLayout, VkDescriptorType>>& layouts) {
         // TODO: fix fumbled algorithm
         std::vector<VkDescriptorSetLayout> layouts_l(layouts.size());
         std::vector<VkDescriptorType> layouts_t(layouts.size());
@@ -44,9 +44,9 @@ public:
         };
 
         std::vector<VkDescriptorSet> sets(layouts.size());
-        vkAllocateDescriptorSets(*device_, &allocate_info, sets.data());
+        auto result = vkAllocateDescriptorSets(*device_, &allocate_info, sets.data());
 
-        return DescriptorSets(device_, pool_, std::move(sets), std::move(layouts_t));
+        return Result(DescriptorSets(device_, pool_, std::move(sets), std::move(layouts_t)), result);
     }
 };
 

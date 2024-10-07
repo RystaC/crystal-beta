@@ -5,22 +5,22 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class DescriptorPool;
 
 class DescriptorSetLayout final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkDescriptorSetLayout layout_;
     VkDescriptorType type_;
 
 public:
     using object_type = VkDescriptorSetLayout;
 
-    friend vkw::objects::DescriptorPool;
+    friend vkw::object::DescriptorPool;
 
     DescriptorSetLayout() noexcept {}
-    DescriptorSetLayout(std::shared_ptr<objects::Device> device, VkDescriptorSetLayout&& layout, VkDescriptorType type) noexcept : device_(device), layout_(layout), type_(type) {}
+    DescriptorSetLayout(std::shared_ptr<object::Device> device, VkDescriptorSetLayout&& layout, VkDescriptorType type) noexcept : device_(device), layout_(layout), type_(type) {}
     ~DescriptorSetLayout() noexcept {
         if(device_) vkDestroyDescriptorSetLayout(*device_, layout_, nullptr);
     }

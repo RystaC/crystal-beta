@@ -1,17 +1,17 @@
 #pragma once
 
 #include "common/common.hpp"
-#include "objects/Surface.hpp"
-#include "objects/PhysicalDevice.hpp"
+#include "object/Surface.hpp"
+#include "object/PhysicalDevice.hpp"
 
 namespace vkw {
 
 class Instance {
-    std::shared_ptr<objects::Instance> instance_;
+    std::shared_ptr<object::Instance> instance_;
 
-public:
     Instance() noexcept {}
 
+public:
     static uint32_t version() {
         uint32_t version{};
 
@@ -38,11 +38,11 @@ public:
         return extensions;
     }
 
-    bool init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+    static Result<Instance> init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
 
-    std::vector<objects::PhysicalDevice> enum_physical_devices() const;
+    std::vector<object::PhysicalDevice> enum_physical_devices() const;
 
-    objects::Surface create_surface_SDL(SDL_Window* window) const;
+    Result<object::Surface> create_surface_SDL(SDL_Window* window) const;
 };
 
 }

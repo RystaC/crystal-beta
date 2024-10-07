@@ -4,7 +4,7 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Instance final {
     VkInstance instance_;

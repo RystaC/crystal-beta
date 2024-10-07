@@ -85,24 +85,13 @@ int main(int argc, char** argv) {
 
     std::cerr << std::endl;
 
-    auto instance = std::make_unique<vkw::Instance>();
-    {
-        // enum least required extensions
-        auto instance_extensions = game->enum_instance_extensions();
-        // activate validation layer
-        auto instance_layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
+    // enum least required extensions
+    auto desired_instance_extensions = game->enum_instance_extensions();
+    // activate validation layer
+    auto desired_instance_layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
+    auto instance = std::make_unique<vkw::Instance>(vkw::Instance::init(desired_instance_extensions, desired_instance_layers).unwrap());
 
-        auto res = instance->init(instance_extensions, instance_layers);
-        if(res) {
-            std::cerr << "instance initialization is succeeded." << std::endl;
-        }
-        else {
-            std::cerr << "instance initialization is failed. exit." << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-    }
-
-    auto surface = instance->create_surface_SDL(game->window());
+    auto surface = instance->create_surface_SDL(game->window()).unwrap();
 
     std::cerr << std::endl << "enumerate physical devices..." << std::endl;
     auto physical_devices = instance->enum_physical_devices();
@@ -135,53 +124,45 @@ int main(int argc, char** argv) {
     std::cerr << std::endl;
 
     auto queue_family_index = physical_devices[0].find_queue_family(VK_QUEUE_GRAPHICS_BIT);
-    auto device = std::make_unique<vkw::Device>(physical_devices[0]);
-    {
-        vkw::queue::CreateInfos queue_create_infos{};
-        queue_create_infos.add(queue_family_index, {0.0f});
 
-        std::vector<const char*> extensions = { "VK_KHR_swapchain" };
-        std::vector<const char*> layers = { "VK_LAYER_KHRONOS_validation" };
+    vkw::queue::CreateInfos queue_create_infos{};
+    queue_create_infos.add(queue_family_index, {0.0f});
 
-        auto res = device->init(queue_create_infos, extensions, layers);
-        if(res) {
-            std::cerr << "device initialization is succeeded." << std::endl;
-        }
-        else {
-            std::cerr << "device initialization is failed. exit." << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-    }
+    std::vector<const char*> desired_device_extensions = { "VK_KHR_swapchain" };
+    std::vector<const char*> desired_device_layers = { "VK_LAYER_KHRONOS_validation" };
+
+    auto device = std::make_unique<vkw::Device>(vkw::Device::init(physical_devices[0], queue_create_infos, desired_device_extensions, desired_device_layers).unwrap());
+
 
     std::cerr << std::endl << "create device queue for graphics..." << std::endl;
     auto main_queues = device->create_queues(queue_family_index);
     std::cerr << "queue family index = " << main_queues[0].family_index() << ", size = " << main_queues.size() << std::endl;
 
     std::cerr << std::endl << "create swapchain..." << std::endl;
-    auto swapchain = device->create_swapchain(surface, queue_family_index, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, {WINDOW_WIDTH, WINDOW_HEIGHT});
+    auto swapchain = device->create_swapchain(surface, queue_family_index, {VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR}, VK_PRESENT_MODE_FIFO_KHR, {WINDOW_WIDTH, WINDOW_HEIGHT}).unwrap();
 
     std::cerr << std::endl << "create images..." << std::endl;
     // images for rendering
-    auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT);
-    auto position_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    auto position_buffer_view = position_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
-    auto normal_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    auto normal_buffer_view = normal_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
-    auto albedo_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    auto albedo_buffer_view = albedo_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
+    auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT).unwrap();
+    auto position_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
+    auto position_buffer_view = position_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
+    auto normal_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
+    auto normal_buffer_view = normal_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
+    auto albedo_buffer = device->create_image(swapchain.extent(), VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
+    auto albedo_buffer_view = albedo_buffer.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
 
-    auto blur_vertical_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    auto blur_vertical_image_view = blur_vertical_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
-    auto blur_horizontal_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    auto blur_horizontal_image_view = blur_horizontal_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto blur_vertical_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT).unwrap();
+    auto blur_vertical_image_view = blur_vertical_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
+    auto blur_horizontal_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT).unwrap();
+    auto blur_horizontal_image_view = blur_horizontal_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
 
-    auto diffuse_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    auto diffuse_image_view = diffuse_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
-    auto specular_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    auto specular_image_view = specular_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT);
+    auto diffuse_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT).unwrap();
+    auto diffuse_image_view = diffuse_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
+    auto specular_image = device->create_image(swapchain.extent(), VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT).unwrap();
+    auto specular_image_view = specular_image.create_image_view(VK_IMAGE_ASPECT_COLOR_BIT).unwrap();
 
-    auto sampler = device->create_sampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    auto sampler = device->create_sampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE).unwrap();
 
     vkw::render_pass::AttachmentDescriptions deferred_attachment_descs{};
     deferred_attachment_descs
@@ -366,12 +347,12 @@ int main(int argc, char** argv) {
     .end();
 
     std::cerr << std::endl << "create render pass..." << std::endl;
-    auto deferred_render_pass = device->create_render_pass(deferred_attachment_descs, deferred_subpass_descs, deferred_pass_depends);
-    auto blur_vertical_render_pass = device->create_render_pass(blur_vertical_attachment, blur_vertical_subpass);
-    auto blur_horizontal_render_pass = device->create_render_pass(blur_horizontal_attachment, blur_horizontal_subpass);
-    auto merge_render_pass = device->create_render_pass(merge_attachment, merge_subpass);
-    auto frustum_render_pass = device->create_render_pass(frustum_attachment, frustum_subpass);
-    auto bounding_box_render_pass = device->create_render_pass(bounding_box_attachment, bounding_box_subpass);
+    auto deferred_render_pass = device->create_render_pass(deferred_attachment_descs, deferred_subpass_descs, deferred_pass_depends).unwrap();
+    auto blur_vertical_render_pass = device->create_render_pass(blur_vertical_attachment, blur_vertical_subpass).unwrap();
+    auto blur_horizontal_render_pass = device->create_render_pass(blur_horizontal_attachment, blur_horizontal_subpass).unwrap();
+    auto merge_render_pass = device->create_render_pass(merge_attachment, merge_subpass).unwrap();
+    auto frustum_render_pass = device->create_render_pass(frustum_attachment, frustum_subpass).unwrap();
+    auto bounding_box_render_pass = device->create_render_pass(bounding_box_attachment, bounding_box_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     auto deferred_framebuffer = device->create_framebuffer(
@@ -382,38 +363,38 @@ int main(int argc, char** argv) {
             diffuse_image_view,
         },
         swapchain.extent()
-    );
+    ).unwrap();
 
-    auto blur_vertical_framebuffer = device->create_framebuffer(blur_vertical_render_pass, {blur_horizontal_image_view}, swapchain.extent());
-    auto blur_horizontal_framebuffer = device->create_framebuffer(blur_horizontal_render_pass, {specular_image_view}, swapchain.extent());
+    auto blur_vertical_framebuffer = device->create_framebuffer(blur_vertical_render_pass, {blur_horizontal_image_view}, swapchain.extent()).unwrap();
+    auto blur_horizontal_framebuffer = device->create_framebuffer(blur_horizontal_render_pass, {specular_image_view}, swapchain.extent()).unwrap();
 
-    std::vector<vkw::objects::Framebuffer> merge_framebuffers(swapchain.size());
+    std::vector<vkw::object::Framebuffer> merge_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
-        merge_framebuffers[i] = device->create_framebuffer(merge_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+        merge_framebuffers[i] = device->create_framebuffer(merge_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
-    std::vector<vkw::objects::Framebuffer> frustum_framebuffers(swapchain.size());
+    std::vector<vkw::object::Framebuffer> frustum_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
-        frustum_framebuffers[i] = device->create_framebuffer(frustum_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+        frustum_framebuffers[i] = device->create_framebuffer(frustum_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
-    std::vector<vkw::objects::Framebuffer> bounding_box_framebuffers(swapchain.size());
+    std::vector<vkw::object::Framebuffer> bounding_box_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
-        bounding_box_framebuffers[i] = device->create_framebuffer(bounding_box_render_pass, {swapchain.image_view(i)}, swapchain.extent());
+        bounding_box_framebuffers[i] = device->create_framebuffer(bounding_box_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv");
-    auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv");
-    auto plane_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv");
-    auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv");
-    auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv");
-    auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv");
-    auto frustum_vertex_shader = device->create_shader_module("shaders/debug_frustum.vert.glsl.spirv");
-    auto frustum_fragment_shader = device->create_shader_module("shaders/debug_frustum.frag.glsl.spirv");
-    auto bounding_box_vertex_shader = device->create_shader_module("shaders/debug_bounding_box.vert.glsl.spirv");
-    auto bounding_box_fragment_shader = device->create_shader_module("shaders/debug_bounding_box.frag.glsl.spirv");
-    auto instance_culling_shader = device->create_shader_module("shaders/frustum_culling_instance.comp.glsl.spirv");
+    auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv").unwrap();
+    auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv").unwrap();
+    auto plane_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv").unwrap();
+    auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv").unwrap();
+    auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv").unwrap();
+    auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv").unwrap();
+    auto frustum_vertex_shader = device->create_shader_module("shaders/debug_frustum.vert.glsl.spirv").unwrap();
+    auto frustum_fragment_shader = device->create_shader_module("shaders/debug_frustum.frag.glsl.spirv").unwrap();
+    auto bounding_box_vertex_shader = device->create_shader_module("shaders/debug_bounding_box.vert.glsl.spirv").unwrap();
+    auto bounding_box_fragment_shader = device->create_shader_module("shaders/debug_bounding_box.frag.glsl.spirv").unwrap();
+    auto instance_culling_shader = device->create_shader_module("shaders/frustum_culling_instance.comp.glsl.spirv").unwrap();
 
     // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     auto mesh = mesh::BasicMesh::cube();
@@ -459,21 +440,21 @@ int main(int argc, char** argv) {
     };
 
     std::cerr << std::endl << "create buffers..." << std::endl;
-    auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-    auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    auto bounding_box_vertex_buffer = device->create_buffer_with_data(bounding_box_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    auto bounding_box_index_buffer = device->create_buffer_with_data(bounding_box_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto light_uniform_buffer = device->create_buffer_with_data(light_uniform_buffer_data, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT).unwrap();
+    auto bounding_box_vertex_buffer = device->create_buffer_with_data(bounding_box_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto bounding_box_index_buffer = device->create_buffer_with_data(bounding_box_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
 
     // indirect buffer for frustum culling
-    auto instance_in_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    auto instance_in_buffer = device->create_buffer_with_data(instance_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     std::vector<InstanceBufferData> instance_data_empty(instance_data.size());
-    auto instance_out_buffer = device->create_buffer_with_data(instance_data_empty, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    auto instance_out_buffer = device->create_buffer_with_data(instance_data_empty, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     std::vector<VkDrawIndexedIndirectCommand> indirect_data = {
         { vkw::size_u32(mesh.indices().size()), 0, 0, 0, 0 },
     };
-    auto indirect_buffer = device->create_buffer_with_data(indirect_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+    auto indirect_buffer = device->create_buffer_with_data(indirect_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT).unwrap();
 
     // deferred path set 0: g-buffer inputs
     vkw::descriptor::DescriptorSetLayoutBindings light_attachment_layout_bindings(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
@@ -522,26 +503,26 @@ int main(int argc, char** argv) {
     .add(2, 1, VK_SHADER_STAGE_COMPUTE_BIT);
 
     std::cerr << std::endl << "create descriptor set layout..." << std::endl;
-    auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings);
-    auto light_uniform_descriptor_layout = device->create_descriptor_set_layout(light_uniform_layout_bindings);
-    auto blur_vertical_descriptor_layout = device->create_descriptor_set_layout(blur_vertical_layout_bindings);
-    auto blur_horizontal_descriptor_layout = device->create_descriptor_set_layout(blur_horizontal_layout_bindings);
-    auto merge_descriptor_layout = device->create_descriptor_set_layout(merge_layout_bindings);
-    auto instance_culling_descriptor_layout = device->create_descriptor_set_layout(instance_culling_layout_bindings);
+    auto light_attachment_descriptor_layout = device->create_descriptor_set_layout(light_attachment_layout_bindings).unwrap();
+    auto light_uniform_descriptor_layout = device->create_descriptor_set_layout(light_uniform_layout_bindings).unwrap();
+    auto blur_vertical_descriptor_layout = device->create_descriptor_set_layout(blur_vertical_layout_bindings).unwrap();
+    auto blur_horizontal_descriptor_layout = device->create_descriptor_set_layout(blur_horizontal_layout_bindings).unwrap();
+    auto merge_descriptor_layout = device->create_descriptor_set_layout(merge_layout_bindings).unwrap();
+    auto instance_culling_descriptor_layout = device->create_descriptor_set_layout(instance_culling_layout_bindings).unwrap();
 
     std::cerr << std::endl << "create descriptor pool..." << std::endl;
-    auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings});
-    auto blur_vertical_descriptor_pool = device->create_descriptor_pool({blur_vertical_layout_bindings});
-    auto blur_horizontal_descriptor_pool = device->create_descriptor_pool({blur_horizontal_layout_bindings});
-    auto merge_descriptor_pool = device->create_descriptor_pool({merge_layout_bindings});
-    auto instance_culling_descriptor_pool = device->create_descriptor_pool({instance_culling_layout_bindings});
+    auto light_descriptor_pool = device->create_descriptor_pool({light_attachment_layout_bindings, light_uniform_layout_bindings}).unwrap();
+    auto blur_vertical_descriptor_pool = device->create_descriptor_pool({blur_vertical_layout_bindings}).unwrap();
+    auto blur_horizontal_descriptor_pool = device->create_descriptor_pool({blur_horizontal_layout_bindings}).unwrap();
+    auto merge_descriptor_pool = device->create_descriptor_pool({merge_layout_bindings}).unwrap();
+    auto instance_culling_descriptor_pool = device->create_descriptor_pool({instance_culling_layout_bindings}).unwrap();
 
     std::cerr << std::endl << "allocate descriptor sets..." << std::endl;
-    auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout});
-    auto blur_vertical_descriptor_sets = blur_vertical_descriptor_pool.allocate_descriptor_sets({blur_vertical_descriptor_layout});
-    auto blur_horizontal_descriptor_sets = blur_horizontal_descriptor_pool.allocate_descriptor_sets({blur_horizontal_descriptor_layout});
-    auto merge_descriptor_sets = merge_descriptor_pool.allocate_descriptor_sets({merge_descriptor_layout});
-    auto instance_culling_descriptor_sets = instance_culling_descriptor_pool.allocate_descriptor_sets({instance_culling_descriptor_layout});
+    auto light_descriptor_sets = light_descriptor_pool.allocate_descriptor_sets({light_attachment_descriptor_layout, light_uniform_descriptor_layout}).unwrap();
+    auto blur_vertical_descriptor_sets = blur_vertical_descriptor_pool.allocate_descriptor_sets({blur_vertical_descriptor_layout}).unwrap();
+    auto blur_horizontal_descriptor_sets = blur_horizontal_descriptor_pool.allocate_descriptor_sets({blur_horizontal_descriptor_layout}).unwrap();
+    auto merge_descriptor_sets = merge_descriptor_pool.allocate_descriptor_sets({merge_descriptor_layout}).unwrap();
+    auto instance_culling_descriptor_sets = instance_culling_descriptor_pool.allocate_descriptor_sets({instance_culling_descriptor_layout}).unwrap();
 
     vkw::descriptor::ImageInfos light_image_infos{};
     light_image_infos
@@ -630,14 +611,14 @@ int main(int argc, char** argv) {
     .add_push_constant_range(VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullingPushConstantData));
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
-    auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info);
-    auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info);
-    auto blur_vertical_pipeline_layout = device->create_pipeline_layout(blur_vertical_layout_info);
-    auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info);
-    auto merge_pipeline_layout = device->create_pipeline_layout(merge_layout_info);
-    auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info);
-    auto bounding_box_pipeline_layout = device->create_pipeline_layout(bounding_box_layout_info);
-    auto instance_culling_pipeline_layout = device->create_pipeline_layout(instance_culling_layout_info);
+    auto geometry_pipeline_layout = device->create_pipeline_layout(geometry_layout_info).unwrap();
+    auto light_pipeline_layout = device->create_pipeline_layout(light_layout_info).unwrap();
+    auto blur_vertical_pipeline_layout = device->create_pipeline_layout(blur_vertical_layout_info).unwrap();
+    auto blur_horizontal_pipeline_layout = device->create_pipeline_layout(blur_horizontal_layout_info).unwrap();
+    auto merge_pipeline_layout = device->create_pipeline_layout(merge_layout_info).unwrap();
+    auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info).unwrap();
+    auto bounding_box_pipeline_layout = device->create_pipeline_layout(bounding_box_layout_info).unwrap();
+    auto instance_culling_pipeline_layout = device->create_pipeline_layout(instance_culling_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -687,7 +668,7 @@ int main(int argc, char** argv) {
     .color_blend(geometory_color_blend_state);
 
 
-    auto geometry_pipeline = device->create_pipeline(geometry_pipeline_state, geometry_pipeline_layout, deferred_render_pass, 0);
+    auto geometry_pipeline = device->create_pipeline(geometry_pipeline_state, geometry_pipeline_layout, deferred_render_pass, 0).unwrap();
 
     vkw::pipeline::GraphicsShaderStages light_shader_stages{};
     light_shader_stages
@@ -723,7 +704,7 @@ int main(int argc, char** argv) {
     .depth_stencil(light_depth_stencil_state)
     .color_blend(light_color_blend_state);
 
-    auto light_pipeline = device->create_pipeline(light_pipeline_states, light_pipeline_layout, deferred_render_pass, 1);
+    auto light_pipeline = device->create_pipeline(light_pipeline_states, light_pipeline_layout, deferred_render_pass, 1).unwrap();
 
     std::vector<VkBool32> blur_vertical_constant_data = { VK_FALSE };
     std::vector<VkBool32> blur_horizontal_constant_data = { VK_TRUE };
@@ -767,7 +748,7 @@ int main(int argc, char** argv) {
     .depth_stencil(blur_vertical_depth_stencil_state)
     .color_blend(blur_vertical_color_blend_state);
 
-    auto blur_vertical_pipeline = device->create_pipeline(blur_vertical_pipeline_states, blur_vertical_pipeline_layout, blur_vertical_render_pass, 0);
+    auto blur_vertical_pipeline = device->create_pipeline(blur_vertical_pipeline_states, blur_vertical_pipeline_layout, blur_vertical_render_pass, 0).unwrap();
 
     // blur horizontal pipeline states
     vkw::pipeline::GraphicsShaderStages blur_horizontal_shader_stages{};
@@ -802,7 +783,7 @@ int main(int argc, char** argv) {
     .depth_stencil(blur_horizontal_depth_stencil_state)
     .color_blend(blur_horizontal_color_blend_state);
 
-    auto blur_horizontal_pipeline = device->create_pipeline(blur_horizontal_pipeline_states, blur_horizontal_pipeline_layout, blur_horizontal_render_pass, 0);
+    auto blur_horizontal_pipeline = device->create_pipeline(blur_horizontal_pipeline_states, blur_horizontal_pipeline_layout, blur_horizontal_render_pass, 0).unwrap();
 
     // merge pipeline states
     vkw::pipeline::GraphicsShaderStages merge_shader_stages{};
@@ -837,7 +818,7 @@ int main(int argc, char** argv) {
     .depth_stencil(merge_depth_stencil_state)
     .color_blend(merge_color_blend_state);
 
-    auto merge_pipeline = device->create_pipeline(merge_pipeline_states, merge_pipeline_layout, merge_render_pass, 0);
+    auto merge_pipeline = device->create_pipeline(merge_pipeline_states, merge_pipeline_layout, merge_render_pass, 0).unwrap();
 
     // debug frustum pipeline
     vkw::pipeline::GraphicsShaderStages frustum_shader_stages{};
@@ -880,7 +861,7 @@ int main(int argc, char** argv) {
     .depth_stencil(frustum_depth_stencil_state)
     .color_blend(frustum_color_blend_state);
 
-    auto frustum_pipeline = device->create_pipeline(frustum_pipeline_states, frustum_pipeline_layout, frustum_render_pass, 0);
+    auto frustum_pipeline = device->create_pipeline(frustum_pipeline_states, frustum_pipeline_layout, frustum_render_pass, 0).unwrap();
 
     // debug bounding box pipeline
     vkw::pipeline::GraphicsShaderStages bounding_box_shader_stages{};
@@ -925,7 +906,7 @@ int main(int argc, char** argv) {
     .depth_stencil(bounding_box_depth_stencil_state)
     .color_blend(bounding_box_color_blend_state);
 
-    auto bounding_box_pipeline = device->create_pipeline(bounding_box_pipeline_states, bounding_box_pipeline_layout, bounding_box_render_pass, 0);
+    auto bounding_box_pipeline = device->create_pipeline(bounding_box_pipeline_states, bounding_box_pipeline_layout, bounding_box_render_pass, 0).unwrap();
 
     vkw::pipeline::ComputeShaderStage instance_culling_shader_stage{};
     instance_culling_shader_stage
@@ -933,16 +914,16 @@ int main(int argc, char** argv) {
 
     vkw::pipeline::ComputePipelineStates instance_culling_pipeline_states(instance_culling_shader_stage);
 
-    auto instance_culling_pipeline = device->create_pipeline(instance_culling_pipeline_states, instance_culling_pipeline_layout);
+    auto instance_culling_pipeline = device->create_pipeline(instance_culling_pipeline_states, instance_culling_pipeline_layout).unwrap();
 
     std::cerr << std::endl << "create command pool..." << std::endl;
-    auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index());
+    auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
 
     std::cerr << std::endl << "allocate command buffer..." << std::endl;
-    auto command_buffer = command_pool.allocate_command_buffers();
+    auto command_buffer = command_pool.allocate_command_buffers().unwrap();
 
     std::cerr << std::endl << "create fence..." << std::endl;
-    auto fence = device->create_fence();
+    auto fence = device->create_fence().unwrap();
 
     vkw::barrier::ImageMemoryBarriers initial_image_barriers{};
     initial_image_barriers

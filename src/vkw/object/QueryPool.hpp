@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class QueryPool final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkQueryPool pool_;
 
 public:
     using object_type = VkQueryPool;
 
     QueryPool() noexcept {}
-    QueryPool(std::shared_ptr<objects::Device> device, VkQueryPool&& pool) noexcept : device_(device), pool_(pool) {}
+    QueryPool(std::shared_ptr<object::Device> device, VkQueryPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~QueryPool() noexcept {
         if(device_) vkDestroyQueryPool(*device_, pool_, nullptr);
     }

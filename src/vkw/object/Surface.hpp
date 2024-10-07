@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Surface final {
-    std::shared_ptr<objects::Instance> instance_;
+    std::shared_ptr<object::Instance> instance_;
     VkSurfaceKHR surface_;
 
 public:
     using object_type = VkSurfaceKHR;
 
     Surface() noexcept {}
-    Surface(std::shared_ptr<objects::Instance> instance, VkSurfaceKHR&& surface) noexcept : instance_(instance), surface_(surface) {}
+    Surface(std::shared_ptr<object::Instance> instance, VkSurfaceKHR&& surface) noexcept : instance_(instance), surface_(surface) {}
     ~Surface() noexcept {
         if(instance_) vkDestroySurfaceKHR(*instance_, surface_, nullptr);
     }

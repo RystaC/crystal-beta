@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class PipelineCache final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkPipelineCache cache_;
 
 public:
     using object_type = VkPipelineCache;
 
     PipelineCache() noexcept {}
-    PipelineCache(std::shared_ptr<objects::Device> device, VkPipelineCache&& cache) noexcept : device_(device), cache_(cache) {}
+    PipelineCache(std::shared_ptr<object::Device> device, VkPipelineCache&& cache) noexcept : device_(device), cache_(cache) {}
     ~PipelineCache() noexcept {
         if(device_) vkDestroyPipelineCache(*device_, cache_, nullptr);
     }

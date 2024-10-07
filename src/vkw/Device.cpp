@@ -2,7 +2,9 @@
 
 namespace vkw {
 
-bool Device::init(const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+Result<Device> Device::init(const object::PhysicalDevice& physical_device, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+    auto device = Device(physical_device);
+
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos(queue_infos.infos_.size());
     auto j = queue_infos.infos_.begin();
     for(size_t i = 0; i < queue_create_infos.size(); ++i) {
@@ -13,7 +15,7 @@ bool Device::init(const queue::CreateInfos& queue_infos, const std::vector<const
             .pQueuePriorities = j->second.data(),
         };
 
-        queue_counts_[queue_create_infos[i].queueFamilyIndex] += queue_create_infos[i].queueCount;
+        device.queue_counts_[queue_create_infos[i].queueFamilyIndex] += queue_create_infos[i].queueCount;
         ++j;
     }
 
@@ -27,27 +29,27 @@ bool Device::init(const queue::CreateInfos& queue_infos, const std::vector<const
         .ppEnabledExtensionNames = extensions.data(),
     };
 
-    VkDevice device{};
-    CHECK_VK_RESULT(vkCreateDevice(physical_device_, &device_info, nullptr, &device), return false;);
+    VkDevice device_entity{};
+    auto result = vkCreateDevice(device.physical_device_, &device_info, nullptr, &device_entity);
 
-    device_ = std::make_shared<objects::Device>(std::move(device));
+    device.device_ = std::make_shared<object::Device>(std::move(device_entity));
 
-    return true;
+    return Result(std::move(device), result);
 }
 
-std::vector<objects::Queue> Device::create_queues(uint32_t queue_family_index) {
+std::vector<object::Queue> Device::create_queues(uint32_t queue_family_index) {
     std::vector<VkQueue> raw_queues(queue_counts_[queue_family_index]);
     for(uint32_t i = 0; i < queue_counts_[queue_family_index]; ++i) {
         vkGetDeviceQueue(*device_, queue_family_index, i, &raw_queues[i]);
     }
 
-    std::vector<objects::Queue> queues(queue_counts_[queue_family_index]);
-    std::transform(raw_queues.begin(), raw_queues.end(), queues.begin(), [&](auto& q) { return objects::Queue(std::move(q), queue_family_index); });
+    std::vector<object::Queue> queues(queue_counts_[queue_family_index]);
+    std::transform(raw_queues.begin(), raw_queues.end(), queues.begin(), [&](auto& q) { return object::Queue(std::move(q), queue_family_index); });
 
     return queues;
 }
 
-objects::Swapchain Device::create_swapchain(const objects::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent) {
+Result<object::Swapchain> Device::create_swapchain(const object::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent) {
     auto surface_capabilities = physical_device_.surface_capabilities_(surface, queue_family_index);
 
     // TODO: check surface compatibilities for swapchain
@@ -69,12 +71,13 @@ objects::Swapchain Device::create_swapchain(const objects::Surface& surface, uin
     };
 
     VkSwapchainKHR swapchain{};
-    vkCreateSwapchainKHR(*device_, &swapchain_info, nullptr, &swapchain);
+    VkResult result{};
+    result = vkCreateSwapchainKHR(*device_, &swapchain_info, nullptr, &swapchain);
 
     uint32_t image_count{};
-    vkGetSwapchainImagesKHR(*device_, swapchain, &image_count, nullptr);
+    result = vkGetSwapchainImagesKHR(*device_, swapchain, &image_count, nullptr);
     std::vector<VkImage> images(image_count);
-    vkGetSwapchainImagesKHR(*device_, swapchain, &image_count, images.data());
+    result = vkGetSwapchainImagesKHR(*device_, swapchain, &image_count, images.data());
 
     std::vector<VkImageView> image_views(image_count);
     for(size_t i = 0; i < images.size(); ++i) {
@@ -92,13 +95,13 @@ objects::Swapchain Device::create_swapchain(const objects::Surface& surface, uin
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
         };
 
-        vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]);
+        result = vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]);
     }    
 
-    return objects::Swapchain(device_, std::move(swapchain), std::move(images), std::move(image_views), desired_format.format, extent);
+    return Result(object::Swapchain(device_, std::move(swapchain), std::move(images), std::move(image_views), desired_format.format, extent), result);
 }
 
-objects::DeviceMemory Device::allocate_memory(VkDeviceSize size, uint32_t memory_type_index) {
+Result<object::DeviceMemory> Device::allocate_memory(VkDeviceSize size, uint32_t memory_type_index) {
     VkMemoryAllocateInfo allocate_info = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = size,
@@ -106,9 +109,9 @@ objects::DeviceMemory Device::allocate_memory(VkDeviceSize size, uint32_t memory
     };
 
     VkDeviceMemory memory{};
-    vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
+    auto result = vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
 
-    return objects::DeviceMemory(device_, std::move(memory));
+    return Result(object::DeviceMemory(device_, std::move(memory)), result);
 }
 
 VkDeviceMemory Device::allocate_memory_with_requirements_(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags desired_properties) {
@@ -140,7 +143,7 @@ VkDeviceMemory Device::allocate_memory_with_requirements_(const VkMemoryRequirem
     return memory;
 }
 
-objects::Image Device::create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties) {
+Result<object::Image> Device::create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties) {
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -160,17 +163,18 @@ objects::Image Device::create_image(const VkExtent2D& extent_2d, VkFormat format
     };
 
     VkImage image{};
-    vkCreateImage(*device_, &image_info, nullptr, &image);
+    VkResult result{};
+    result = vkCreateImage(*device_, &image_info, nullptr, &image);
 
     auto requirements = query_memory_requirements_(image);
     auto device_memory = allocate_memory_with_requirements_(requirements, desired_properties);
 
-    vkBindImageMemory(*device_, image, device_memory, 0);
+    result = vkBindImageMemory(*device_, image, device_memory, 0);
 
-    return objects::Image(device_, std::move(image), std::move(device_memory), format);
+    return Result(object::Image(device_, std::move(image), std::move(device_memory), format), result);
 }
 
-objects::Sampler Device::create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v) {
+Result<object::Sampler> Device::create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v) {
     VkSamplerCreateInfo sampler_info = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
         .magFilter = mag_filter,
@@ -180,12 +184,12 @@ objects::Sampler Device::create_sampler(VkFilter min_filter, VkFilter mag_filter
     };
 
     VkSampler sampler{};
-    vkCreateSampler(*device_, &sampler_info, nullptr, &sampler);
+    auto result = vkCreateSampler(*device_, &sampler_info, nullptr, &sampler);
 
-    return objects::Sampler(device_, std::move(sampler));
+    return Result(object::Sampler(device_, std::move(sampler)), result);
 }
 
-objects::RenderPass Device::create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies) {
+Result<object::RenderPass> Device::create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies) {
     VkRenderPassCreateInfo render_pass_info = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .attachmentCount = size_u32(attachment_descriptions.descs_.size()),
@@ -197,12 +201,12 @@ objects::RenderPass Device::create_render_pass(const render_pass::AttachmentDesc
     };
 
     VkRenderPass render_pass{};
-    vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass);
+    auto result = vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass);
 
-    return objects::RenderPass(device_, std::move(render_pass));
+    return Result(object::RenderPass(device_, std::move(render_pass)), result);
 }
 
-objects::Framebuffer Device::create_framebuffer(const objects::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent) {
+Result<object::Framebuffer> Device::create_framebuffer(const object::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent) {
     VkFramebufferCreateInfo framebuffer_info = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = render_pass,
@@ -214,12 +218,12 @@ objects::Framebuffer Device::create_framebuffer(const objects::RenderPass& rende
     };
 
     VkFramebuffer framebuffer{};
-    vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
+    auto result = vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
 
-    return objects::Framebuffer(device_, std::move(framebuffer));
+    return Result(object::Framebuffer(device_, std::move(framebuffer)), result);
 }
 
-objects::ShaderModule Device::create_shader_module(const std::filesystem::path& spirv_path) {
+Result<object::ShaderModule> Device::create_shader_module(const std::filesystem::path& spirv_path) {
     std::ifstream ifs(spirv_path, std::ios::binary | std::ios::ate);
     if(ifs.fail()) {
         std::cerr << "[vkw::Device::create_shader_module] ERROR: cound not read file: " << spirv_path << std::endl;
@@ -239,12 +243,12 @@ objects::ShaderModule Device::create_shader_module(const std::filesystem::path& 
     };
 
     VkShaderModule shader_module{};
-    vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module);
+    auto result = vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module);
 
-    return objects::ShaderModule(device_, std::move(shader_module));
+    return Result(object::ShaderModule(device_, std::move(shader_module)), result);
 }
 
-objects::DescriptorSetLayout Device::create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings) {
+Result<object::DescriptorSetLayout> Device::create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings) {
     VkDescriptorSetLayoutCreateInfo layout_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = size_u32(layout_bindings.bindings_.size()),
@@ -252,12 +256,12 @@ objects::DescriptorSetLayout Device::create_descriptor_set_layout(const descript
     };
 
     VkDescriptorSetLayout layout{};
-    vkCreateDescriptorSetLayout(*device_, &layout_info, nullptr, &layout);
+    auto result = vkCreateDescriptorSetLayout(*device_, &layout_info, nullptr, &layout);
 
-    return objects::DescriptorSetLayout(device_, std::move(layout), layout_bindings.type_);
+    return Result(object::DescriptorSetLayout(device_, std::move(layout), layout_bindings.type_), result);
 }
 
-objects::DescriptorPool Device::create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool) {
+Result<object::DescriptorPool> Device::create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool) {
     std::vector<VkDescriptorPoolSize> pool_sizes(layouts_for_pool.size());
     for(size_t i = 0; i < pool_sizes.size(); ++i) {
         pool_sizes[i] = {
@@ -274,16 +278,16 @@ objects::DescriptorPool Device::create_descriptor_pool(const std::vector<descrip
     };
 
     VkDescriptorPool descriptor_pool{};
-    vkCreateDescriptorPool(*device_, &pool_info, nullptr, &descriptor_pool);
+    auto result = vkCreateDescriptorPool(*device_, &pool_info, nullptr, &descriptor_pool);
 
-    return objects::DescriptorPool(device_, std::move(descriptor_pool));
+    return Result(object::DescriptorPool(device_, std::move(descriptor_pool)), result);
 }
 
 void Device::update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets) {
     vkUpdateDescriptorSets(*device_, size_u32(write_descriptor_sets.writes_.size()), write_descriptor_sets.writes_.data(), 0, nullptr);
 }
 
-objects::PipelineLayout Device::create_pipeline_layout(const pipeline_layout::CreateInfo& info) {
+Result<object::PipelineLayout> Device::create_pipeline_layout(const pipeline_layout::CreateInfo& info) {
     VkPipelineLayoutCreateInfo layout_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = size_u32(info.layouts_.size()),
@@ -293,12 +297,12 @@ objects::PipelineLayout Device::create_pipeline_layout(const pipeline_layout::Cr
     };
 
     VkPipelineLayout layout{};
-    vkCreatePipelineLayout(*device_, &layout_info, nullptr, &layout);
+    auto result = vkCreatePipelineLayout(*device_, &layout_info, nullptr, &layout);
 
-    return objects::PipelineLayout(device_, std::move(layout));
+    return Result(object::PipelineLayout(device_, std::move(layout)), result);
 }
 
-objects::PipelineCache Device::create_pipeline_cache() {
+Result<object::PipelineCache> Device::create_pipeline_cache() {
     VkPipelineCacheCreateInfo cache_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
         .initialDataSize = 0,
@@ -306,12 +310,12 @@ objects::PipelineCache Device::create_pipeline_cache() {
     };
 
     VkPipelineCache cache{};
-    vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+    auto result = vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
 
-    return objects::PipelineCache(device_, std::move(cache));
+    return Result(object::PipelineCache(device_, std::move(cache)), result);
 }
 
-objects::PipelineCache Device::create_pipeline_cache(const std::filesystem::path& cache_path) {
+Result<object::PipelineCache> Device::create_pipeline_cache(const std::filesystem::path& cache_path) {
     std::ifstream ifs(cache_path, std::ios::binary | std::ios::ate);
     if(ifs.fail()) {
         std::cerr << "[vkw::Device::create_pipeline_cache] ERROR: cound not read file: " << cache_path << std::endl;
@@ -331,34 +335,34 @@ objects::PipelineCache Device::create_pipeline_cache(const std::filesystem::path
     };
 
     VkPipelineCache cache{};
-    vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+    auto result = vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
 
-    return objects::PipelineCache(device_, std::move(cache));
+    return Result(object::PipelineCache(device_, std::move(cache)), result);
 }
 
-objects::Pipeline Device::create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache) {
+Result<object::Pipeline> Device::create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache) {
     VkGraphicsPipelineCreateInfo pipeline_info = pipeline_states.pipeline_info_;
     pipeline_info.layout = pipeline_layout;
     pipeline_info.renderPass = render_pass;
     pipeline_info.subpass = subpass_index;
 
     VkPipeline pl{};
-    vkCreateGraphicsPipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+    auto result = vkCreateGraphicsPipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
 
-    return objects::Pipeline(device_, std::move(pl));
+    return Result(object::Pipeline(device_, std::move(pl)), result);
 }
 
-objects::Pipeline Device::create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache) {
+Result<object::Pipeline> Device::create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache) {
     VkComputePipelineCreateInfo pipeline_info = pipeline_states.pipeline_info_;
     pipeline_info.layout = pipeline_layout;
 
     VkPipeline pl{};
-    vkCreateComputePipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+    auto result = vkCreateComputePipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
 
-    return objects::Pipeline(device_, std::move(pl));
+    return Result(object::Pipeline(device_, std::move(pl)), result);
 }
 
-objects::CommandPool Device::create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index) {
+Result<object::CommandPool> Device::create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index) {
     VkCommandPoolCreateInfo pool_info = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .flags = flags,
@@ -366,43 +370,43 @@ objects::CommandPool Device::create_command_pool(VkCommandPoolCreateFlags flags,
     };
 
     VkCommandPool pool{};
-    vkCreateCommandPool(*device_, &pool_info, nullptr, &pool);
+    auto result = vkCreateCommandPool(*device_, &pool_info, nullptr, &pool);
 
-    return objects::CommandPool(device_, std::move(pool));
+    return Result(object::CommandPool(device_, std::move(pool)), result);
 }
 
-objects::Event Device::create_event() {
+Result<object::Event> Device::create_event() {
     VkEventCreateInfo event_info = {
         .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
     };
 
     VkEvent event{};
-    vkCreateEvent(*device_, &event_info, nullptr, &event);
+    auto result = vkCreateEvent(*device_, &event_info, nullptr, &event);
 
-    return objects::Event(device_, std::move(event));
+    return Result(object::Event(device_, std::move(event)), result);
 }
 
-objects::Fence Device::create_fence(bool signaled) {
+Result<object::Fence> Device::create_fence(bool signaled) {
     VkFenceCreateInfo fence_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : static_cast<VkFenceCreateFlags>(0),
     };
 
     VkFence fence{};
-    vkCreateFence(*device_, &fence_info, nullptr, &fence);
+    auto result = vkCreateFence(*device_, &fence_info, nullptr, &fence);
 
-    return objects::Fence(device_, std::move(fence));
+    return Result(object::Fence(device_, std::move(fence)), result);
 }
 
-objects::Semaphore Device::create_semaphore() {
+Result<object::Semaphore> Device::create_semaphore() {
     VkSemaphoreCreateInfo semaphore_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
 
     VkSemaphore semaphore{};
-    vkCreateSemaphore(*device_, &semaphore_info, nullptr, &semaphore);
+    auto result = vkCreateSemaphore(*device_, &semaphore_info, nullptr, &semaphore);
 
-    return objects::Semaphore(device_, std::move(semaphore));
+    return Result(object::Semaphore(device_, std::move(semaphore)), result);
 }
 
 }

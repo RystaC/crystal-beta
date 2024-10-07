@@ -7,7 +7,7 @@ namespace vkw {
 
 class Device;
 
-namespace objects {
+namespace object {
 
 class PhysicalDevice final {
     VkPhysicalDevice physical_device_;
@@ -20,7 +20,7 @@ class PhysicalDevice final {
     // queue types and counts
     std::vector<VkQueueFamilyProperties> queue_family_properties_;
 
-    VkFormatProperties format_properties_(VkFormat format) {
+    VkFormatProperties format_properties_(VkFormat format) const {
         VkFormatProperties properties{};
 
         vkGetPhysicalDeviceFormatProperties(physical_device_, format, &properties);
@@ -28,7 +28,7 @@ class PhysicalDevice final {
         return properties;
     }
 
-    VkImageFormatProperties image_format_properties_(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) {
+    VkImageFormatProperties image_format_properties_(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags) const {
         VkImageFormatProperties properties{};
 
         vkGetPhysicalDeviceImageFormatProperties(physical_device_, format, type, tiling, usage, flags, &properties);
@@ -36,7 +36,7 @@ class PhysicalDevice final {
         return properties;
     }
 
-    physical_device::SurfaceProperties surface_capabilities_(VkSurfaceKHR surface, uint32_t queue_family_index) {
+    physical_device::SurfaceProperties surface_capabilities_(VkSurfaceKHR surface, uint32_t queue_family_index) const {
         uint32_t format_count{}, present_mode_count{};
 
         vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface, &format_count, nullptr);

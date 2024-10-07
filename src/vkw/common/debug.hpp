@@ -1,16 +1,8 @@
 #pragma once
 
-#include "common.hpp"
+#include <vulkan/vulkan.h>
 
 namespace vkw {
-
-#define FMT(...) std::format(__VA_ARGS__)
-
-#define PRINT_VK_RESULT(result) printf("%s\n", result_to_str(result))
-
-inline void log_impl(const std::string& content, std::ostream& os = std::cerr) {
-    os << content << std::endl;
-}
 
 inline constexpr const char* result_to_str(VkResult result) {
 #define STR(s) #s

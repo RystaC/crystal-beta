@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Pipeline final {
-    std::shared_ptr<objects::Device> device_;
+    std::shared_ptr<object::Device> device_;
     VkPipeline pipeline_;
 
 public:
     using object_type = VkPipeline;
 
     Pipeline() noexcept {}
-    Pipeline(std::shared_ptr<objects::Device> device, VkPipeline&& pipeline) noexcept : device_(device), pipeline_(pipeline) {}
+    Pipeline(std::shared_ptr<object::Device> device, VkPipeline&& pipeline) noexcept : device_(device), pipeline_(pipeline) {}
     ~Pipeline() noexcept {
         if(device_) vkDestroyPipeline(*device_, pipeline_, nullptr);
     }

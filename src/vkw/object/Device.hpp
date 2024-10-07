@@ -4,7 +4,7 @@
 
 namespace vkw {
 
-namespace objects {
+namespace object {
 
 class Device final {
     VkDevice device_;
