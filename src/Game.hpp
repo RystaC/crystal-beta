@@ -70,11 +70,14 @@ class Game {
     glm::vec3 camera_up_;
 
 public:
+    // TODO: replace static constructor
     Game() noexcept : window_(nullptr), ticks_(0llu), quit_(false), camera_pos_(0.0f, 0.0f, -5.0f) {}
     ~Game() noexcept {
         SDL_DestroyWindow(window_);
         SDL_Quit();
     }
+    Game(const Game&) = delete;
+    Game& operator=(const Game&) = delete;
 
     auto window() const noexcept { return window_; }
     auto delta_time() const noexcept { return delta_time_; }
@@ -88,8 +91,6 @@ public:
 
     template<typename F>
     void main_loop(F func) {
-        using namespace std::chrono;
-
         while(!quit_) {
             process_inputs_();
 

@@ -52,10 +52,10 @@ file(GLOB_RECURSE shader_sources
 
 foreach(shader ${shader_sources})
     get_filename_component(file_name ${shader} NAME)
-    set(spirv "${PROJECT_BINARY_DIR}/shaders/${file_name}.spirv")
+    set(spirv "${PROJECT_BINARY_DIR}/spirv/${file_name}.spirv")
     add_custom_command(
         OUTPUT ${spirv}
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/shaders"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/spirv"
         COMMAND ${glslc} ${shader} -V --target-env spirv1.3 -o ${spirv}
         DEPENDS ${shader}
     )

@@ -4,10 +4,12 @@ namespace mesh {
 
 Obj Obj::load(const std::filesystem::path& path) {
     std::ifstream ifs(path);
-    if(ifs.fail()) throw std::runtime_error("failed to open .obj file.");
+    if(ifs.fail()) throw std::runtime_error(std::format("[mesh::Obj::load] ERROR: failed to open {}.", path.string()));
 
     std::vector<glm::vec3> vertices{};
-    std::vector<uint32_t> indices{};
+    std::vector<glm::vec3> normals{};
+    std::vector<glm::vec2> tex_coords{};
+    std::vector<IndexLayout_> attribute_indices{};
 
     while(!ifs.eof()) {
         {
@@ -25,28 +27,65 @@ Obj Obj::load(const std::filesystem::path& path) {
             }
 
             if(line.empty()) continue;
+            // vertex
             else if(line[0] == "v") {
-                vertices.emplace_back(glm::vec3( std::stof(line[1]), std::stof(line[2]), std::stof(line[3]) ));
+                // extract x, y, z (ignore w)
+                vertices.emplace_back(glm::vec3(std::stof(line[1]), std::stof(line[2]), std::stof(line[3])));
             }
+            // tex coord
+            else if(line[0] == "vt") {
+                // extract u, v (ignore w)
+                tex_coords.emplace_back(glm::vec2(std::stof(line[1]), std::stof(line[2])));
+            }
+            // normal
+            else if(line[0] == "vn") {
+                // extract x, y, z
+                normals.emplace_back(glm::vec3(std::stof(line[1]), std::stof(line[2]), std::stof(line[3])));
+            }
+            // face
             else if(line[0] == "f") {
                 if(line.size() == 4) {
-                    indices.emplace_back(convert_index_(line[1], vertices.size()));
-                    indices.emplace_back(convert_index_(line[2], vertices.size()));
-                    indices.emplace_back(convert_index_(line[3], vertices.size()));
+                    attribute_indices.emplace_back(convert_index_(line[1], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[2], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[3], vertices.size(), tex_coords.size(), normals.size()));
                 }
                 else if(line.size() == 5) {
-                    indices.emplace_back(convert_index_(line[1], vertices.size()));
-                    indices.emplace_back(convert_index_(line[2], vertices.size()));
-                    indices.emplace_back(convert_index_(line[3], vertices.size()));
-                    indices.emplace_back(convert_index_(line[4], vertices.size()));
-                    indices.emplace_back(convert_index_(line[1], vertices.size()));
-                    indices.emplace_back(convert_index_(line[3], vertices.size()));
+                    attribute_indices.emplace_back(convert_index_(line[1], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[2], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[3], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[4], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[1], vertices.size(), tex_coords.size(), normals.size()));
+                    attribute_indices.emplace_back(convert_index_(line[3], vertices.size(), tex_coords.size(), normals.size()));
+                }
+                else {
+                    ifs.close();
+                    throw std::runtime_error(std::format("[mesh::Obj::load] ERROR: face should have 3 or 4 elements. but {} elements found.", line.size() - 1));
                 }
             }
         }
     }
 
-    return { std::move(vertices), std::move(indices) };
+    ifs.close();
+
+    std::vector<VertexLayout> interleaved(attribute_indices.size());
+    std::vector<uint32_t> indices(attribute_indices.size());
+    std::iota(indices.begin(), indices.end(), 0);
+
+    for(const auto& i : indices) {
+        interleaved[i] = {
+            .position = vertices[attribute_indices[i].vertex],
+            .normal = attribute_indices[i].normal != -1 ? normals[attribute_indices[i].normal] : glm::vec3(0.0f),
+            .tex_coord = attribute_indices[i].tex_coord != -1 ? tex_coords[attribute_indices[i].tex_coord] : glm::vec2(0.0f),
+            .color = glm::vec4(1.0f),
+        };
+    }
+
+    return { std::move(interleaved), std::move(indices) };
+}
+
+void Obj::print_statistics() {
+    std::cerr << "# of vertex attributes = " << vertices_.size() << std::endl;
+    std::cerr << "# of indices = " << indices_.size() << std::endl;
 }
 
 }

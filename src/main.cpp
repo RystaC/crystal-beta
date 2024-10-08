@@ -14,6 +14,7 @@
 #include "vkw/Device.hpp"
 
 #include "mesh/BasicMesh.hpp"
+#include "mesh/Obj.hpp"
 
 constexpr size_t WINDOW_WIDTH = 1280;
 constexpr size_t WINDOW_HEIGHT = 720;
@@ -53,6 +54,10 @@ struct InstanceBufferData {
 };
 
 int main(int argc, char** argv) {
+    // auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
+    // bunny.print_statistics();
+
+    // return 0;
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
     if(!result) {
@@ -384,17 +389,17 @@ int main(int argc, char** argv) {
     }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    auto geometry_vertex_shader = device->create_shader_module("shaders/deferred_geometry.vert.glsl.spirv").unwrap();
-    auto geometry_fragment_shader = device->create_shader_module("shaders/deferred_geometry.frag.glsl.spirv").unwrap();
-    auto plane_vertex_shader = device->create_shader_module("shaders/simple_plane.vert.glsl.spirv").unwrap();
-    auto light_fragment_shader = device->create_shader_module("shaders/deferred_light.frag.glsl.spirv").unwrap();
-    auto blur_fragment_shader = device->create_shader_module("shaders/gaussian_blur.frag.glsl.spirv").unwrap();
-    auto merge_fragment_shader = device->create_shader_module("shaders/merge.frag.glsl.spirv").unwrap();
-    auto frustum_vertex_shader = device->create_shader_module("shaders/debug_frustum.vert.glsl.spirv").unwrap();
-    auto frustum_fragment_shader = device->create_shader_module("shaders/debug_frustum.frag.glsl.spirv").unwrap();
-    auto bounding_box_vertex_shader = device->create_shader_module("shaders/debug_bounding_box.vert.glsl.spirv").unwrap();
-    auto bounding_box_fragment_shader = device->create_shader_module("shaders/debug_bounding_box.frag.glsl.spirv").unwrap();
-    auto instance_culling_shader = device->create_shader_module("shaders/frustum_culling_instance.comp.glsl.spirv").unwrap();
+    auto geometry_vertex_shader = device->create_shader_module("spirv/deferred_geometry.vert.glsl.spirv").unwrap();
+    auto geometry_fragment_shader = device->create_shader_module("spirv/deferred_geometry.frag.glsl.spirv").unwrap();
+    auto plane_vertex_shader = device->create_shader_module("spirv/simple_plane.vert.glsl.spirv").unwrap();
+    auto light_fragment_shader = device->create_shader_module("spirv/deferred_light.frag.glsl.spirv").unwrap();
+    auto blur_fragment_shader = device->create_shader_module("spirv/gaussian_blur.frag.glsl.spirv").unwrap();
+    auto merge_fragment_shader = device->create_shader_module("spirv/merge.frag.glsl.spirv").unwrap();
+    auto frustum_vertex_shader = device->create_shader_module("spirv/debug_frustum.vert.glsl.spirv").unwrap();
+    auto frustum_fragment_shader = device->create_shader_module("spirv/debug_frustum.frag.glsl.spirv").unwrap();
+    auto bounding_box_vertex_shader = device->create_shader_module("spirv/debug_bounding_box.vert.glsl.spirv").unwrap();
+    auto bounding_box_fragment_shader = device->create_shader_module("spirv/debug_bounding_box.frag.glsl.spirv").unwrap();
+    auto instance_culling_shader = device->create_shader_module("spirv/frustum_culling_instance.comp.glsl.spirv").unwrap();
 
     // auto mesh = meshes::Mesh::torus(32, 32, 1.0f, 2.0f);
     auto mesh = mesh::BasicMesh::cube();
@@ -1075,7 +1080,7 @@ int main(int argc, char** argv) {
             // instance culling path
             .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline)
             .push_constants(instance_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullingPushConstantData), &instance_culling_constant_data)
-            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline_layout, 0, instance_culling_descriptor_sets.sets())
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline_layout, 0, instance_culling_descriptor_sets)
             .dispatch(vkw::size_u32(instance_data.size()))
             // need barrier
             .pipeline_barrier(
@@ -1093,7 +1098,7 @@ int main(int argc, char** argv) {
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
             .push_constants(light_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera_pos)
-            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets.sets())
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline_layout, 0, light_descriptor_sets)
             .draw(3, 1)
             .end_render_pass()
             // need barrier
@@ -1104,7 +1109,7 @@ int main(int argc, char** argv) {
             // blur vertical path
             .begin_render_pass(blur_vertical_framebuffer, blur_vertical_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline)
-            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline_layout, 0, blur_vertical_descriptor_sets.sets())
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline_layout, 0, blur_vertical_descriptor_sets)
             .draw(3, 1)
             .end_render_pass()
             // need barrier
@@ -1115,7 +1120,7 @@ int main(int argc, char** argv) {
             // blur horizontal path
             .begin_render_pass(blur_horizontal_framebuffer, blur_horizontal_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline)
-            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline_layout, 0, blur_horizontal_descriptor_sets.sets())
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline_layout, 0, blur_horizontal_descriptor_sets)
             .draw(3, 1)
             .end_render_pass()
             // need barrier
@@ -1126,7 +1131,7 @@ int main(int argc, char** argv) {
             // merge path
             .begin_render_pass(merge_framebuffers[current_image_index], merge_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline)
-            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline_layout, 0, merge_descriptor_sets.sets())
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline_layout, 0, merge_descriptor_sets)
             .draw(3, 1)
             .end_render_pass()
             // debug frustum pass

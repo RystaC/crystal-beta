@@ -32,7 +32,8 @@ public:
 
     auto size() const noexcept { return sets_.size(); }
 
-    auto& sets() const noexcept { return sets_; }
+    operator const std::vector<VkDescriptorSet>&() const noexcept { return sets_; }
+    operator std::vector<VkDescriptorSet>&() noexcept { return sets_; }
 };
 
 }
