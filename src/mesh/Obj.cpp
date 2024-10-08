@@ -86,7 +86,7 @@ Obj Obj::load(const std::filesystem::path& path) {
     return { std::move(interleaved), std::move(indices) };
 }
 
-void Obj::print_statistics() {
+void Obj::print_statistics() const {
     std::cerr << "# of vertex attributes = " << vertices_.size() << std::endl;
     std::cerr << "# of indices = " << indices_.size() << std::endl;
 }

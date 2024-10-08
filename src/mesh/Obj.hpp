@@ -69,7 +69,10 @@ public:
 
     static Obj load(const std::filesystem::path& path);
 
-    void print_statistics();
+    auto& vertices() noexcept { return vertices_; }
+    auto& indices() noexcept { return indices_; }
+
+    void print_statistics() const;
 };
 
 }

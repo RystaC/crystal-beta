@@ -15,6 +15,7 @@
 
 #include "mesh/BasicMesh.hpp"
 #include "mesh/Obj.hpp"
+#include "mesh/HalfEdge.hpp"
 
 constexpr size_t WINDOW_WIDTH = 1280;
 constexpr size_t WINDOW_HEIGHT = 720;
@@ -54,10 +55,13 @@ struct InstanceBufferData {
 };
 
 int main(int argc, char** argv) {
-    // auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
-    // bunny.print_statistics();
+    auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
+    bunny.print_statistics();
 
-    // return 0;
+    auto half_edges = mesh::HalfEdge::create_half_edge(bunny.indices());
+    half_edges.print_opposites(bunny.indices());
+
+    return 0;
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
