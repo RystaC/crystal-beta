@@ -67,17 +67,20 @@ Obj Obj::load(const std::filesystem::path& path) {
 
     ifs.close();
 
-    std::vector<VertexLayout> interleaved(attribute_indices.size());
-    std::vector<uint32_t> indices(attribute_indices.size());
-    std::iota(indices.begin(), indices.end(), 0);
+    auto max_attribute_count = (std::max)({vertices.size(), tex_coords.size(), normals.size()});
 
-    for(const auto& i : indices) {
-        interleaved[i] = {
+    std::vector<VertexLayout> interleaved(max_attribute_count);
+    std::vector<uint32_t> indices(attribute_indices.size());
+
+    for(size_t i = 0; i < attribute_indices.size(); ++i) {
+        auto idx = (std::max)({attribute_indices[i].vertex, attribute_indices[i].tex_coord, attribute_indices[i].normal});
+        interleaved[idx] = {
             .position = vertices[attribute_indices[i].vertex],
-            .normal = attribute_indices[i].normal != -1 ? normals[attribute_indices[i].normal] : glm::vec3(0.0f),
-            .tex_coord = attribute_indices[i].tex_coord != -1 ? tex_coords[attribute_indices[i].tex_coord] : glm::vec2(0.0f),
+            .normal = attribute_indices[i].normal > -1 ? normals[attribute_indices[i].normal] : glm::vec3(0.0f),
+            .tex_coord = attribute_indices[i].tex_coord > -1 ? tex_coords[attribute_indices[i].tex_coord] : glm::vec2(0.0f),
             .color = glm::vec4(1.0f),
         };
+        indices[i] = idx;
     }
 
     return { std::move(interleaved), std::move(indices) };

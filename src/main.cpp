@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
     // bunny.print_statistics();
 
     // return 0;
+
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
     if(!result) {
