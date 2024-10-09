@@ -87,6 +87,7 @@
         "semaphore": "cpp",
         "barrier": "cpp",
         "xhash": "cpp",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "queue": "cpp"
     }
 }

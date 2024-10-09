@@ -69,18 +69,29 @@ Obj Obj::load(const std::filesystem::path& path) {
 
     auto max_attribute_count = (std::max)({vertices.size(), tex_coords.size(), normals.size()});
 
-    std::vector<VertexAttribute> interleaved(max_attribute_count);
+    std::vector<VertexAttribute> interleaved{};
     std::vector<uint32_t> indices(attribute_indices.size());
 
+    std::map<std::tuple<int32_t, int32_t, int32_t>, uint32_t> index_table{};
+
+    uint32_t idx = 0;
     for(size_t i = 0; i < attribute_indices.size(); ++i) {
-        auto idx = (std::max)({attribute_indices[i].vertex, attribute_indices[i].tex_coord, attribute_indices[i].normal});
-        interleaved[idx] = {
-            .position = vertices[attribute_indices[i].vertex],
-            .normal = attribute_indices[i].normal > -1 ? normals[attribute_indices[i].normal] : glm::vec3(0.0f),
-            .tex_coord = attribute_indices[i].tex_coord > -1 ? tex_coords[attribute_indices[i].tex_coord] : glm::vec2(0.0f),
-            .color = glm::vec4(1.0f),
-        };
-        indices[i] = idx;
+        if(index_table.contains({attribute_indices[i].vertex, attribute_indices[i].tex_coord, attribute_indices[i].normal})) {
+            indices[i] = index_table.at({attribute_indices[i].vertex, attribute_indices[i].tex_coord, attribute_indices[i].normal});
+        }
+        else {
+            index_table[{attribute_indices[i].vertex, attribute_indices[i].tex_coord, attribute_indices[i].normal}] = idx;
+            interleaved.emplace_back(
+                VertexAttribute {
+                    .position = vertices[attribute_indices[i].vertex],
+                    .normal = normals[attribute_indices[i].normal],
+                    .tex_coord = tex_coords[attribute_indices[i].tex_coord],
+                    .color = glm::vec4(1.0f),
+                }
+            );
+            indices[i] = idx;
+            idx += 1;
+        }
     }
 
     return { std::move(interleaved), std::move(indices) };

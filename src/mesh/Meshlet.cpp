@@ -16,7 +16,7 @@ Meshlet Meshlet::generate_meshlet(const std::vector<VertexAttribute>& vertices, 
             continue;
         }
 
-        std::cerr << std::format("src idx = ({}, {}, {}), dst idx = ({}, {}, {})", src_idx, src_idx+1, src_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl;
+        std::cout << std::format("src idx = ({}, {}, {}), dst idx = ({}, {}, {})", src_idx, src_idx+1, src_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl;
 
         // pick a face as meshlet seed
         auto v0 = indices_copied[src_idx+0]; indices_copied[src_idx+0] = USED_FACE;
@@ -34,35 +34,30 @@ Meshlet Meshlet::generate_meshlet(const std::vector<VertexAttribute>& vertices, 
         queue.push({v2, v0});
         uint32_t face_count = 0;
         while(face_count < faces_per_meshlet && !queue.empty()) {
+            std::cout << "# of meshlet faces = " << face_count << std::endl;
+
             auto edge = queue.front(); queue.pop();
 
             // if edge if boundary -> go next
-            std::cerr << std::format("check opposite for edge ({}, {})", edge.first, edge.second) << std::endl;
+            std::cout << std::format("check opposite for edge ({}, {})", edge.first, edge.second) << std::endl;
             auto opposite_idx = half_edge.opposites().at(edge);
-            // std::cerr << "opposite: " << opposite_idx << std::endl;
+            std::cout << "opposite: " << opposite_idx << std::endl;
             if(opposite_idx < 0) {
-                std::cerr << "*** skipped by boundary ***" << std::endl;
+                std::cout << "*** skipped by boundary ***" << std::endl;
                 continue;
             }
 
             // if connected face is already used -> go next
-            auto connected_face_idx = opposite_idx / 3;
+            auto connected_face_idx = opposite_idx - opposite_idx % 3;
+            std::cout << std::format("opposite face index = {}, ({}, {}, {})", connected_face_idx, indices_copied[connected_face_idx], indices_copied[connected_face_idx+1], indices_copied[connected_face_idx+2]) << std::endl;
             // std::cerr << "face: " << connected_face_idx << std::endl;
             if(indices_copied[connected_face_idx] == USED_FACE) {
-                std::cerr << "*** skipped by connected face used ***" << std::endl;
-                continue;
-            }
-
-            // if face of edge is already used -> go next
-            std::cerr << "check itself" << std::endl;
-            auto face_idx = half_edge.opposites().at({edge.second, edge.first}) / 3;
-            if(indices_copied[face_idx] == USED_FACE) {
-                std::cerr << "*** skipped by face used ***" << std::endl;
+                std::cout << "*** skipped by connected face used ***" << std::endl;
                 continue;
             }
 
             // extract connected face
-            std::cerr << std::format("connected face idx = ({}, {}, {}), dst idx = ({}, {}, {})", connected_face_idx, connected_face_idx+1, connected_face_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl; 
+            std::cout << std::format("connected face idx = ({}, {}, {}), dst idx = ({}, {}, {})", connected_face_idx, connected_face_idx+1, connected_face_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl; 
             auto new_v0 = indices_copied[connected_face_idx+0]; indices_copied[connected_face_idx+0] = USED_FACE;
             auto new_v1 = indices_copied[connected_face_idx+1]; indices_copied[connected_face_idx+1] = USED_FACE;
             auto new_v2 = indices_copied[connected_face_idx+2]; indices_copied[connected_face_idx+2] = USED_FACE;
@@ -72,10 +67,26 @@ Meshlet Meshlet::generate_meshlet(const std::vector<VertexAttribute>& vertices, 
             face_count += 1; dst_idx += 3;
 
             // add new edges
-            // TODO: we can remove used edge (extract index like connected_face % 3)
-            queue.push({new_v0, new_v1});
-            queue.push({new_v1, new_v2});
-            queue.push({new_v2, new_v0});
+            switch(opposite_idx % 3) {
+                // push i+1, i+2
+                case 0:
+                    queue.push({new_v1, new_v2});
+                    queue.push({new_v2, new_v0});
+                    break;
+                // push i, i+2
+                case 1:
+                    queue.push({new_v0, new_v1});
+                    queue.push({new_v2, new_v0});
+                    break;
+                // push i, i+1
+                case 2:
+                    queue.push({new_v0, new_v1});
+                    queue.push({new_v1, new_v2});
+                    break;
+                // no reached branch
+                default:
+                    break;
+            }
         }
     }
 

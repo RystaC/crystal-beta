@@ -5,6 +5,7 @@
 
 namespace mesh {
 
+// TODO: use bounding volume hierarchy to build meshlet
 class Meshlet {
     std::vector<VertexAttribute> vertices_;
     std::vector<uint32_t> indices_;
