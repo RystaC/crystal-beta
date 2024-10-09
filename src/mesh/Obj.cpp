@@ -98,8 +98,8 @@ Obj Obj::load(const std::filesystem::path& path) {
 }
 
 void Obj::print_statistics() const {
-    std::cerr << "# of vertex attributes = " << vertices_.size() << std::endl;
-    std::cerr << "# of indices = " << indices_.size() << std::endl;
+    std::cerr << std::format("# of vertex attributes = {}", vertices_.size()) << std::endl;
+    std::cerr << std::format("# of indices = {}", indices_.size()) << std::endl;
 
     for(size_t i = 0; i < indices_.size(); i += 3) {
         if(indices_[i+0] == indices_[i+1] || indices_[i+1] == indices_[i+2] || indices_[i+2] == indices_[i+0]) {

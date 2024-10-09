@@ -19,8 +19,6 @@ public:
 
     const auto& opposites() const noexcept { return opposites_; }
     auto& opposites() noexcept { return opposites_; }
-
-    void print_opposites(const std::vector<uint32_t>& indices) const;
 };
 
 }

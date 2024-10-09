@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-
 #include <glm/glm.hpp>
 
 namespace mesh {
@@ -19,6 +18,15 @@ namespace mesh {
 struct AABB {
     alignas(16) glm::vec3 min;
     alignas(16) glm::vec3 max;
+
+    float area() const {
+        auto d = max - min;
+        return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+    }
+
+    glm::vec3 centroid() const {
+        return (min + max) / 2.0f;
+    }
 };
 
 struct VertexAttribute {

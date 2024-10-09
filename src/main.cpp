@@ -51,15 +51,13 @@ struct InstanceBufferData {
 };
 
 int main(int argc, char** argv) {
-    // auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
-    // bunny.print_statistics();
+    auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
+    bunny.print_statistics();
 
-    // auto half_edge = mesh::HalfEdge::create_half_edge(bunny.indices());
+    auto meshlet = mesh::Meshlet::generate_meshlet_kdtree(bunny.vertices(), bunny.indices());
+    meshlet.print_statistics(bunny.vertices(), bunny.indices());
 
-    // auto meshlet = mesh::Meshlet::generate_meshlet(bunny.vertices(), bunny.indices(), half_edge);
-    // // meshlet.print_indices();
-
-    // return 0;
+    return 0;
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);

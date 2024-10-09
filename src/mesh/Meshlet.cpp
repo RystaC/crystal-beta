@@ -2,101 +2,93 @@
 
 namespace mesh {
 
-Meshlet Meshlet::generate_meshlet(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices, const HalfEdge& half_edge, uint32_t faces_per_meshlet) {
+Meshlet Meshlet::generate_meshlet_kdtree(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices) {
     std::vector<VertexAttribute> vertices_copied = vertices;
-    std::vector<uint32_t> indices_copied = indices;
-    std::vector<uint32_t> new_indices(indices.size());
 
-    constexpr uint32_t USED_FACE = std::numeric_limits<uint32_t>::max();
+    std::vector<uint32_t> meshlet_indices_counts{};
 
-    for(size_t src_idx = 0, dst_idx = 0; src_idx < indices.size();) {
-        // if face is already used for meshlet -> skip
-        if(indices_copied[src_idx] == USED_FACE) {
-            src_idx += 3;
+    std::vector<glm::vec3> centroids(indices.size() / 3);
+    for(size_t i = 0; i < centroids.size(); ++i) {
+        centroids[i] = (vertices[indices[i*3+0]].position + vertices[indices[i*3+1]].position + vertices[indices[i*3+2]].position) / 3.0f;
+    }
+
+    std::vector<uint32_t> face_indices(indices.size() / 3);
+    std::iota(face_indices.begin(), face_indices.end(), 0);
+
+    using iter_t = std::vector<uint32_t>::iterator;
+    // ([iterator begin], [iterator end], [current split axis(0=x, 1=y, 2=z)])
+    std::queue<std::tuple<iter_t, iter_t, uint32_t>> queue{};
+    queue.push({face_indices.begin(), face_indices.end(), 0});
+
+    while(!queue.empty()) {
+        auto [b, e, axis] = queue.front(); queue.pop();
+        auto dist = std::distance(b, e);
+        // # of faces < bound -> end split
+        if(dist <= 100) {
+            meshlet_indices_counts.emplace_back(static_cast<uint32_t>(dist) * 3);
             continue;
         }
 
-        std::cout << std::format("src idx = ({}, {}, {}), dst idx = ({}, {}, {})", src_idx, src_idx+1, src_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl;
+        // split space by specific axis
+        std::nth_element(b, b + dist/2, e, [&](const auto& a, const auto& b) { return centroids[a][axis] < centroids[b][axis]; });
 
-        // pick a face as meshlet seed
-        auto v0 = indices_copied[src_idx+0]; indices_copied[src_idx+0] = USED_FACE;
-        auto v1 = indices_copied[src_idx+1]; indices_copied[src_idx+1] = USED_FACE;
-        auto v2 = indices_copied[src_idx+2]; indices_copied[src_idx+2] = USED_FACE;
-        new_indices[dst_idx+0] = v0;
-        new_indices[dst_idx+1] = v1;
-        new_indices[dst_idx+2] = v2;
-        src_idx += 3; dst_idx += 3;
-
-        // push edges
-        std::queue<std::pair<uint32_t, uint32_t>> queue{};
-        queue.push({v0, v1});
-        queue.push({v1, v2});
-        queue.push({v2, v0});
-        uint32_t face_count = 0;
-        while(face_count < faces_per_meshlet && !queue.empty()) {
-            std::cout << "# of meshlet faces = " << face_count << std::endl;
-
-            auto edge = queue.front(); queue.pop();
-
-            // if edge if boundary -> go next
-            std::cout << std::format("check opposite for edge ({}, {})", edge.first, edge.second) << std::endl;
-            auto opposite_idx = half_edge.opposites().at(edge);
-            std::cout << "opposite: " << opposite_idx << std::endl;
-            if(opposite_idx < 0) {
-                std::cout << "*** skipped by boundary ***" << std::endl;
-                continue;
-            }
-
-            // if connected face is already used -> go next
-            auto connected_face_idx = opposite_idx - opposite_idx % 3;
-            std::cout << std::format("opposite face index = {}, ({}, {}, {})", connected_face_idx, indices_copied[connected_face_idx], indices_copied[connected_face_idx+1], indices_copied[connected_face_idx+2]) << std::endl;
-            // std::cerr << "face: " << connected_face_idx << std::endl;
-            if(indices_copied[connected_face_idx] == USED_FACE) {
-                std::cout << "*** skipped by connected face used ***" << std::endl;
-                continue;
-            }
-
-            // extract connected face
-            std::cout << std::format("connected face idx = ({}, {}, {}), dst idx = ({}, {}, {})", connected_face_idx, connected_face_idx+1, connected_face_idx+2, dst_idx, dst_idx+1, dst_idx+2) << std::endl; 
-            auto new_v0 = indices_copied[connected_face_idx+0]; indices_copied[connected_face_idx+0] = USED_FACE;
-            auto new_v1 = indices_copied[connected_face_idx+1]; indices_copied[connected_face_idx+1] = USED_FACE;
-            auto new_v2 = indices_copied[connected_face_idx+2]; indices_copied[connected_face_idx+2] = USED_FACE;
-            new_indices[dst_idx+0] = new_v0;
-            new_indices[dst_idx+1] = new_v1;
-            new_indices[dst_idx+2] = new_v2;
-            face_count += 1; dst_idx += 3;
-
-            // add new edges
-            switch(opposite_idx % 3) {
-                // push i+1, i+2
-                case 0:
-                    queue.push({new_v1, new_v2});
-                    queue.push({new_v2, new_v0});
-                    break;
-                // push i, i+2
-                case 1:
-                    queue.push({new_v0, new_v1});
-                    queue.push({new_v2, new_v0});
-                    break;
-                // push i, i+1
-                case 2:
-                    queue.push({new_v0, new_v1});
-                    queue.push({new_v1, new_v2});
-                    break;
-                // no reached branch
-                default:
-                    break;
-            }
-        }
+        queue.push({b, b + dist/2, (axis + 1) % 3});
+        queue.push({b + dist/2, e, (axis + 1) % 3});
     }
 
-    return { std::move(vertices_copied), std::move(new_indices) };
+    // rearange indices
+    std::vector<uint32_t> new_indices(indices.size());
+    for(size_t i = 0; i < face_indices.size(); ++i) {
+        new_indices[i*3+0] = indices[face_indices[i]*3+0];
+        new_indices[i*3+1] = indices[face_indices[i]*3+1];
+        new_indices[i*3+2] = indices[face_indices[i]*3+2];
+    }
+
+    // generate bounding box for each meshlet
+    std::vector<AABB> bounding_boxes(meshlet_indices_counts.size());
+    constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
+    constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
+    for(size_t i = 0, base = 0; i < meshlet_indices_counts.size(); ++i) {
+        auto box = AABB{glm::vec3(FLOAT_MAX), glm::vec3(FLOAT_MIN)};
+        for(size_t offset = 0; offset < meshlet_indices_counts[i]; ++offset) {
+            auto vertex = vertices[new_indices[base + offset]].position;
+            box.min = glm::min(box.min, vertex);
+            box.max = glm::max(box.max, vertex);
+        }
+
+        bounding_boxes.emplace_back(std::move(box));
+    }
+
+    return {std::move(vertices_copied), std::move(new_indices), std::move(meshlet_indices_counts), std::move(bounding_boxes)};
 }
 
-void Meshlet::print_indices() const {
-    for(size_t i = 0; i < indices_.size(); i += 3) {
-        std::cerr << std::format("face #{}: ({}, {}, {})", i/3, indices_[i+0], indices_[i+1], indices_[i+2]) << std::endl;
+void Meshlet::print_statistics(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices) const {
+    std::cerr << std::format("# of meshlets = {}", meshlet_indices_counts_.size()) << std::endl;
+
+    auto ave_meshlet_count = static_cast<float>(std::accumulate(meshlet_indices_counts_.begin(), meshlet_indices_counts_.end(), 0) / 3) / meshlet_indices_counts_.size();
+    std::cerr << std::format("average meshlet count = {:.2f}" , ave_meshlet_count) << std::endl;
+
+    // calculate total bounding box area for previous mesh
+    float mesh_area = 0.0f;
+    constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
+    constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
+    for(size_t i = 0, base = 0; i < meshlet_indices_counts_.size(); ++i) {
+        auto box = AABB{glm::vec3(FLOAT_MAX), glm::vec3(FLOAT_MIN)};
+        for(size_t offset = 0; offset < meshlet_indices_counts_[i]; ++offset) {
+            auto vertex = vertices[indices[base + offset]].position;
+            box.min = glm::min(box.min, vertex);
+            box.max = glm::max(box.max, vertex);
+        }
+        mesh_area += box.area();
     }
+
+    // calculate total bounding box area for meshlet
+    float meshlet_area = 0.0f;
+    for(const auto& b : bounding_boxes_) {
+        meshlet_area += b.area();
+    }
+    std::cerr << std::format("total bounding box area (mesh) = {:.2f}", mesh_area) << std::endl;
+    std::cerr << std::format("total bounding box area (meshlet) = {:.2f}", meshlet_area) << std::endl;
 }
 
 }
