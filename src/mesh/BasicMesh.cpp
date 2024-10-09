@@ -3,12 +3,12 @@
 namespace mesh {
 
 BasicMesh BasicMesh::rect() {
-    std::vector<VertexData> vertices = {
+    std::vector<VertexAttribute> vertices = {
         // z-
-        { glm::vec3(-1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f) },
-        { glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 1.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f), glm::vec4(1.0f) },
     };
     std::vector<uint16_t> indices = {
         0, 1, 2,
@@ -19,37 +19,37 @@ BasicMesh BasicMesh::rect() {
 }
 
 BasicMesh BasicMesh::cube() {
-    std::vector<VertexData> vertices = {
+    std::vector<VertexAttribute> vertices = {
         // x+
-        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f) },
         // x-
-        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
-        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
+        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
+        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
+        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) },
         // y+
-        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) },
         // y-
-        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f) },
         // z+
-        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f) },
-        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(1.0f) },
         // z-
-        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
-        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
+        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f) },
     };
     std::vector<uint16_t> indices = {
         // x+
@@ -78,7 +78,7 @@ BasicMesh BasicMesh::cube() {
 BasicMesh BasicMesh::sphere(uint32_t row, uint32_t column, float radius) {
     constexpr float PI = 3.14159265359f;
 
-    std::vector<VertexData> vertices{};
+    std::vector<VertexAttribute> vertices{};
     std::vector<uint16_t> indices{};
     vertices.reserve((row+1)*(column*1));
     indices.reserve(row*column*6);
@@ -94,7 +94,7 @@ BasicMesh BasicMesh::sphere(uint32_t row, uint32_t column, float radius) {
             float tz = rr * radius * std::sin(tr);
             float rx = rr * std::cos(tr);
             float rz = rr * std::sin(tr);
-            vertices.emplace_back(VertexData{ glm::vec3(tx, ty, tz), glm::vec3(rx, ry, rz), glm::vec4(1.0) });
+            vertices.emplace_back(VertexAttribute{ glm::vec3(tx, ty, tz), glm::vec3(rx, ry, rz), glm::vec2(0.0f), glm::vec4(1.0) });
         }
     }
 
@@ -116,7 +116,7 @@ BasicMesh BasicMesh::sphere(uint32_t row, uint32_t column, float radius) {
 BasicMesh BasicMesh::torus(uint32_t row, uint32_t column, float inner_radius, float outer_radius) {
     constexpr float PI = 3.14159265359f;
 
-    std::vector<VertexData> vertices{};
+    std::vector<VertexAttribute> vertices{};
     std::vector<uint16_t> indices{};
     vertices.reserve((row+1)*(column+1));
     indices.reserve(row*column*6);
@@ -132,7 +132,7 @@ BasicMesh BasicMesh::torus(uint32_t row, uint32_t column, float inner_radius, fl
             float tz = (rr * inner_radius + outer_radius) * std::sin(tr);
             float rx = rr * std::cos(tr);
             float rz = rr * std::sin(tr);
-            vertices.emplace_back(VertexData{ glm::vec3(tx, ty, tz), glm::vec3(rx, ry, rz), glm::vec4(1.0f) });
+            vertices.emplace_back(VertexAttribute{ glm::vec3(tx, ty, tz), glm::vec3(rx, ry, rz), glm::vec2(0.0f), glm::vec4(1.0f) });
         }
     }
 
@@ -152,15 +152,15 @@ BasicMesh BasicMesh::torus(uint32_t row, uint32_t column, float inner_radius, fl
 }
 
 BasicMesh BasicMesh::frame() {
-    std::vector<VertexData> vertices = {
-        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
-        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec4(1.0f) },
+    std::vector<VertexAttribute> vertices = {
+        { glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, -1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, -1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
+        { glm::vec3(1.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec2(0.0f), glm::vec4(1.0f) },
     };
 
     std::vector<uint16_t> indices = {

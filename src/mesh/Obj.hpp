@@ -1,29 +1,11 @@
 #pragma once
 
-#include <algorithm>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <string>
-#include <vector>
-
-#include <glm/glm.hpp>
+#include "common.hpp"
 
 namespace mesh {
 
 class Obj {
-public:
-    struct VertexLayout {
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec2 tex_coord;
-        glm::vec4 color;
-    };
-
-private:
-    std::vector<VertexLayout> vertices_;
+    std::vector<VertexAttribute> vertices_;
     std::vector<uint32_t> indices_;
 
     struct IndexLayout_ {
@@ -65,11 +47,13 @@ private:
     }
 
 public:
-    Obj(std::vector<VertexLayout>&& vertices, std::vector<uint32_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}
+    Obj(std::vector<VertexAttribute>&& vertices, std::vector<uint32_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}
 
     static Obj load(const std::filesystem::path& path);
 
+    const auto& vertices() const noexcept { return vertices_; }
     auto& vertices() noexcept { return vertices_; }
+    const auto& indices() const noexcept { return indices_; }
     auto& indices() noexcept { return indices_; }
 
     void print_statistics() const;

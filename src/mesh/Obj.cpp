@@ -69,7 +69,7 @@ Obj Obj::load(const std::filesystem::path& path) {
 
     auto max_attribute_count = (std::max)({vertices.size(), tex_coords.size(), normals.size()});
 
-    std::vector<VertexLayout> interleaved(max_attribute_count);
+    std::vector<VertexAttribute> interleaved(max_attribute_count);
     std::vector<uint32_t> indices(attribute_indices.size());
 
     for(size_t i = 0; i < attribute_indices.size(); ++i) {
@@ -89,6 +89,12 @@ Obj Obj::load(const std::filesystem::path& path) {
 void Obj::print_statistics() const {
     std::cerr << "# of vertex attributes = " << vertices_.size() << std::endl;
     std::cerr << "# of indices = " << indices_.size() << std::endl;
+
+    for(size_t i = 0; i < indices_.size(); i += 3) {
+        if(indices_[i+0] == indices_[i+1] || indices_[i+1] == indices_[i+2] || indices_[i+2] == indices_[i+0]) {
+            std::cerr << std::format("invalid edge detected on face index {}: ({}, {}, {})", i, indices_[i+0], indices_[i+1], indices_[i+2]) << std::endl;
+        }
+    }
 }
 
 }

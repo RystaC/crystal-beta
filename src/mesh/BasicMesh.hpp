@@ -1,30 +1,14 @@
 #pragma once
 
-#include <filesystem>
-#include <iostream>
-#include <vector>
-
-#include <cmath>
-
-#include <glm/glm.hpp>
+#include "common.hpp"
 
 namespace mesh {
 
-struct VertexData {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec4 color;
-};
-
-struct BoundingBox {
-    glm::vec3 min, max;
-};
-
 class BasicMesh {
-    std::vector<VertexData> vertices_;
+    std::vector<VertexAttribute> vertices_;
     std::vector<uint16_t> indices_;
 
-    BasicMesh(std::vector<VertexData>&& vertices, std::vector<uint16_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}
+    BasicMesh(std::vector<VertexAttribute>&& vertices, std::vector<uint16_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}
 
 public:
     static BasicMesh rect();
@@ -36,7 +20,7 @@ public:
     auto& vertices() const noexcept { return vertices_; }
     auto& indices() const noexcept { return indices_; }
 
-    BoundingBox bounding_box() const {
+    AABB bounding_box() const {
         auto min = glm::vec3(std::numeric_limits<float>::max());
         auto max = glm::vec3(std::numeric_limits<float>::lowest());
 

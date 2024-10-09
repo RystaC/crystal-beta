@@ -40,7 +40,7 @@ void HalfEdge::print_opposites(const std::vector<uint32_t>& indices) const {
         auto e1 = std::make_pair(indices[i+1], indices[i+2]);
         auto e2 = std::make_pair(indices[i+2], indices[i+0]);
 
-        std::cerr << std::format("face #{}: edge 0 = {}, edge 1 = {}, edge 2 = {}", i/3, opposites_.at(e0)/3, opposites_.at(e1)/3, opposites_.at(e2)/3) << std::endl;
+        std::cerr << std::format("face #{}: edge 0 = {}, edge 1 = {}, edge 2 = {}", i/3, opposites_.at(e0), opposites_.at(e1), opposites_.at(e2)) << std::endl;
     }
 }
 

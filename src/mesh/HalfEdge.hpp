@@ -5,6 +5,8 @@
 #include <map>
 #include <vector>
 
+#include <cstdint>
+
 namespace mesh {
 
 class HalfEdge {
@@ -14,6 +16,9 @@ class HalfEdge {
 
 public:
     static HalfEdge create_half_edge(const std::vector<uint32_t>& indices);
+
+    const auto& opposites() const noexcept { return opposites_; }
+    auto& opposites() noexcept { return opposites_; }
 
     void print_opposites(const std::vector<uint32_t>& indices) const;
 };

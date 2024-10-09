@@ -86,6 +86,7 @@
         "codecvt": "cpp",
         "semaphore": "cpp",
         "barrier": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "condition_variable": "cpp"
     }
 }
