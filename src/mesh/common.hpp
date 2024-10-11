@@ -15,6 +15,7 @@
 
 namespace mesh {
 
+// axis-aligned bounding box (for instance culling)
 struct AABB {
     alignas(16) glm::vec3 min;
     alignas(16) glm::vec3 max;
@@ -34,11 +35,27 @@ inline float aabb_area(glm::vec3 min, glm::vec3 max) {
     return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
 }
 
+// basic attribute (used in all mesh types)
 struct VertexAttribute {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec2 tex_coord;
     glm::vec4 color;
 };
+
+// debug utilities (hash color function etc.)
+inline glm::vec4 hash_color(uint32_t i) {
+    float r = static_cast<float>(i);
+    float g = static_cast<float>(i+1);
+    float b = static_cast<float>(i+2);
+
+    for(int u = 0; u < 2; ++u) {
+        r = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 257.0f);
+        g = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 1009.0f);
+        b = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 21001.0f);
+    }
+
+    return glm::vec4(r / 257.0f, g / 1009.0f, b / 21001.0f, 1.0f);
+}
 
 }
