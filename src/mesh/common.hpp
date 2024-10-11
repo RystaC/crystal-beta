@@ -29,6 +29,11 @@ struct AABB {
     }
 };
 
+inline float aabb_area(glm::vec3 min, glm::vec3 max) {
+    auto d = max - min;
+    return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+}
+
 struct VertexAttribute {
     glm::vec3 position;
     glm::vec3 normal;

@@ -7,13 +7,21 @@ namespace mesh {
 
 // TODO: use kd-tree or BVH to build meshlet
 class Meshlet {
+public:
+    struct Data {
+        glm::vec3 aabb_min;
+        uint32_t index_offset;
+        glm::vec3 aabb_max;
+        uint32_t index_count;
+    };
+
+private:
     std::vector<VertexAttribute> vertices_;
     std::vector<uint32_t> indices_;
-    std::vector<uint32_t> meshlet_indices_counts_;
-    std::vector<AABB> bounding_boxes_;
+    std::vector<Data> meshlets_;
 
-    Meshlet(std::vector<VertexAttribute>&& vertices, std::vector<uint32_t>&& indices, std::vector<uint32_t>&& meshlet_indices_counts, std::vector<AABB>&& bounding_boxes) noexcept :
-        vertices_(vertices), indices_(indices), meshlet_indices_counts_(meshlet_indices_counts), bounding_boxes_(bounding_boxes)
+    Meshlet(std::vector<VertexAttribute>&& vertices, std::vector<uint32_t>&& indices, std::vector<Data>&& meshlets) noexcept :
+        vertices_(vertices), indices_(indices), meshlets_(meshlets)
     {}
 
 public:
@@ -23,10 +31,8 @@ public:
     auto& vertices() noexcept { return vertices_; }
     const auto& indices() const noexcept { return indices_; }
     auto& indices() noexcept { return indices_; }
-    const auto& meshlet_indices_counts() const noexcept { return meshlet_indices_counts_; }
-    auto& meshlet_indices_counts() noexcept { return meshlet_indices_counts_; }
-    const auto& bounding_boxes() const noexcept { return bounding_boxes_; }
-    auto& bounding_boxes() noexcept { return bounding_boxes_; }
+    const auto& meshlets() const noexcept { return meshlets_; }
+    auto& meshlets() noexcept { return meshlets_; }
 
     void print_statistics(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices) const;
 };

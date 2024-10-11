@@ -3,9 +3,15 @@
 namespace mesh {
 
 Meshlet Meshlet::generate_meshlet_kdtree(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices) {
+    constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
+    constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
+
     std::vector<VertexAttribute> vertices_copied = vertices;
 
     std::vector<uint32_t> meshlet_indices_counts{};
+    std::vector<Data> meshlets{};
+    std::vector<uint32_t> new_indices{};
+    new_indices.reserve(indices.size());
 
     std::vector<glm::vec3> centroids(indices.size() / 3);
     for(size_t i = 0; i < centroids.size(); ++i) {
@@ -25,7 +31,25 @@ Meshlet Meshlet::generate_meshlet_kdtree(const std::vector<VertexAttribute>& ver
         auto dist = std::distance(b, e);
         // # of faces < bound -> end split
         if(dist <= 100) {
-            meshlet_indices_counts.emplace_back(static_cast<uint32_t>(dist) * 3);
+            Data meshlet{};
+            meshlet.index_offset = static_cast<uint32_t>(new_indices.size());
+            meshlet.index_count = static_cast<uint32_t>(dist * 3);
+            
+            auto box = AABB{glm::vec3(FLOAT_MAX), glm::vec3(FLOAT_MIN)};
+            std::for_each(b, e, [&](const auto& i) {
+                auto i0 = indices[i*3+0]; auto i1 = indices[i*3+1]; auto i2 = indices[i*3+2];
+                // rearange indices
+                new_indices.emplace_back(i0); new_indices.emplace_back(i1); new_indices.emplace_back(i2);
+                // generate bounding box
+                auto v0 = vertices[i0].position; auto v1 = vertices[i1].position; auto v2 = vertices[i2].position;
+                box.min = glm::min(box.min, v0); box.min = glm::min(box.min, v1); box.min = glm::min(box.min, v2);
+                box.max = glm::max(box.max, v0); box.max = glm::max(box.max, v1); box.max = glm::max(box.max, v2);
+            });
+
+            meshlet.aabb_min = box.min;
+            meshlet.aabb_max = box.max;
+            
+            meshlets.emplace_back(std::move(meshlet));
             continue;
         }
 
@@ -36,46 +60,20 @@ Meshlet Meshlet::generate_meshlet_kdtree(const std::vector<VertexAttribute>& ver
         queue.push({b + dist/2, e, (axis + 1) % 3});
     }
 
-    // rearange indices
-    std::vector<uint32_t> new_indices(indices.size());
-    for(size_t i = 0; i < face_indices.size(); ++i) {
-        new_indices[i*3+0] = indices[face_indices[i]*3+0];
-        new_indices[i*3+1] = indices[face_indices[i]*3+1];
-        new_indices[i*3+2] = indices[face_indices[i]*3+2];
-    }
-
-    // generate bounding box for each meshlet
-    std::vector<AABB> bounding_boxes(meshlet_indices_counts.size());
-    constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
-    constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
-    for(size_t i = 0, base = 0; i < meshlet_indices_counts.size(); ++i) {
-        auto box = AABB{glm::vec3(FLOAT_MAX), glm::vec3(FLOAT_MIN)};
-        for(size_t offset = 0; offset < meshlet_indices_counts[i]; ++offset) {
-            auto vertex = vertices[new_indices[base + offset]].position;
-            box.min = glm::min(box.min, vertex);
-            box.max = glm::max(box.max, vertex);
-        }
-
-        bounding_boxes.emplace_back(std::move(box));
-    }
-
-    return {std::move(vertices_copied), std::move(new_indices), std::move(meshlet_indices_counts), std::move(bounding_boxes)};
+    return {std::move(vertices_copied), std::move(new_indices), std::move(meshlets)};
 }
 
 void Meshlet::print_statistics(const std::vector<VertexAttribute>& vertices, const std::vector<uint32_t>& indices) const {
-    std::cerr << std::format("# of meshlets = {}", meshlet_indices_counts_.size()) << std::endl;
-
-    auto ave_meshlet_count = static_cast<float>(std::accumulate(meshlet_indices_counts_.begin(), meshlet_indices_counts_.end(), 0) / 3) / meshlet_indices_counts_.size();
-    std::cerr << std::format("average meshlet count = {:.2f}" , ave_meshlet_count) << std::endl;
+    std::cerr << std::format("# of meshlets = {}", meshlets_.size()) << std::endl;
 
     // calculate total bounding box area for previous mesh
     float mesh_area = 0.0f;
     constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
     constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
-    for(size_t i = 0, base = 0; i < meshlet_indices_counts_.size(); ++i) {
+    for(size_t i = 0; i < meshlets_.size(); ++i) {
         auto box = AABB{glm::vec3(FLOAT_MAX), glm::vec3(FLOAT_MIN)};
-        for(size_t offset = 0; offset < meshlet_indices_counts_[i]; ++offset) {
-            auto vertex = vertices[indices[base + offset]].position;
+        for(size_t offset = 0; offset < meshlets_[i].index_count; ++offset) {
+            auto vertex = vertices[indices[meshlets_[i].index_offset + offset]].position;
             box.min = glm::min(box.min, vertex);
             box.max = glm::max(box.max, vertex);
         }
@@ -84,8 +82,8 @@ void Meshlet::print_statistics(const std::vector<VertexAttribute>& vertices, con
 
     // calculate total bounding box area for meshlet
     float meshlet_area = 0.0f;
-    for(const auto& b : bounding_boxes_) {
-        meshlet_area += b.area();
+    for(const auto& b : meshlets_) {
+        meshlet_area += aabb_area(b.aabb_min, b.aabb_max);
     }
     std::cerr << std::format("total bounding box area (mesh) = {:.2f}", mesh_area) << std::endl;
     std::cerr << std::format("total bounding box area (meshlet) = {:.2f}", meshlet_area) << std::endl;
