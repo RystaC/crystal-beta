@@ -25,8 +25,12 @@ struct AABB {
         return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
     }
 
-    glm::vec3 centroid() const {
+    glm::vec3 center() const {
         return (min + max) / 2.0f;
+    }
+
+    glm::vec3 extent() const {
+        return glm::abs(max - center());
     }
 };
 

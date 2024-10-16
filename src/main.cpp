@@ -36,6 +36,9 @@ struct FrustumConstantData {
     glm::mat4 inv_view_proj;
 };
 
+struct AABBInstanceData {
+    glm::vec3 translate, scale;
+};
 
 int main(int argc, char** argv) {
     auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
@@ -44,11 +47,19 @@ int main(int argc, char** argv) {
     auto meshlet = mesh::Meshlet::generate_meshlet_kdtree(bunny.vertices(), bunny.indices());
     meshlet.print_statistics(bunny.vertices(), bunny.indices());
 
+    std::vector<AABBInstanceData> bunny_aabbs(meshlet.meshlets().size());
+    std::vector<AABBInstanceData> meshlet_aabbs(meshlet.meshlets().size());
+
     for(size_t i = 0, i_i = 0; i < meshlet.meshlets().size(); ++i) {
+        mesh::AABB box{glm::vec3(std::numeric_limits<float>::max()), glm::vec3(std::numeric_limits<float>::lowest())};
         for(size_t j = 0; j < meshlet.meshlets()[i].index_count; ++j) {
             bunny.vertices()[bunny.indices()[i_i]].color = mesh::hash_color(static_cast<uint32_t>(i));
+            box.min = glm::min(box.min, bunny.vertices()[bunny.indices()[i_i]].position);
+            box.max = glm::max(box.max, bunny.vertices()[bunny.indices()[i_i]].position);
             i_i += 1;
         }
+
+        bunny_aabbs.emplace_back(AABBInstanceData{box.center(), box.extent()});
     }
 
     for(size_t i = 0, i_i = 0; i < meshlet.meshlets().size(); ++i) {
@@ -56,7 +67,12 @@ int main(int argc, char** argv) {
             meshlet.vertices()[meshlet.indices()[i_i]].color = mesh::hash_color(static_cast<uint32_t>(i));
             i_i += 1;
         }
+
+        mesh::AABB box{meshlet.meshlets()[i].aabb_min, meshlet.meshlets()[i].aabb_max};
+        meshlet_aabbs.emplace_back(AABBInstanceData{box.center(), box.extent()});
     }
+
+    auto aabb_mesh = mesh::BasicMesh::frame();
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -151,7 +167,7 @@ int main(int argc, char** argv) {
     auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
     auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT).unwrap();
 
-    // image merging render pass
+    // forward render pass
     vkw::render_pass::AttachmentDescriptions forward_attachment{};
     forward_attachment
     // attachment 0: swapchain image
@@ -182,8 +198,28 @@ int main(int argc, char** argv) {
     .output_depth_attachment(forward_depth_ref)
     .end();
 
+    // debug bounding box render pass
+    vkw::render_pass::AttachmentDescriptions aabb_attachment{};
+    aabb_attachment
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences aabb_attachment_ref{};
+    aabb_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions aabb_subpass{};
+    aabb_subpass.add()
+    .output_color_attachments(aabb_attachment_ref)
+    .end();
+
     std::cerr << std::endl << "create render pass..." << std::endl;
     auto forward_render_pass = device->create_render_pass(forward_attachment, forward_subpass).unwrap();
+    auto aabb_render_pass = device->create_render_pass(aabb_attachment, aabb_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     std::vector<vkw::object::Framebuffer> forward_framebuffers(swapchain.size());
@@ -191,22 +227,38 @@ int main(int argc, char** argv) {
         forward_framebuffers[i] = device->create_framebuffer(forward_render_pass, {swapchain.image_view(i), depth_buffer_view}, swapchain.extent()).unwrap();
     }
 
+    std::vector<vkw::object::Framebuffer> aabb_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        aabb_framebuffers[i] = device->create_framebuffer(aabb_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    }
+
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
     auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
+    auto aabb_vertex_shader = device->create_shader_module("spirv/debug_bounding_box.vert.glsl.spirv").unwrap();
+    auto aabb_fragment_shader = device->create_shader_module("spirv/debug_bounding_box.frag.glsl.spirv").unwrap();
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(bunny.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto index_buffer = device->create_buffer_with_data(bunny.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto meshlet_vertex_buffer = device->create_buffer_with_data(meshlet.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto meshlet_index_buffer = device->create_buffer_with_data(meshlet.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto aabb_vertex_buffer = device->create_buffer_with_data(aabb_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto aabb_index_buffer = device->create_buffer_with_data(aabb_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto bunny_aabb_instance_buffer = device->create_buffer_with_data(bunny_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto meshlet_aabb_instance_buffer = device->create_buffer_with_data(meshlet_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     vkw::pipeline_layout::CreateInfo forward_layout_info{};
     forward_layout_info
     .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
 
+    vkw::pipeline_layout::CreateInfo aabb_layout_info{};
+    aabb_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
+    auto aabb_pipeline_layout = device->create_pipeline_layout(aabb_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -254,6 +306,53 @@ int main(int argc, char** argv) {
 
 
     auto forward_pipeline = device->create_pipeline(forward_pipeline_state, forward_pipeline_layout, forward_render_pass, 0).unwrap();
+
+    // debug bounding box pipeline
+    vkw::pipeline::GraphicsShaderStages aabb_shader_stages{};
+    aabb_shader_stages
+    .vertex_shader(aabb_vertex_shader)
+    .fragment_shader(aabb_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions aabb_vertex_bindings{};
+    aabb_vertex_bindings
+    .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(1, sizeof(AABBInstanceData), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::VertexInputAttributeDescriptions aabb_vertex_attributes{};
+    aabb_vertex_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
+    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
+    .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color))
+    .add(4, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(AABBInstanceData, translate))
+    .add(5, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(AABBInstanceData, scale));
+    vkw::pipeline::VertexInputState aabb_vertex_input_state(aabb_vertex_bindings, aabb_vertex_attributes);
+    vkw::pipeline::InputAssemblyState aabb_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    vkw::pipeline::ViewportState aabb_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState aabb_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState aabb_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState aabb_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates aabb_blend_attachment_states{};
+    aabb_blend_attachment_states.add(VK_TRUE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+    vkw::pipeline::ColorBlendState aabb_color_blend_state(aabb_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates aabb_pipeline_states{};
+    aabb_pipeline_states
+    .shader_stages(aabb_shader_stages)
+    .vertex_input(aabb_vertex_input_state)
+    .input_assembly(aabb_input_assembly_state)
+    .viewport(aabb_viewport_state)
+    .rasterization(aabb_rasterization_state)
+    .multisample(aabb_multisample_state)
+    .depth_stencil(aabb_depth_stencil_state)
+    .color_blend(aabb_color_blend_state);
+
+    auto aabb_pipeline = device->create_pipeline(aabb_pipeline_states, aabb_pipeline_layout, aabb_render_pass, 0).unwrap();
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
@@ -311,11 +410,14 @@ int main(int argc, char** argv) {
                 // 1: depth buffer
                 { .depthStencil = {1.0f, 0} },
             };
+            std::vector<VkClearValue> aabb_clear_values = {};
 
             model_rotate += std::numbers::pi_v<float> * game->delta_time();
             frustum_rotate += std::numbers::pi_v<float> * 0.5f * game->delta_time();
 
             glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            model_rotate += std::numbers::pi_v<float> * game->delta_time();
+            glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), model_rotate, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 translate1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
             glm::mat4 translate2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
             auto camera_pos = game->camera_pos();
@@ -326,11 +428,11 @@ int main(int argc, char** argv) {
             projection[1][1] *= -1;
 
             ForwardConstantData push_constant_data1 {
-                model * translate1, view, projection,
+                model * translate1 * rotate, view, projection,
             };
 
             ForwardConstantData push_constant_data2 {
-                model * translate2, view, projection,
+                model * translate2 * rotate, view, projection,
             };
 
 
@@ -346,6 +448,16 @@ int main(int argc, char** argv) {
             .bind_vertex_buffers(0, {meshlet_vertex_buffer})
             .bind_index_buffer(meshlet_index_buffer, VK_INDEX_TYPE_UINT32)
             .draw_indexed(vkw::size_u32(meshlet.indices().size()), 1)
+            .end_render_pass()
+            .begin_render_pass(aabb_framebuffers[current_image_index], aabb_render_pass, render_area, aabb_clear_values)
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, aabb_pipeline)
+            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_vertex_buffers(0, {aabb_vertex_buffer, bunny_aabb_instance_buffer})
+            .bind_index_buffer(aabb_index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(bunny_aabbs.size()))
+            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
+            .bind_vertex_buffers(0, {aabb_vertex_buffer, meshlet_aabb_instance_buffer})
+            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(meshlet_aabbs.size()))
             .end_render_pass()
             .end_record();
 
