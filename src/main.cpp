@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
     }
 
     auto aabb_mesh = mesh::BasicMesh::frame();
+    auto frustum_mesh = mesh::BasicMesh::cube();
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -217,9 +218,29 @@ int main(int argc, char** argv) {
     .output_color_attachments(aabb_attachment_ref)
     .end();
 
+    // debug frustum render pass
+    vkw::render_pass::AttachmentDescriptions frustum_attachment{};
+    frustum_attachment
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences frustum_attachment_ref{};
+    frustum_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions frustum_subpass{};
+    frustum_subpass.add()
+    .output_color_attachments(frustum_attachment_ref)
+    .end();
+
     std::cerr << std::endl << "create render pass..." << std::endl;
     auto forward_render_pass = device->create_render_pass(forward_attachment, forward_subpass).unwrap();
     auto aabb_render_pass = device->create_render_pass(aabb_attachment, aabb_subpass).unwrap();
+    auto frustum_render_pass = device->create_render_pass(frustum_attachment, frustum_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     std::vector<vkw::object::Framebuffer> forward_framebuffers(swapchain.size());
@@ -232,11 +253,18 @@ int main(int argc, char** argv) {
         aabb_framebuffers[i] = device->create_framebuffer(aabb_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
+    std::vector<vkw::object::Framebuffer> frustum_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        frustum_framebuffers[i] = device->create_framebuffer(frustum_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    }
+
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
     auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
     auto aabb_vertex_shader = device->create_shader_module("spirv/debug_bounding_box.vert.glsl.spirv").unwrap();
     auto aabb_fragment_shader = device->create_shader_module("spirv/debug_bounding_box.frag.glsl.spirv").unwrap();
+    auto frustum_vertex_shader = device->create_shader_module("spirv/debug_frustum.vert.glsl.spirv").unwrap();
+    auto frustum_fragment_shader = device->create_shader_module("spirv/debug_frustum.frag.glsl.spirv").unwrap();
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(bunny.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
@@ -245,6 +273,8 @@ int main(int argc, char** argv) {
     auto meshlet_index_buffer = device->create_buffer_with_data(meshlet.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto aabb_vertex_buffer = device->create_buffer_with_data(aabb_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto aabb_index_buffer = device->create_buffer_with_data(aabb_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto frustum_vertex_buffer = device->create_buffer_with_data(frustum_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto frustum_index_buffer = device->create_buffer_with_data(frustum_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto bunny_aabb_instance_buffer = device->create_buffer_with_data(bunny_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto meshlet_aabb_instance_buffer = device->create_buffer_with_data(meshlet_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
@@ -256,9 +286,14 @@ int main(int argc, char** argv) {
     aabb_layout_info
     .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
 
+    vkw::pipeline_layout::CreateInfo frustum_layout_info{};
+    frustum_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumConstantData));
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
     auto aabb_pipeline_layout = device->create_pipeline_layout(aabb_layout_info).unwrap();
+    auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -303,7 +338,6 @@ int main(int argc, char** argv) {
     .multisample(forward_multisample_state)
     .depth_stencil(forward_depth_stencil_state)
     .color_blend(geometory_color_blend_state);
-
 
     auto forward_pipeline = device->create_pipeline(forward_pipeline_state, forward_pipeline_layout, forward_render_pass, 0).unwrap();
 
@@ -353,6 +387,50 @@ int main(int argc, char** argv) {
     .color_blend(aabb_color_blend_state);
 
     auto aabb_pipeline = device->create_pipeline(aabb_pipeline_states, aabb_pipeline_layout, aabb_render_pass, 0).unwrap();
+
+    // debug frustum pipeline
+    vkw::pipeline::GraphicsShaderStages frustum_shader_stages{};
+    frustum_shader_stages
+    .vertex_shader(frustum_vertex_shader)
+    .fragment_shader(frustum_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions frustum_vertex_bindings{};
+    frustum_vertex_bindings
+    .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX);
+    vkw::pipeline::VertexInputAttributeDescriptions frustum_vertex_attributes{};
+    frustum_vertex_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
+    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
+    .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color));
+    vkw::pipeline::VertexInputState frustum_vertex_input_state(frustum_vertex_bindings, frustum_vertex_attributes);
+    vkw::pipeline::InputAssemblyState frustum_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkw::pipeline::ViewportState frustum_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState frustum_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState frustum_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState frustum_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates frustum_blend_attachment_states{};
+    frustum_blend_attachment_states.add(VK_TRUE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+    vkw::pipeline::ColorBlendState frustum_color_blend_state(frustum_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates frustum_pipeline_states{};
+    frustum_pipeline_states
+    .shader_stages(frustum_shader_stages)
+    .vertex_input(frustum_vertex_input_state)
+    .input_assembly(frustum_input_assembly_state)
+    .viewport(frustum_viewport_state)
+    .rasterization(frustum_rasterization_state)
+    .multisample(frustum_multisample_state)
+    .depth_stencil(frustum_depth_stencil_state)
+    .color_blend(frustum_color_blend_state);
+
+    auto frustum_pipeline = device->create_pipeline(frustum_pipeline_states, frustum_pipeline_layout, frustum_render_pass, 0).unwrap();
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
@@ -410,16 +488,13 @@ int main(int argc, char** argv) {
                 // 1: depth buffer
                 { .depthStencil = {1.0f, 0} },
             };
-            std::vector<VkClearValue> aabb_clear_values = {};
 
             model_rotate += std::numbers::pi_v<float> * game->delta_time();
             frustum_rotate += std::numbers::pi_v<float> * 0.5f * game->delta_time();
 
             glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-            model_rotate += std::numbers::pi_v<float> * game->delta_time();
-            glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), model_rotate, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 translate1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
-            glm::mat4 translate2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            glm::mat4 translate1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 1.0f));
+            glm::mat4 translate2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 1.0f));
             auto camera_pos = game->camera_pos();
             auto camera_dir = game->camera_dir();
             auto camera_up = game->camera_up();
@@ -427,17 +502,34 @@ int main(int argc, char** argv) {
             glm::mat4 projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 100.0f);
             projection[1][1] *= -1;
 
+            glm::mat4 frustum_view = glm::lookAt(glm::vec3(0.0f), glm::vec3(glm::cos(frustum_rotate), 0.0f, glm::sin(frustum_rotate)), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 frustum_projection = glm::perspective(glm::radians(90.0f), (float)WINDOW_WIDTH/WINDOW_HEIGHT, 0.1f, 5.0f);
+            frustum_projection[1][1] *= -1;
+
+            // why need to transpose?
+            auto view_proj = glm::transpose(frustum_projection * frustum_view);
+            auto row0 = view_proj[0];
+            auto row1 = view_proj[1];
+            auto row2 = view_proj[2];
+            auto row3 = view_proj[3];
+
+            auto inv_view_proj = glm::inverse(frustum_projection * frustum_view);
+
             ForwardConstantData push_constant_data1 {
-                model * translate1 * rotate, view, projection,
+                model * translate1, view, projection,
             };
 
             ForwardConstantData push_constant_data2 {
-                model * translate2 * rotate, view, projection,
+                model * translate2, view, projection,
             };
 
+            FrustumConstantData frustum_constant_data {
+                .view_proj = projection * view,
+                .inv_view_proj = inv_view_proj,
+            };
 
             command_buffer.begin_record(0)
-            // forward path
+            // forward pass
             .begin_render_pass(forward_framebuffers[current_image_index], forward_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, forward_pipeline)
             .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
@@ -449,15 +541,24 @@ int main(int argc, char** argv) {
             .bind_index_buffer(meshlet_index_buffer, VK_INDEX_TYPE_UINT32)
             .draw_indexed(vkw::size_u32(meshlet.indices().size()), 1)
             .end_render_pass()
-            .begin_render_pass(aabb_framebuffers[current_image_index], aabb_render_pass, render_area, aabb_clear_values)
-            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, aabb_pipeline)
-            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
-            .bind_vertex_buffers(0, {aabb_vertex_buffer, bunny_aabb_instance_buffer})
-            .bind_index_buffer(aabb_index_buffer, VK_INDEX_TYPE_UINT16)
-            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(bunny_aabbs.size()))
-            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
-            .bind_vertex_buffers(0, {aabb_vertex_buffer, meshlet_aabb_instance_buffer})
-            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(meshlet_aabbs.size()))
+            // debug bounding box pass
+            // .begin_render_pass(aabb_framebuffers[current_image_index], aabb_render_pass, render_area, {})
+            // .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, aabb_pipeline)
+            // .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            // .bind_vertex_buffers(0, {aabb_vertex_buffer, bunny_aabb_instance_buffer})
+            // .bind_index_buffer(aabb_index_buffer, VK_INDEX_TYPE_UINT16)
+            // .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(bunny_aabbs.size()))
+            // .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
+            // .bind_vertex_buffers(0, {aabb_vertex_buffer, meshlet_aabb_instance_buffer})
+            // .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(meshlet_aabbs.size()))
+            // .end_render_pass()
+            // debug frustum pass
+            .begin_render_pass(frustum_framebuffers[current_image_index], frustum_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, frustum_pipeline)
+            .push_constants(frustum_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumConstantData), &frustum_constant_data)
+            .bind_vertex_buffers(0, {frustum_vertex_buffer})
+            .bind_index_buffer(frustum_index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(frustum_mesh.indices().size()), 1)
             .end_render_pass()
             .end_record();
 

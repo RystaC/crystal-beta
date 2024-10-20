@@ -1081,7 +1081,7 @@ int main(int argc, char** argv) {
             );
 
             command_buffer.begin_record(0)
-            // instance culling path
+            // instance culling pass
             .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline)
             .push_constants(instance_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(CullingPushConstantData), &instance_culling_constant_data)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, instance_culling_pipeline_layout, 0, instance_culling_descriptor_sets)
@@ -1091,14 +1091,14 @@ int main(int argc, char** argv) {
                 { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT }, 0,
                 std::nullopt, instance_culling_barrier, std::nullopt
             )
-            // deferred geometry path
+            // deferred geometry pass
             .begin_render_pass(deferred_framebuffer, deferred_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, geometry_pipeline)
             .push_constants(geometry_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GeometryPushConstantData), &geometry_constant_data)
             .bind_vertex_buffers(0, {vertex_buffer, instance_out_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT16)
             .draw_indexed_indirect(indirect_buffer, 0, 1, sizeof(VkDrawIndexedIndirectCommand))
-            // deferred light path
+            // deferred light pass
             .next_subpass()
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, light_pipeline)
             .push_constants(light_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec3), &camera_pos)
@@ -1110,7 +1110,7 @@ int main(int argc, char** argv) {
                 { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT }, 0,
                 std::nullopt, std::nullopt, blur_vertical_barrier
             )
-            // blur vertical path
+            // blur vertical pass
             .begin_render_pass(blur_vertical_framebuffer, blur_vertical_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_vertical_pipeline_layout, 0, blur_vertical_descriptor_sets)
@@ -1121,7 +1121,7 @@ int main(int argc, char** argv) {
                 { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT }, 0,
                 std::nullopt, std::nullopt, blur_horizontal_barrier
             )
-            // blur horizontal path
+            // blur horizontal pass
             .begin_render_pass(blur_horizontal_framebuffer, blur_horizontal_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, blur_horizontal_pipeline_layout, 0, blur_horizontal_descriptor_sets)
@@ -1132,7 +1132,7 @@ int main(int argc, char** argv) {
                 { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT }, VK_DEPENDENCY_BY_REGION_BIT,
                 std::nullopt, std::nullopt, merge_barrier
             )
-            // merge path
+            // merge pass
             .begin_render_pass(merge_framebuffers[current_image_index], merge_render_pass, render_area, blur_clear_value)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline)
             .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, merge_pipeline_layout, 0, merge_descriptor_sets)

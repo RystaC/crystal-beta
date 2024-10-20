@@ -1,7 +1,6 @@
 #pragma once
 
-#include "../vkw/Instance.hpp"
-#include "../vkw/Device.hpp"
+#include "../vkw/vkw.hpp"
 
 namespace graphics {
 
