@@ -37,7 +37,8 @@ struct FrustumConstantData {
 };
 
 struct AABBInstanceData {
-    glm::vec3 translate, scale;
+    alignas(16) glm::vec3 translate;
+    alignas(16) glm::vec3 scale;
 };
 
 int main(int argc, char** argv) {
@@ -47,19 +48,22 @@ int main(int argc, char** argv) {
     auto meshlet = mesh::Meshlet::generate_meshlet_kdtree(bunny.vertices(), bunny.indices());
     meshlet.print_statistics(bunny.vertices(), bunny.indices());
 
+    std::vector<mesh::Meshlet::Data> bunny_meshlet(meshlet.meshlets().size());
     std::vector<AABBInstanceData> bunny_aabbs(meshlet.meshlets().size());
     std::vector<AABBInstanceData> meshlet_aabbs(meshlet.meshlets().size());
 
     for(size_t i = 0, i_i = 0; i < meshlet.meshlets().size(); ++i) {
         mesh::AABB box{glm::vec3(std::numeric_limits<float>::max()), glm::vec3(std::numeric_limits<float>::lowest())};
+        bunny_meshlet[i].index_offset = vkw::size_u32(i_i);
+        bunny_meshlet[i].index_count = meshlet.meshlets()[i].index_count;
         for(size_t j = 0; j < meshlet.meshlets()[i].index_count; ++j) {
             bunny.vertices()[bunny.indices()[i_i]].color = mesh::hash_color(static_cast<uint32_t>(i));
             box.min = glm::min(box.min, bunny.vertices()[bunny.indices()[i_i]].position);
             box.max = glm::max(box.max, bunny.vertices()[bunny.indices()[i_i]].position);
             i_i += 1;
         }
-
-        bunny_aabbs.emplace_back(AABBInstanceData{box.center(), box.extent()});
+        bunny_meshlet[i].aabb_min = box.min;
+        bunny_meshlet[i].aabb_max = box.max;
     }
 
     for(size_t i = 0, i_i = 0; i < meshlet.meshlets().size(); ++i) {
@@ -67,9 +71,6 @@ int main(int argc, char** argv) {
             meshlet.vertices()[meshlet.indices()[i_i]].color = mesh::hash_color(static_cast<uint32_t>(i));
             i_i += 1;
         }
-
-        mesh::AABB box{meshlet.meshlets()[i].aabb_min, meshlet.meshlets()[i].aabb_max};
-        meshlet_aabbs.emplace_back(AABBInstanceData{box.center(), box.extent()});
     }
 
     auto aabb_mesh = mesh::BasicMesh::frame();
@@ -265,6 +266,7 @@ int main(int argc, char** argv) {
     auto aabb_fragment_shader = device->create_shader_module("spirv/debug_bounding_box.frag.glsl.spirv").unwrap();
     auto frustum_vertex_shader = device->create_shader_module("spirv/debug_frustum.vert.glsl.spirv").unwrap();
     auto frustum_fragment_shader = device->create_shader_module("spirv/debug_frustum.frag.glsl.spirv").unwrap();
+    auto aabb_transform_shader = device->create_shader_module("spirv/bounding_box_transform.comp.glsl.spirv").unwrap();
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(bunny.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
@@ -275,8 +277,37 @@ int main(int argc, char** argv) {
     auto aabb_index_buffer = device->create_buffer_with_data(aabb_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto frustum_vertex_buffer = device->create_buffer_with_data(frustum_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto frustum_index_buffer = device->create_buffer_with_data(frustum_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
-    auto bunny_aabb_instance_buffer = device->create_buffer_with_data(bunny_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
-    auto meshlet_aabb_instance_buffer = device->create_buffer_with_data(meshlet_aabbs, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto bunny_meshlet_input_buffer = device->create_buffer_with_data(bunny_meshlet, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT).unwrap();
+    auto meshlet_meshlet_input_buffer = device->create_buffer_with_data(meshlet.meshlets(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT).unwrap();
+    auto bunny_aabb_instance_buffer = device->create_buffer_with_data(bunny_aabbs, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto meshlet_aabb_instance_buffer = device->create_buffer_with_data(meshlet_aabbs, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+
+    vkw::descriptor::DescriptorSetLayoutBindings aabb_layout_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    aabb_layout_bindings
+    .add(0, 1, VK_SHADER_STAGE_COMPUTE_BIT)
+    .add(1, 1, VK_SHADER_STAGE_COMPUTE_BIT);
+
+    auto aabb_descriptor_layout = device->create_descriptor_set_layout(aabb_layout_bindings).unwrap();
+
+    auto aabb_descriptor_pool = device->create_descriptor_pool({aabb_layout_bindings, aabb_layout_bindings}).unwrap();
+    auto aabb_descriptor_sets = aabb_descriptor_pool.allocate_descriptor_sets({aabb_descriptor_layout, aabb_descriptor_layout}).unwrap();
+
+    vkw::descriptor::BufferInfos bunny_aabb_infos{};
+    bunny_aabb_infos
+    .add(bunny_meshlet_input_buffer, 0, sizeof(mesh::Meshlet::Data) * bunny_meshlet.size())
+    .add(bunny_aabb_instance_buffer, 0, sizeof(AABBInstanceData) * bunny_meshlet.size());
+
+    vkw::descriptor::BufferInfos meshlet_aabb_infos{};
+    meshlet_aabb_infos
+    .add(meshlet_meshlet_input_buffer, 0, sizeof(mesh::Meshlet::Data) * meshlet.meshlets().size())
+    .add(meshlet_aabb_instance_buffer, 0, sizeof(AABBInstanceData) * meshlet.meshlets().size());
+
+    vkw::descriptor::WriteDescriptorSets descriptor_writes{};
+    descriptor_writes
+    .add(aabb_descriptor_sets[0], 0, 0, bunny_aabb_infos)
+    .add(aabb_descriptor_sets[1], 0, 0, meshlet_aabb_infos);
+
+    device->update_descriptor_sets(descriptor_writes);
 
     vkw::pipeline_layout::CreateInfo forward_layout_info{};
     forward_layout_info
@@ -290,10 +321,16 @@ int main(int argc, char** argv) {
     frustum_layout_info
     .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FrustumConstantData));
 
+    vkw::pipeline_layout::CreateInfo aabb_trans_layout_info{};
+    aabb_trans_layout_info
+    .add_descriptor_set_layout(aabb_descriptor_layout)
+    .add_push_constant_range(VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ForwardConstantData));
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
     auto aabb_pipeline_layout = device->create_pipeline_layout(aabb_layout_info).unwrap();
     auto frustum_pipeline_layout = device->create_pipeline_layout(frustum_layout_info).unwrap();
+    auto aabb_trans_pipeline_layout = device->create_pipeline_layout(aabb_trans_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -432,6 +469,14 @@ int main(int argc, char** argv) {
 
     auto frustum_pipeline = device->create_pipeline(frustum_pipeline_states, frustum_pipeline_layout, frustum_render_pass, 0).unwrap();
 
+    // AABB transform shader
+    vkw::pipeline::ComputeShaderStage aabb_trans_shader_stage{};
+    aabb_trans_shader_stage.compute_shader(aabb_transform_shader);
+
+    vkw::pipeline::ComputePipelineStates aabb_trans_pipeline_state(aabb_trans_shader_stage);
+
+    auto aabb_trans_pipeline = device->create_pipeline(aabb_trans_pipeline_state, aabb_trans_pipeline_layout).unwrap();
+
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
 
@@ -479,6 +524,20 @@ int main(int argc, char** argv) {
     float model_rotate = 0.0f;
     float frustum_rotate = 0.0f;
 
+    vkw::barrier::BufferMemoryBarriers bunny_aabb_buffer_barrier{};
+    bunny_aabb_buffer_barrier
+    .add(
+        bunny_aabb_instance_buffer, 0, sizeof(AABBInstanceData) * bunny_meshlet.size(),
+        { VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT }
+    );
+
+    vkw::barrier::BufferMemoryBarriers meshlet_aabb_buffer_barrier{};
+    meshlet_aabb_buffer_barrier
+    .add(
+        meshlet_aabb_instance_buffer, 0, sizeof(AABBInstanceData) * bunny_meshlet.size(),
+        { VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT }
+    );
+
     game->main_loop(
         [&]() {
             VkRect2D render_area = {{0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}};
@@ -493,6 +552,7 @@ int main(int argc, char** argv) {
             frustum_rotate += std::numbers::pi_v<float> * 0.5f * game->delta_time();
 
             glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), model_rotate, glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 translate1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 1.0f));
             glm::mat4 translate2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 1.0f));
             auto camera_pos = game->camera_pos();
@@ -516,11 +576,11 @@ int main(int argc, char** argv) {
             auto inv_view_proj = glm::inverse(frustum_projection * frustum_view);
 
             ForwardConstantData push_constant_data1 {
-                model * translate1, view, projection,
+                translate1 * rotate * model, view, projection,
             };
 
             ForwardConstantData push_constant_data2 {
-                model * translate2, view, projection,
+                translate2 * rotate * model, view, projection,
             };
 
             FrustumConstantData frustum_constant_data {
@@ -541,17 +601,27 @@ int main(int argc, char** argv) {
             .bind_index_buffer(meshlet_index_buffer, VK_INDEX_TYPE_UINT32)
             .draw_indexed(vkw::size_u32(meshlet.indices().size()), 1)
             .end_render_pass()
+            // AABB transform pass
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, aabb_trans_pipeline)
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, aabb_trans_pipeline_layout, 0, {aabb_descriptor_sets[0].first})
+            .push_constants(aabb_trans_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .dispatch(vkw::size_u32(bunny_meshlet.size()))
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE, aabb_trans_pipeline_layout, 0, {aabb_descriptor_sets[1].first})
+            .push_constants(aabb_trans_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
+            .dispatch(vkw::size_u32(meshlet.meshlets().size()))
             // debug bounding box pass
-            // .begin_render_pass(aabb_framebuffers[current_image_index], aabb_render_pass, render_area, {})
-            // .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, aabb_pipeline)
-            // .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
-            // .bind_vertex_buffers(0, {aabb_vertex_buffer, bunny_aabb_instance_buffer})
-            // .bind_index_buffer(aabb_index_buffer, VK_INDEX_TYPE_UINT16)
-            // .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(bunny_aabbs.size()))
-            // .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
-            // .bind_vertex_buffers(0, {aabb_vertex_buffer, meshlet_aabb_instance_buffer})
-            // .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(meshlet_aabbs.size()))
-            // .end_render_pass()
+            .pipeline_barrier({VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT}, 0, std::nullopt, bunny_aabb_buffer_barrier)
+            .pipeline_barrier({VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT}, 0, std::nullopt, meshlet_aabb_buffer_barrier)
+            .begin_render_pass(aabb_framebuffers[current_image_index], aabb_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, aabb_pipeline)
+            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_vertex_buffers(0, {aabb_vertex_buffer, bunny_aabb_instance_buffer})
+            .bind_index_buffer(aabb_index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(bunny_aabbs.size()))
+            .push_constants(aabb_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
+            .bind_vertex_buffers(0, {aabb_vertex_buffer, meshlet_aabb_instance_buffer})
+            .draw_indexed(vkw::size_u32(aabb_mesh.indices().size()), vkw::size_u32(meshlet_aabbs.size()))
+            .end_render_pass()
             // debug frustum pass
             .begin_render_pass(frustum_framebuffers[current_image_index], frustum_render_pass, render_area, {})
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, frustum_pipeline)

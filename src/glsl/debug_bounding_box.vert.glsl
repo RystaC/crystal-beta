@@ -17,8 +17,7 @@ layout(push_constant) uniform PushConstants {
 out gl_PerVertex { vec4 gl_Position; };
 
 void main() {
-    mat4 mat_instance_translate = mat4(vec4(1.0f, 0.0f, 0.0f, 0.0f), vec4(0.0f, 1.0f, 0.0f, 0.0f), vec4(0.0f, 0.0f, 1.0f, 0.0f), vec4(instance_translate, 1.0f));
-    mat4 mat_instance_scale = mat4(vec4(instance_scale.x, 0.0f, 0.0f, 0.0f), vec4(0.0f, instance_scale.y, 0.0f, 0.0f), vec4(0.0f, 0.0f, instance_scale.z, 0.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f));
+    mat4 mat_instance = mat4(vec4(instance_scale.x, 0.0f, 0.0f, 0.0f), vec4(0.0f, instance_scale.y, 0.0f, 0.0f), vec4(0.0f, 0.0f, instance_scale.z, 0.0f), vec4(instance_translate, 1.0f));
 
-    gl_Position = projection * view * model * mat_instance_translate * mat_instance_scale * vec4(position, 1.0f);
+    gl_Position = projection * view * mat_instance * vec4(position, 1.0f);
 }
