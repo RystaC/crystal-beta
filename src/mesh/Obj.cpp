@@ -4,7 +4,9 @@ namespace mesh {
 
 Obj Obj::load(const std::filesystem::path& path) {
     std::ifstream ifs(path);
-    if(ifs.fail()) throw std::runtime_error(std::format("[mesh::Obj::load] ERROR: failed to open {}.", path.string()));
+    if(ifs.fail()) {
+        throw std::runtime_error(std::format("[mesh::Obj::load] ERROR: failed to open {}.", path.string()));
+    }
 
     std::vector<glm::vec3> vertices{};
     std::vector<glm::vec3> normals{};
@@ -95,6 +97,22 @@ Obj Obj::load(const std::filesystem::path& path) {
     }
 
     return { std::move(interleaved), std::move(indices) };
+}
+
+Obj Obj::load_fast(const char* path) {
+    std::FILE* fp = std::fopen(path, "r");
+    if(!fp) {
+        throw std::runtime_error(std::format("[mesh::Obj::load] ERROR: failed to open {}.", path));
+    }
+
+    std::vector<glm::vec3> vertices{};
+    std::vector<glm::vec3> normals{};
+    std::vector<glm::vec2> tex_coords{};
+    std::vector<IndexLayout_> attribute_indices{};
+
+    while(true) {
+        
+    }
 }
 
 void Obj::print_statistics() const {

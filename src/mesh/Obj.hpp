@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+
 #include "common.hpp"
 
 namespace mesh {
@@ -50,6 +52,7 @@ public:
     Obj(std::vector<VertexAttribute>&& vertices, std::vector<uint32_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}
 
     static Obj load(const std::filesystem::path& path);
+    static Obj load_fast(const char* path);
 
     const auto& vertices() const noexcept { return vertices_; }
     auto& vertices() noexcept { return vertices_; }
