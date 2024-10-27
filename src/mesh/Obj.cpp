@@ -99,27 +99,6 @@ Obj Obj::load(const std::filesystem::path& path) {
     return { std::move(interleaved), std::move(indices) };
 }
 
-enum class ParseMode {
-    HEADER,
-    VERTEX,
-    NORMAL,
-    TEXCOORD,
-    INDEX,
-    END,
-};
-
-enum class ParseModeTuple {
-    X,
-    Y,
-    Z,
-};
-
-enum class ParseModeIndex {
-    VERTEX,
-    TEXCOORD,
-    NORMAL,
-};
-
 Obj Obj::load_fast(const char* path) {
     std::FILE* fp = std::fopen(path, "r");
     if(!fp) {
@@ -155,42 +134,20 @@ Obj Obj::load_fast(const char* path) {
 
         // extract first token
         auto header = str_view.substr(0, str_view.find_first_of(' '));
-        str_view = str_view.substr(str_view.find_first_not_of(' '));
+        str_view.remove_prefix(str_view.find_first_not_of(' '));
         // vertex
         if(header == "v") {
             auto x_str = str_view.substr(0, str_view.find_first_of(' '));
-            str_view = str_view.substr(str_view.find_first_not_of(' '));
+            str_view.remove_prefix(str_view.find_first_not_of(' '));
             auto y_str = str_view.substr(0, str_view.find_first_of(' '));
-            str_view = str_view.substr(str_view.find_first_not_of(' '));
+            str_view.remove_prefix(str_view.find_first_not_of(' '));
             auto z_str = str_view.substr(0, str_view.find_first_of(' '));
-            float x{}, y{}, z{};
-            std::from_chars(x_str.begin(), x_str.end(), x);
-            std::from_chars(y_str.begin(), y_str.end(), y);
-            std::from_chars(z_str.begin(), z_str.end(), z);
-            vertices.emplace_back(glm::vec3(x, y, z));
         }
         // texcoord
         else if(header == "vt") {
-            auto u_str = str_view.substr(0, str_view.find_first_of(' '));
-            str_view = str_view.substr(str_view.find_first_not_of(' '));
-            auto v_str = str_view.substr(0, str_view.find_first_of(' '));
-            float u{}, v{};
-            std::from_chars(u_str.begin(), u_str.end(), u);
-            std::from_chars(v_str.begin(), v_str.end(), v);
-            vertices.emplace_back(glm::vec2(u, v));
         }
         // normal
         else if(header == "vn") {
-            auto x_str = str_view.substr(0, str_view.find_first_of(' '));
-            str_view = str_view.substr(str_view.find_first_not_of(' '));
-            auto y_str = str_view.substr(0, str_view.find_first_of(' '));
-            str_view = str_view.substr(str_view.find_first_not_of(' '));
-            auto z_str = str_view.substr(0, str_view.find_first_of(' '));
-            float x{}, y{}, z{};
-            std::from_chars(x_str.begin(), x_str.end(), x);
-            std::from_chars(y_str.begin(), y_str.end(), y);
-            std::from_chars(z_str.begin(), z_str.end(), z);
-            normals.emplace_back(glm::vec3(x, y, z));
         }
         // face
         else if(header == "f") {
