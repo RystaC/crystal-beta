@@ -42,8 +42,13 @@ struct AABBInstanceData {
 };
 
 int main(int argc, char** argv) {
+    auto s = std::chrono::high_resolution_clock::now();
     auto bunny = mesh::Obj::load("../asset/obj/bunny.obj");
+    auto e = std::chrono::high_resolution_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
+    std::cerr << std::format("mesh::Obj::load(): {} msec", time) << std::endl;
     bunny.print_statistics();
+    return 0;
 
     auto meshlet = mesh::Meshlet::generate_meshlet_kdtree(bunny.vertices(), bunny.indices());
     meshlet.print_statistics(bunny.vertices(), bunny.indices());

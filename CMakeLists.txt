@@ -32,6 +32,8 @@ include_directories(app ${ADDITIONAL_INCLUDE_DIRECTORIES})
 
 add_executable(app ${sources})
 
+target_compile_definitions(app PRIVATE _CRT_SECURE_NO_WARNINGS)
+
 target_include_directories(app PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(app ${SDL2_LIBRARIES})
 target_include_directories(app PRIVATE ${Vulkan_INCLUDE_DIRS})
