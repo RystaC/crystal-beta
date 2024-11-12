@@ -7,17 +7,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class DescriptorPool final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkDescriptorPool pool_;
 
 public:
-    using object_type = VkDescriptorPool;
+    using resource_type = VkDescriptorPool;
 
     DescriptorPool() noexcept {}
-    DescriptorPool(std::shared_ptr<object::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
+    DescriptorPool(std::shared_ptr<resource::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
     ~DescriptorPool() noexcept {
         if(device_) vkDestroyDescriptorPool(*device_, pool_, nullptr);
     }

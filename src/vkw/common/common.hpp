@@ -28,7 +28,7 @@ namespace vkw {
 // utility functions
 inline uint32_t size_u32(size_t s) { return static_cast<uint32_t>(s); }
 
-template<typename T, typename U = T::object_type>
+template<typename T, typename U = T::resource_type>
 inline std::vector<U> detach(const std::vector<T>& wrapper_vector) {
     std::vector<U> dst(wrapper_vector.size());
 
@@ -50,18 +50,18 @@ struct Resolution {
 
 template<typename T>
 class Result {
-    T object_;
+    T resource_;
     VkResult result_;
 
 public:
-    Result(T&& object, VkResult result) noexcept : object_(std::move(object)), result_(result) {}
+    Result(T&& resource, VkResult result) noexcept : resource_(std::move(resource)), result_(result) {}
 
     operator bool() const noexcept { return result_ >= VK_SUCCESS; }
     bool is_success() const noexcept { return result_ == VK_SUCCESS; }
     bool is_error() const noexcept { return result_ < VK_SUCCESS; }
 
     T unwrap() {
-        if(result_ >= VK_SUCCESS) return std::move(object_);
+        if(result_ >= VK_SUCCESS) return std::move(resource_);
         else {
             throw std::runtime_error(std::format("[vkw] ERROR: error code is returned. code: {}", result_to_str(result_)));
         }

@@ -18,14 +18,23 @@ class Obj {
         int32_t vertex, tex_coord, normal;
     };
 
-    static std::string_view read_(std::string_view& str_view) {
+    // just read
+    static std::string_view read_(const std::string_view& str_view) {
         auto result_view = str_view.substr(0, str_view.find_first_of(' '));
         return result_view;
     }
 
-    static void seek_(std::string_view& str_view) {
+    // return true if line has tokens
+    // false otherwise
+    static bool seek_(std::string_view& str_view) {
+        if(str_view.find_first_of(' ') == std::string_view::npos) {
+            return false;
+        }
+
         str_view.remove_prefix(str_view.find_first_of(' '));
         str_view.remove_prefix(str_view.find_first_not_of(' '));
+
+        return true;
     }
 
     static Obj::IndexLayout_ read_index_(std::string_view& str_view, size_t vertex_count, size_t texcoord_count, size_t normal_count) {
@@ -72,6 +81,8 @@ class Obj {
             return {v, t, n};
         }
     }
+
+    static std::pair<std::vector<VertexAttribute>, std::vector<uint32_t>> make_interleaved_(const std::vector<glm::vec3>& vertices, const std::vector<glm::vec2>& texcoords, const std::vector<glm::vec3>& normals, const std::vector<IndexLayout_>& attribute_indices);
 
 public:
     Obj(std::vector<VertexAttribute>&& vertices, std::vector<uint32_t>&& indices) noexcept : vertices_(vertices), indices_(indices) {}

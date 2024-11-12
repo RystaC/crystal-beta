@@ -7,10 +7,10 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Swapchain final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkSwapchainKHR swapchain_;
     std::vector<VkImage> images_;
     std::vector<VkImageView> image_views_;
@@ -18,9 +18,9 @@ class Swapchain final {
     VkExtent2D extent_;
 
 public:
-    using object_type = VkSwapchainKHR;
+    using resource_type = VkSwapchainKHR;
 
-    Swapchain(std::shared_ptr<object::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, VkFormat format, const VkExtent2D& extent) noexcept :
+    Swapchain(std::shared_ptr<resource::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, VkFormat format, const VkExtent2D& extent) noexcept :
         device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), format_(format), extent_(extent)
     {}
     ~Swapchain() noexcept {

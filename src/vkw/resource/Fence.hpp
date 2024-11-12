@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Fence final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkFence fence_;
 
 public:
-    using object_type = VkFence;
+    using resource_type = VkFence;
 
     Fence() noexcept {}
-    Fence(std::shared_ptr<object::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
+    Fence(std::shared_ptr<resource::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
     ~Fence() noexcept {
         if(device_) vkDestroyFence(*device_, fence_, nullptr);
     }

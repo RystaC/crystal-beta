@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class PipelineLayout final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkPipelineLayout layout_;
 
 public:
-    using object_type = VkPipelineLayout;
+    using resource_type = VkPipelineLayout;
 
     PipelineLayout() noexcept {}
-    PipelineLayout(std::shared_ptr<object::Device> device, VkPipelineLayout&& layout) noexcept : device_(device), layout_(layout) {}
+    PipelineLayout(std::shared_ptr<resource::Device> device, VkPipelineLayout&& layout) noexcept : device_(device), layout_(layout) {}
     ~PipelineLayout() noexcept {
         if(device_) vkDestroyPipelineLayout(*device_, layout_, nullptr);
     }

@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Sampler final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkSampler sampler_;
 
 public:
-    using object_type = VkSampler;
+    using resource_type = VkSampler;
 
     Sampler() noexcept {}
-    Sampler(std::shared_ptr<object::Device> device, VkSampler&& sampler) noexcept : device_(device), sampler_(sampler) {}
+    Sampler(std::shared_ptr<resource::Device> device, VkSampler&& sampler) noexcept : device_(device), sampler_(sampler) {}
     ~Sampler() noexcept {
         if(device_) vkDestroySampler(*device_, sampler_, nullptr);
     }

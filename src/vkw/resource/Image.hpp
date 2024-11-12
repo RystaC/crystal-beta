@@ -6,19 +6,19 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Image final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkImage image_;
     VkDeviceMemory memory_;
     VkFormat format_;
 
 public:
-    using object_type = VkImage;
+    using resource_type = VkImage;
 
     Image() noexcept {}
-    Image(std::shared_ptr<object::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
+    Image(std::shared_ptr<resource::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
     ~Image() noexcept {
         if(device_) {
             vkFreeMemory(*device_, memory_, nullptr);

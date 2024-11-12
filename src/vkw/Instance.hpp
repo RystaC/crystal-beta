@@ -1,13 +1,13 @@
 #pragma once
 
 #include "common/common.hpp"
-#include "object/Surface.hpp"
-#include "object/PhysicalDevice.hpp"
+#include "resource/Surface.hpp"
+#include "resource/PhysicalDevice.hpp"
 
 namespace vkw {
 
 class Instance {
-    std::shared_ptr<object::Instance> instance_;
+    std::shared_ptr<resource::Instance> instance_;
 
     Instance() noexcept {}
 
@@ -40,9 +40,9 @@ public:
 
     static Result<Instance> init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
 
-    std::vector<object::PhysicalDevice> enum_physical_devices() const;
+    std::vector<resource::PhysicalDevice> enum_physical_devices() const;
 
-    Result<object::Surface> create_surface_SDL(SDL_Window* window) const;
+    Result<resource::Surface> create_surface_SDL(SDL_Window* window) const;
 };
 
 }

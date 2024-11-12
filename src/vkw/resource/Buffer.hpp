@@ -7,22 +7,22 @@ namespace vkw {
 
 class Device;
 
-namespace object {
+namespace resource {
 
 template<typename T>
 class Buffer final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkBuffer buffer_;
     VkDeviceMemory memory_;
 
 public:
     using value_type = T;
-    using object_type = VkBuffer;
+    using resource_type = VkBuffer;
 
     friend vkw::Device;
 
     Buffer() noexcept {}
-    Buffer(std::shared_ptr<object::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
+    Buffer(std::shared_ptr<resource::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
     ~Buffer() noexcept {
         if(device_) {
             vkFreeMemory(*device_, memory_, nullptr);

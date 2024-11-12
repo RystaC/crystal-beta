@@ -2,7 +2,7 @@
 
 #include "../common/common.hpp"
 
-#include "../object/DescriptorSets.hpp"
+#include "../resource/DescriptorSets.hpp"
 
 namespace vkw {
 

@@ -4,13 +4,13 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Instance final {
     VkInstance instance_;
 
 public:
-    using object_type = VkInstance;
+    using resource_type = VkInstance;
 
     Instance(VkInstance&& instance) noexcept : instance_(instance) {}
     ~Instance() noexcept {

@@ -5,14 +5,14 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Queue final {
     VkQueue queue_;
     uint32_t family_index_;
 
 public:
-    using object_type = VkQueue;
+    using resource_type = VkQueue;
 
     Queue() noexcept {}
     Queue(VkQueue&& queue, uint32_t family_index) noexcept : queue_(queue), family_index_(family_index) {}

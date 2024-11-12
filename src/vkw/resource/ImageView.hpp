@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class ImageView final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkImageView view_;
 
 public:
-    using object_type = VkImageView;
+    using resource_type = VkImageView;
 
     ImageView() noexcept {}
-    ImageView(std::shared_ptr<object::Device> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
+    ImageView(std::shared_ptr<resource::Device> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
     ~ImageView() noexcept {
         if(device_) vkDestroyImageView(*device_, view_, nullptr);
     }

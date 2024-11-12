@@ -7,7 +7,7 @@ namespace vkw {
 
 class Device;
 
-namespace object {
+namespace resource {
 
 class PhysicalDevice final {
     VkPhysicalDevice physical_device_;
@@ -55,7 +55,7 @@ class PhysicalDevice final {
 public:
     friend vkw::Device;
     
-    using object_type = VkPhysicalDevice;
+    using resource_type = VkPhysicalDevice;
     
     PhysicalDevice() noexcept {}
     PhysicalDevice(VkPhysicalDevice&& physical_device) noexcept : physical_device_(physical_device) {

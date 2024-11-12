@@ -249,17 +249,17 @@ int main(int argc, char** argv) {
     auto frustum_render_pass = device->create_render_pass(frustum_attachment, frustum_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
-    std::vector<vkw::object::Framebuffer> forward_framebuffers(swapchain.size());
+    std::vector<vkw::resource::Framebuffer> forward_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
         forward_framebuffers[i] = device->create_framebuffer(forward_render_pass, {swapchain.image_view(i), depth_buffer_view}, swapchain.extent()).unwrap();
     }
 
-    std::vector<vkw::object::Framebuffer> aabb_framebuffers(swapchain.size());
+    std::vector<vkw::resource::Framebuffer> aabb_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
         aabb_framebuffers[i] = device->create_framebuffer(aabb_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
-    std::vector<vkw::object::Framebuffer> frustum_framebuffers(swapchain.size());
+    std::vector<vkw::resource::Framebuffer> frustum_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
         frustum_framebuffers[i] = device->create_framebuffer(frustum_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }

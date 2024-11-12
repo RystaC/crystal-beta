@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class DeviceMemory final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkDeviceMemory memory_;
 
 public:
-    using object_type = VkDeviceMemory;
+    using resource_type = VkDeviceMemory;
 
     DeviceMemory() noexcept {}
-    DeviceMemory(std::shared_ptr<object::Device> device, VkDeviceMemory&& memory) noexcept : device_(device), memory_(memory) {}
+    DeviceMemory(std::shared_ptr<resource::Device> device, VkDeviceMemory&& memory) noexcept : device_(device), memory_(memory) {}
     ~DeviceMemory() noexcept {
         if(device_) vkFreeMemory(*device_, memory_, nullptr);
     }

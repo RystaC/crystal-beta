@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class RenderPass final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkRenderPass render_pass_;
 
 public:
-    using object_type = VkRenderPass;
+    using resource_type = VkRenderPass;
 
     RenderPass() noexcept {}
-    RenderPass(std::shared_ptr<object::Device> device, VkRenderPass&& render_pass) noexcept : device_(device), render_pass_(render_pass) {}
+    RenderPass(std::shared_ptr<resource::Device> device, VkRenderPass&& render_pass) noexcept : device_(device), render_pass_(render_pass) {}
     ~RenderPass() noexcept {
         if(device_) vkDestroyRenderPass(*device_, render_pass_, nullptr);
     }

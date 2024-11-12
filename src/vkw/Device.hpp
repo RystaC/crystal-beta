@@ -2,27 +2,27 @@
 
 #include "common/common.hpp"
 
-#include "object/Device.hpp"
-#include "object/PhysicalDevice.hpp"
-#include "object/Queue.hpp"
-#include "object/Surface.hpp"
-#include "object/Swapchain.hpp"
-#include "object/DeviceMemory.hpp"
-#include "object/Buffer.hpp"
-#include "object/Image.hpp"
-#include "object/Sampler.hpp"
-#include "object/RenderPass.hpp"
-#include "object/Framebuffer.hpp"
-#include "object/ShaderModule.hpp"
-#include "object/DescriptorSetLayout.hpp"
-#include "object/DescriptorPool.hpp"
-#include "object/PipelineLayout.hpp"
-#include "object/PipelineCache.hpp"
-#include "object/Pipeline.hpp"
-#include "object/CommandPool.hpp"
-#include "object/Event.hpp"
-#include "object/Fence.hpp"
-#include "object/Semaphore.hpp"
+#include "resource/Device.hpp"
+#include "resource/PhysicalDevice.hpp"
+#include "resource/Queue.hpp"
+#include "resource/Surface.hpp"
+#include "resource/Swapchain.hpp"
+#include "resource/DeviceMemory.hpp"
+#include "resource/Buffer.hpp"
+#include "resource/Image.hpp"
+#include "resource/Sampler.hpp"
+#include "resource/RenderPass.hpp"
+#include "resource/Framebuffer.hpp"
+#include "resource/ShaderModule.hpp"
+#include "resource/DescriptorSetLayout.hpp"
+#include "resource/DescriptorPool.hpp"
+#include "resource/PipelineLayout.hpp"
+#include "resource/PipelineCache.hpp"
+#include "resource/Pipeline.hpp"
+#include "resource/CommandPool.hpp"
+#include "resource/Event.hpp"
+#include "resource/Fence.hpp"
+#include "resource/Semaphore.hpp"
 
 #include "queue/CreateInfos.hpp"
 
@@ -42,12 +42,12 @@
 namespace vkw {
 
 class Device {
-    std::shared_ptr<object::Device> device_;
-    const object::PhysicalDevice& physical_device_;
+    std::shared_ptr<resource::Device> device_;
+    const resource::PhysicalDevice& physical_device_;
 
     std::unordered_map<uint32_t, uint32_t> queue_counts_;
 
-    Device(const object::PhysicalDevice& p_device) noexcept : physical_device_(p_device) {}
+    Device(const resource::PhysicalDevice& p_device) noexcept : physical_device_(p_device) {}
 
     template<typename T>
     VkMemoryRequirements query_memory_requirements_(const T& resource) {
@@ -68,7 +68,7 @@ class Device {
     VkDeviceMemory allocate_memory_with_requirements_(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags desired_properties);
 
 public:
-    static std::vector<VkLayerProperties> enumerate_layers(object::PhysicalDevice p_device) {
+    static std::vector<VkLayerProperties> enumerate_layers(resource::PhysicalDevice p_device) {
         uint32_t count{};
         vkEnumerateDeviceLayerProperties(p_device.physical_device_, &count, nullptr);
         std::vector<VkLayerProperties> layers(count);
@@ -77,7 +77,7 @@ public:
         return layers;
     }
 
-    static std::vector<VkExtensionProperties> enumerate_extensions(object::PhysicalDevice p_device, const char* layer_name = nullptr) {
+    static std::vector<VkExtensionProperties> enumerate_extensions(resource::PhysicalDevice p_device, const char* layer_name = nullptr) {
         uint32_t count{};
         vkEnumerateDeviceExtensionProperties(p_device.physical_device_, layer_name, &count, nullptr);
         std::vector<VkExtensionProperties> extensions(count);
@@ -86,16 +86,16 @@ public:
         return extensions;
     }
 
-    static Result<Device> init(const object::PhysicalDevice& physical_device, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+    static Result<Device> init(const resource::PhysicalDevice& physical_device, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
 
-    std::vector<object::Queue> create_queues(uint32_t queue_family_index);
+    std::vector<resource::Queue> create_queues(uint32_t queue_family_index);
 
-    Result<object::Swapchain> create_swapchain(const object::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent);
+    Result<resource::Swapchain> create_swapchain(const resource::Surface& surface, uint32_t queue_family_index, const VkSurfaceFormatKHR& desired_format, const VkPresentModeKHR& desired_present_mode, const VkExtent2D& extent);
 
-    Result<object::DeviceMemory> allocate_memory(VkDeviceSize size, uint32_t memory_type_index);
+    Result<resource::DeviceMemory> allocate_memory(VkDeviceSize size, uint32_t memory_type_index);
 
     template<typename T>
-    Result<object::Buffer<T>> create_buffer_with_data(const std::vector<T>& buffer_data, VkBufferUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+    Result<resource::Buffer<T>> create_buffer_with_data(const std::vector<T>& buffer_data, VkBufferUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
         VkBufferCreateInfo buffer_info = {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
             .size = sizeof(T) * buffer_data.size(),
@@ -117,48 +117,48 @@ public:
 
         result = vkBindBufferMemory(*device_, buffer, device_memory, 0);
 
-        return Result(object::Buffer<T>(device_, std::move(buffer), std::move(device_memory)), result);
+        return Result(resource::Buffer<T>(device_, std::move(buffer), std::move(device_memory)), result);
     }
 
     template<typename T>
-    void copy_buffer_device_to_host(const object::Buffer<T>& src_buffer, std::vector<T>& dst_data) {
+    void copy_buffer_device_to_host(const resource::Buffer<T>& src_buffer, std::vector<T>& dst_data) {
         uint8_t* pointer{};
         vkMapMemory(*device_, src_buffer.memory_, 0, sizeof(T) * dst_data.size(), 0, reinterpret_cast<void**>(&pointer));
         std::memcpy(dst_data.data(), pointer, sizeof(T) * dst_data.size());
         vkUnmapMemory(*device_, src_buffer.memory_);
     }
 
-    Result<object::Image> create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    Result<resource::Image> create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    Result<object::Sampler> create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v);
+    Result<resource::Sampler> create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v);
 
-    Result<object::RenderPass> create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies = std::nullopt);
+    Result<resource::RenderPass> create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies = std::nullopt);
 
-    Result<object::Framebuffer> create_framebuffer(const object::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent);
+    Result<resource::Framebuffer> create_framebuffer(const resource::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent);
 
-    Result<object::ShaderModule> create_shader_module(const std::filesystem::path& spirv_path);
+    Result<resource::ShaderModule> create_shader_module(const std::filesystem::path& spirv_path);
 
-    Result<object::DescriptorSetLayout> create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings);
+    Result<resource::DescriptorSetLayout> create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings);
 
-    Result<object::DescriptorPool> create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool);
+    Result<resource::DescriptorPool> create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool);
 
     // TODO: deal with desctriptor set copies
     void update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets);
 
-    Result<object::PipelineLayout> create_pipeline_layout(const pipeline_layout::CreateInfo& info);
+    Result<resource::PipelineLayout> create_pipeline_layout(const pipeline_layout::CreateInfo& info);
 
-    Result<object::PipelineCache> create_pipeline_cache();
-    Result<object::PipelineCache> create_pipeline_cache(const std::filesystem::path& cache_path);
+    Result<resource::PipelineCache> create_pipeline_cache();
+    Result<resource::PipelineCache> create_pipeline_cache(const std::filesystem::path& cache_path);
 
     // TODO: deal with multiple pipeline creattion
-    Result<object::Pipeline> create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache = VK_NULL_HANDLE);
-    Result<object::Pipeline> create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache = VK_NULL_HANDLE);
+    Result<resource::Pipeline> create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache = VK_NULL_HANDLE);
+    Result<resource::Pipeline> create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache = VK_NULL_HANDLE);
 
-    Result<object::CommandPool> create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index);
+    Result<resource::CommandPool> create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index);
 
-    Result<object::Event> create_event();
-    Result<object::Fence> create_fence(bool signaled = false);
-    Result<object::Semaphore> create_semaphore();
+    Result<resource::Event> create_event();
+    Result<resource::Fence> create_fence(bool signaled = false);
+    Result<resource::Semaphore> create_semaphore();
 };
 
 }

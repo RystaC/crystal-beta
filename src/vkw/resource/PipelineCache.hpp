@@ -5,17 +5,17 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class PipelineCache final {
-    std::shared_ptr<object::Device> device_;
+    std::shared_ptr<resource::Device> device_;
     VkPipelineCache cache_;
 
 public:
-    using object_type = VkPipelineCache;
+    using resource_type = VkPipelineCache;
 
     PipelineCache() noexcept {}
-    PipelineCache(std::shared_ptr<object::Device> device, VkPipelineCache&& cache) noexcept : device_(device), cache_(cache) {}
+    PipelineCache(std::shared_ptr<resource::Device> device, VkPipelineCache&& cache) noexcept : device_(device), cache_(cache) {}
     ~PipelineCache() noexcept {
         if(device_) vkDestroyPipelineCache(*device_, cache_, nullptr);
     }
@@ -38,7 +38,7 @@ public:
 
         std::ofstream ofs(cache_path, std::ios::binary);
         if(ofs.fail()) {
-            std::cerr << "[vkw::object::PipelineCache::save] ERROR: failed to open or create file: " << cache_path << std::endl;
+            std::cerr << "[vkw::resource::PipelineCache::save] ERROR: failed to open or create file: " << cache_path << std::endl;
             return;
         }
 

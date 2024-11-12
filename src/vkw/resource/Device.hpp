@@ -4,13 +4,13 @@
 
 namespace vkw {
 
-namespace object {
+namespace resource {
 
 class Device final {
     VkDevice device_;
 
 public:
-    using object_type = VkDevice;
+    using resource_type = VkDevice;
 
     Device(VkDevice&& device) noexcept : device_(device) {}
     ~Device() noexcept {
