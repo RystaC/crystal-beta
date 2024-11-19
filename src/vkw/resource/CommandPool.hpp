@@ -11,14 +11,15 @@ namespace resource {
 class CommandPool final {
     std::shared_ptr<resource::Device> device_;
     VkCommandPool command_pool_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkCommandPool;
 
     CommandPool() noexcept {}
-    CommandPool(std::shared_ptr<resource::Device> device, VkCommandPool&& command_pool) noexcept : device_(device), command_pool_(command_pool) {}
+    CommandPool(std::shared_ptr<resource::Device> device, VkCommandPool&& command_pool, const VkAllocationCallbacks* allocator) noexcept : device_(device), command_pool_(command_pool), allocator_(allocator) {}
     ~CommandPool() noexcept {
-        if(device_) vkDestroyCommandPool(*device_, command_pool_, nullptr);
+        if(device_) vkDestroyCommandPool(*device_, command_pool_, allocator_);
     }
     CommandPool(const CommandPool& rhs) = delete;
     auto& operator=(const CommandPool& rhs) = delete;

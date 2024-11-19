@@ -2,7 +2,7 @@
 
 namespace vkw {
 
-Result<Device> Device::init(const resource::PhysicalDevice& physical_device, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+Result<Device> Device::init(const resource::PhysicalDevice& physical_device, const VkPhysicalDeviceFeatures& features, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers, const VkAllocationCallbacks* allocator) {
     auto device = Device(physical_device);
 
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos(queue_infos.infos_.size());
@@ -27,12 +27,14 @@ Result<Device> Device::init(const resource::PhysicalDevice& physical_device, con
         .ppEnabledLayerNames = layers.data(),
         .enabledExtensionCount = size_u32(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
+        .pEnabledFeatures = &features,
     };
 
     VkDevice device_entity{};
-    auto result = vkCreateDevice(device.physical_device_, &device_info, nullptr, &device_entity);
+    auto result = vkCreateDevice(device.physical_device_, &device_info, allocator, &device_entity);
 
-    device.device_ = std::make_shared<resource::Device>(std::move(device_entity));
+    device.device_ = std::make_shared<resource::Device>(std::move(device_entity), allocator);
+    device.allocator_ = allocator;
 
     return Result(std::move(device), result);
 }
@@ -72,7 +74,7 @@ Result<resource::Swapchain> Device::create_swapchain(const resource::Surface& su
 
     VkSwapchainKHR swapchain{};
     VkResult result{};
-    result = vkCreateSwapchainKHR(*device_, &swapchain_info, nullptr, &swapchain);
+    result = vkCreateSwapchainKHR(*device_, &swapchain_info, allocator_, &swapchain);
 
     uint32_t image_count{};
     result = vkGetSwapchainImagesKHR(*device_, swapchain, &image_count, nullptr);
@@ -95,10 +97,10 @@ Result<resource::Swapchain> Device::create_swapchain(const resource::Surface& su
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
         };
 
-        result = vkCreateImageView(*device_, &view_info, nullptr, &image_views[i]);
+        result = vkCreateImageView(*device_, &view_info, allocator_, &image_views[i]);
     }    
 
-    return Result(resource::Swapchain(device_, std::move(swapchain), std::move(images), std::move(image_views), desired_format.format, extent), result);
+    return Result(resource::Swapchain(device_, std::move(swapchain), std::move(images), std::move(image_views), desired_format.format, extent, allocator_), result);
 }
 
 Result<resource::DeviceMemory> Device::allocate_memory(VkDeviceSize size, uint32_t memory_type_index) {
@@ -109,9 +111,9 @@ Result<resource::DeviceMemory> Device::allocate_memory(VkDeviceSize size, uint32
     };
 
     VkDeviceMemory memory{};
-    auto result = vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
+    auto result = vkAllocateMemory(*device_, &allocate_info, allocator_, &memory);
 
-    return Result(resource::DeviceMemory(device_, std::move(memory)), result);
+    return Result(resource::DeviceMemory(device_, std::move(memory), allocator_), result);
 }
 
 VkDeviceMemory Device::allocate_memory_with_requirements_(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags desired_properties) {
@@ -138,7 +140,7 @@ VkDeviceMemory Device::allocate_memory_with_requirements_(const VkMemoryRequirem
     };
 
     VkDeviceMemory memory{};
-    vkAllocateMemory(*device_, &allocate_info, nullptr, &memory);
+    vkAllocateMemory(*device_, &allocate_info, allocator_, &memory);
 
     return memory;
 }
@@ -164,14 +166,14 @@ Result<resource::Image> Device::create_image(const VkExtent2D& extent_2d, VkForm
 
     VkImage image{};
     VkResult result{};
-    result = vkCreateImage(*device_, &image_info, nullptr, &image);
+    result = vkCreateImage(*device_, &image_info, allocator_, &image);
 
     auto requirements = query_memory_requirements_(image);
     auto device_memory = allocate_memory_with_requirements_(requirements, desired_properties);
 
     result = vkBindImageMemory(*device_, image, device_memory, 0);
 
-    return Result(resource::Image(device_, std::move(image), std::move(device_memory), format), result);
+    return Result(resource::Image(device_, std::move(image), std::move(device_memory), format, allocator_), result);
 }
 
 Result<resource::Sampler> Device::create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v) {
@@ -184,9 +186,9 @@ Result<resource::Sampler> Device::create_sampler(VkFilter min_filter, VkFilter m
     };
 
     VkSampler sampler{};
-    auto result = vkCreateSampler(*device_, &sampler_info, nullptr, &sampler);
+    auto result = vkCreateSampler(*device_, &sampler_info, allocator_, &sampler);
 
-    return Result(resource::Sampler(device_, std::move(sampler)), result);
+    return Result(resource::Sampler(device_, std::move(sampler), allocator_), result);
 }
 
 Result<resource::RenderPass> Device::create_render_pass(const render_pass::AttachmentDescriptions& attachment_descriptions, const render_pass::SubpassDescriptions& subpass_descriptions, const std::optional<render_pass::SubpassDependencies>& subpass_dependencies) {
@@ -201,9 +203,9 @@ Result<resource::RenderPass> Device::create_render_pass(const render_pass::Attac
     };
 
     VkRenderPass render_pass{};
-    auto result = vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass);
+    auto result = vkCreateRenderPass(*device_, &render_pass_info, allocator_, &render_pass);
 
-    return Result(resource::RenderPass(device_, std::move(render_pass)), result);
+    return Result(resource::RenderPass(device_, std::move(render_pass), allocator_), result);
 }
 
 Result<resource::Framebuffer> Device::create_framebuffer(const resource::RenderPass& render_pass, const std::vector<VkImageView>& attachments, const VkExtent2D& extent) {
@@ -218,9 +220,9 @@ Result<resource::Framebuffer> Device::create_framebuffer(const resource::RenderP
     };
 
     VkFramebuffer framebuffer{};
-    auto result = vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
+    auto result = vkCreateFramebuffer(*device_, &framebuffer_info, allocator_, &framebuffer);
 
-    return Result(resource::Framebuffer(device_, std::move(framebuffer)), result);
+    return Result(resource::Framebuffer(device_, std::move(framebuffer), allocator_), result);
 }
 
 Result<resource::ShaderModule> Device::create_shader_module(const std::filesystem::path& spirv_path) {
@@ -243,9 +245,9 @@ Result<resource::ShaderModule> Device::create_shader_module(const std::filesyste
     };
 
     VkShaderModule shader_module{};
-    auto result = vkCreateShaderModule(*device_, &module_info, nullptr, &shader_module);
+    auto result = vkCreateShaderModule(*device_, &module_info, allocator_, &shader_module);
 
-    return Result(resource::ShaderModule(device_, std::move(shader_module)), result);
+    return Result(resource::ShaderModule(device_, std::move(shader_module), allocator_), result);
 }
 
 Result<resource::DescriptorSetLayout> Device::create_descriptor_set_layout(const descriptor::DescriptorSetLayoutBindings& layout_bindings) {
@@ -256,9 +258,9 @@ Result<resource::DescriptorSetLayout> Device::create_descriptor_set_layout(const
     };
 
     VkDescriptorSetLayout layout{};
-    auto result = vkCreateDescriptorSetLayout(*device_, &layout_info, nullptr, &layout);
+    auto result = vkCreateDescriptorSetLayout(*device_, &layout_info, allocator_, &layout);
 
-    return Result(resource::DescriptorSetLayout(device_, std::move(layout), layout_bindings.type_), result);
+    return Result(resource::DescriptorSetLayout(device_, std::move(layout), layout_bindings.type_, allocator_), result);
 }
 
 Result<resource::DescriptorPool> Device::create_descriptor_pool(const std::vector<descriptor::DescriptorSetLayoutBindings>& layouts_for_pool) {
@@ -278,9 +280,9 @@ Result<resource::DescriptorPool> Device::create_descriptor_pool(const std::vecto
     };
 
     VkDescriptorPool descriptor_pool{};
-    auto result = vkCreateDescriptorPool(*device_, &pool_info, nullptr, &descriptor_pool);
+    auto result = vkCreateDescriptorPool(*device_, &pool_info, allocator_, &descriptor_pool);
 
-    return Result(resource::DescriptorPool(device_, std::move(descriptor_pool)), result);
+    return Result(resource::DescriptorPool(device_, std::move(descriptor_pool), allocator_), result);
 }
 
 void Device::update_descriptor_sets(const descriptor::WriteDescriptorSets& write_descriptor_sets) {
@@ -297,9 +299,9 @@ Result<resource::PipelineLayout> Device::create_pipeline_layout(const pipeline_l
     };
 
     VkPipelineLayout layout{};
-    auto result = vkCreatePipelineLayout(*device_, &layout_info, nullptr, &layout);
+    auto result = vkCreatePipelineLayout(*device_, &layout_info, allocator_, &layout);
 
-    return Result(resource::PipelineLayout(device_, std::move(layout)), result);
+    return Result(resource::PipelineLayout(device_, std::move(layout), allocator_), result);
 }
 
 Result<resource::PipelineCache> Device::create_pipeline_cache() {
@@ -310,9 +312,9 @@ Result<resource::PipelineCache> Device::create_pipeline_cache() {
     };
 
     VkPipelineCache cache{};
-    auto result = vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+    auto result = vkCreatePipelineCache(*device_, &cache_info, allocator_, &cache);
 
-    return Result(resource::PipelineCache(device_, std::move(cache)), result);
+    return Result(resource::PipelineCache(device_, std::move(cache), allocator_), result);
 }
 
 Result<resource::PipelineCache> Device::create_pipeline_cache(const std::filesystem::path& cache_path) {
@@ -335,9 +337,9 @@ Result<resource::PipelineCache> Device::create_pipeline_cache(const std::filesys
     };
 
     VkPipelineCache cache{};
-    auto result = vkCreatePipelineCache(*device_, &cache_info, nullptr, &cache);
+    auto result = vkCreatePipelineCache(*device_, &cache_info, allocator_, &cache);
 
-    return Result(resource::PipelineCache(device_, std::move(cache)), result);
+    return Result(resource::PipelineCache(device_, std::move(cache), allocator_), result);
 }
 
 Result<resource::Pipeline> Device::create_pipeline(const pipeline::GraphicsPipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkRenderPass& render_pass, uint32_t subpass_index, const VkPipelineCache& cache) {
@@ -347,9 +349,9 @@ Result<resource::Pipeline> Device::create_pipeline(const pipeline::GraphicsPipel
     pipeline_info.subpass = subpass_index;
 
     VkPipeline pl{};
-    auto result = vkCreateGraphicsPipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+    auto result = vkCreateGraphicsPipelines(*device_, cache, 1, &pipeline_info, allocator_, &pl);
 
-    return Result(resource::Pipeline(device_, std::move(pl)), result);
+    return Result(resource::Pipeline(device_, std::move(pl), allocator_), result);
 }
 
 Result<resource::Pipeline> Device::create_pipeline(const pipeline::ComputePipelineStates& pipeline_states, const VkPipelineLayout pipeline_layout, const VkPipelineCache& cache) {
@@ -357,9 +359,9 @@ Result<resource::Pipeline> Device::create_pipeline(const pipeline::ComputePipeli
     pipeline_info.layout = pipeline_layout;
 
     VkPipeline pl{};
-    auto result = vkCreateComputePipelines(*device_, cache, 1, &pipeline_info, nullptr, &pl);
+    auto result = vkCreateComputePipelines(*device_, cache, 1, &pipeline_info, allocator_, &pl);
 
-    return Result(resource::Pipeline(device_, std::move(pl)), result);
+    return Result(resource::Pipeline(device_, std::move(pl), allocator_), result);
 }
 
 Result<resource::CommandPool> Device::create_command_pool(VkCommandPoolCreateFlags flags, uint32_t queue_family_index) {
@@ -370,9 +372,9 @@ Result<resource::CommandPool> Device::create_command_pool(VkCommandPoolCreateFla
     };
 
     VkCommandPool pool{};
-    auto result = vkCreateCommandPool(*device_, &pool_info, nullptr, &pool);
+    auto result = vkCreateCommandPool(*device_, &pool_info, allocator_, &pool);
 
-    return Result(resource::CommandPool(device_, std::move(pool)), result);
+    return Result(resource::CommandPool(device_, std::move(pool), allocator_), result);
 }
 
 Result<resource::Event> Device::create_event() {
@@ -381,9 +383,9 @@ Result<resource::Event> Device::create_event() {
     };
 
     VkEvent event{};
-    auto result = vkCreateEvent(*device_, &event_info, nullptr, &event);
+    auto result = vkCreateEvent(*device_, &event_info, allocator_, &event);
 
-    return Result(resource::Event(device_, std::move(event)), result);
+    return Result(resource::Event(device_, std::move(event), allocator_), result);
 }
 
 Result<resource::Fence> Device::create_fence(bool signaled) {
@@ -393,9 +395,9 @@ Result<resource::Fence> Device::create_fence(bool signaled) {
     };
 
     VkFence fence{};
-    auto result = vkCreateFence(*device_, &fence_info, nullptr, &fence);
+    auto result = vkCreateFence(*device_, &fence_info, allocator_, &fence);
 
-    return Result(resource::Fence(device_, std::move(fence)), result);
+    return Result(resource::Fence(device_, std::move(fence), allocator_), result);
 }
 
 Result<resource::Semaphore> Device::create_semaphore() {
@@ -404,9 +406,9 @@ Result<resource::Semaphore> Device::create_semaphore() {
     };
 
     VkSemaphore semaphore{};
-    auto result = vkCreateSemaphore(*device_, &semaphore_info, nullptr, &semaphore);
+    auto result = vkCreateSemaphore(*device_, &semaphore_info, allocator_, &semaphore);
 
-    return Result(resource::Semaphore(device_, std::move(semaphore)), result);
+    return Result(resource::Semaphore(device_, std::move(semaphore), allocator_), result);
 }
 
 }

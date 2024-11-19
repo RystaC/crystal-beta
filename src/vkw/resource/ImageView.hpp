@@ -10,14 +10,15 @@ namespace resource {
 class ImageView final {
     std::shared_ptr<resource::Device> device_;
     VkImageView view_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkImageView;
 
     ImageView() noexcept {}
-    ImageView(std::shared_ptr<resource::Device> device, VkImageView&& view) noexcept : device_(device), view_(view) {};
+    ImageView(std::shared_ptr<resource::Device> device, VkImageView&& view, const VkAllocationCallbacks* allocator) noexcept : device_(device), view_(view), allocator_(allocator) {};
     ~ImageView() noexcept {
-        if(device_) vkDestroyImageView(*device_, view_, nullptr);
+        if(device_) vkDestroyImageView(*device_, view_, allocator_);
     }
     ImageView(const ImageView& rhs) = delete;
     auto& operator=(const ImageView& rhs) = delete;

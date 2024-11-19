@@ -13,6 +13,7 @@ class DescriptorSetLayout final {
     std::shared_ptr<resource::Device> device_;
     VkDescriptorSetLayout layout_;
     VkDescriptorType type_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkDescriptorSetLayout;
@@ -20,9 +21,9 @@ public:
     friend vkw::resource::DescriptorPool;
 
     DescriptorSetLayout() noexcept {}
-    DescriptorSetLayout(std::shared_ptr<resource::Device> device, VkDescriptorSetLayout&& layout, VkDescriptorType type) noexcept : device_(device), layout_(layout), type_(type) {}
+    DescriptorSetLayout(std::shared_ptr<resource::Device> device, VkDescriptorSetLayout&& layout, VkDescriptorType type, const VkAllocationCallbacks* allocator) noexcept : device_(device), layout_(layout), type_(type), allocator_(allocator) {}
     ~DescriptorSetLayout() noexcept {
-        if(device_) vkDestroyDescriptorSetLayout(*device_, layout_, nullptr);
+        if(device_) vkDestroyDescriptorSetLayout(*device_, layout_, allocator_);
     }
     DescriptorSetLayout(const DescriptorSetLayout& rhs) = delete;
     auto& operator=(const DescriptorSetLayout& rhs) = delete;

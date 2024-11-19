@@ -10,14 +10,15 @@ namespace resource {
 class Sampler final {
     std::shared_ptr<resource::Device> device_;
     VkSampler sampler_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkSampler;
 
     Sampler() noexcept {}
-    Sampler(std::shared_ptr<resource::Device> device, VkSampler&& sampler) noexcept : device_(device), sampler_(sampler) {}
+    Sampler(std::shared_ptr<resource::Device> device, VkSampler&& sampler, const VkAllocationCallbacks* allocator) noexcept : device_(device), sampler_(sampler), allocator_(allocator) {}
     ~Sampler() noexcept {
-        if(device_) vkDestroySampler(*device_, sampler_, nullptr);
+        if(device_) vkDestroySampler(*device_, sampler_, allocator_);
     }
     Sampler(const Sampler& rhs) = delete;
     auto& operator=(const Sampler& rhs) = delete;

@@ -47,6 +47,8 @@ class Device {
 
     std::unordered_map<uint32_t, uint32_t> queue_counts_;
 
+    const VkAllocationCallbacks* allocator_;
+
     Device(const resource::PhysicalDevice& p_device) noexcept : physical_device_(p_device) {}
 
     template<typename T>
@@ -86,7 +88,7 @@ public:
         return extensions;
     }
 
-    static Result<Device> init(const resource::PhysicalDevice& physical_device, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
+    static Result<Device> init(const resource::PhysicalDevice& physical_device, const VkPhysicalDeviceFeatures& features, const queue::CreateInfos& queue_infos, const std::vector<const char*>& extensions, const std::vector<const char*>& layers, const VkAllocationCallbacks* allocator);
 
     std::vector<resource::Queue> create_queues(uint32_t queue_family_index);
 
@@ -105,7 +107,7 @@ public:
 
         VkBuffer buffer{};
         VkResult result{};
-        result = vkCreateBuffer(*device_, &buffer_info, nullptr, &buffer);
+        result = vkCreateBuffer(*device_, &buffer_info, allocator_, &buffer);
 
         auto memory_requirements = query_memory_requirements_(buffer);
         auto device_memory = allocate_memory_with_requirements_(memory_requirements, desired_properties);
@@ -117,7 +119,7 @@ public:
 
         result = vkBindBufferMemory(*device_, buffer, device_memory, 0);
 
-        return Result(resource::Buffer<T>(device_, std::move(buffer), std::move(device_memory)), result);
+        return Result(resource::Buffer<T>(device_, std::move(buffer), std::move(device_memory), allocator_), result);
     }
 
     template<typename T>

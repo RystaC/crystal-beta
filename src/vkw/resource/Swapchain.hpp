@@ -16,19 +16,20 @@ class Swapchain final {
     std::vector<VkImageView> image_views_;
     VkFormat format_;
     VkExtent2D extent_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkSwapchainKHR;
 
-    Swapchain(std::shared_ptr<resource::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, VkFormat format, const VkExtent2D& extent) noexcept :
-        device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), format_(format), extent_(extent)
+    Swapchain(std::shared_ptr<resource::Device> device, VkSwapchainKHR&& swapchain, std::vector<VkImage>&& images, std::vector<VkImageView>&& image_views, VkFormat format, const VkExtent2D& extent, const VkAllocationCallbacks* allocator) noexcept :
+        device_(device), swapchain_(swapchain), images_(images), image_views_(image_views), format_(format), extent_(extent), allocator_(allocator)
     {}
     ~Swapchain() noexcept {
         if(device_) {
             for(size_t i = 0; i < image_views_.size(); ++i) {
-                vkDestroyImageView(*device_, image_views_[i], nullptr);
+                vkDestroyImageView(*device_, image_views_[i], allocator_);
             }
-            vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
+            vkDestroySwapchainKHR(*device_, swapchain_, allocator_);
         }
     }
     Swapchain(const Swapchain& rhs) = delete;

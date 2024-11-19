@@ -10,14 +10,15 @@ namespace resource {
 class Fence final {
     std::shared_ptr<resource::Device> device_;
     VkFence fence_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkFence;
 
     Fence() noexcept {}
-    Fence(std::shared_ptr<resource::Device> device, VkFence&& fence) noexcept : device_(device), fence_(fence) {}
+    Fence(std::shared_ptr<resource::Device> device, VkFence&& fence, const VkAllocationCallbacks* allocator) noexcept : device_(device), fence_(fence), allocator_(allocator) {}
     ~Fence() noexcept {
-        if(device_) vkDestroyFence(*device_, fence_, nullptr);
+        if(device_) vkDestroyFence(*device_, fence_, allocator_);
     }
     Fence(const Fence& rhs) = delete;
     auto& operator=(const Fence& rhs) = delete;

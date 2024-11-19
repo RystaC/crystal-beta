@@ -2,7 +2,7 @@
 
 namespace vkw {
 
-Result<Instance> Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
+Result<Instance> Instance::init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers, const VkAllocationCallbacks* allocator) {
     auto instance = Instance();
 
     VkApplicationInfo application_info {
@@ -24,9 +24,10 @@ Result<Instance> Instance::init(const std::vector<const char*>& extensions, cons
     };
 
     VkInstance instance_entity{};
-    auto result = vkCreateInstance(&instance_info, nullptr, &instance_entity);
+    auto result = vkCreateInstance(&instance_info, allocator, &instance_entity);
 
-    instance.instance_ = std::make_shared<resource::Instance>(std::move(instance_entity));
+    instance.instance_ = std::make_shared<resource::Instance>(std::move(instance_entity), allocator);
+    instance.allocator_ = allocator;
 
     return Result(Instance(std::move(instance)), result);
 }
@@ -49,7 +50,27 @@ Result<resource::Surface> Instance::create_surface_SDL(SDL_Window* window) const
     VkSurfaceKHR surface{};
     auto result = SDL_Vulkan_CreateSurface(window, *instance_, &surface) ? VK_SUCCESS : VK_ERROR_INITIALIZATION_FAILED;
 
-    return Result(resource::Surface(instance_, std::move(surface)), result);
+    return Result(resource::Surface(instance_, std::move(surface), nullptr), result);
 }
+
+#if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+Result<resource::DebugUtilsMessenger> Instance::create_debug_utils_messenger(VkDebugUtilsMessageSeverityFlagsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const PFN_vkDebugUtilsMessengerCallbackEXT& callback, void* user_data) {
+    auto creator = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(*instance_, "vkCreateDebugUtilsMessengerEXT"));
+    auto destroyer = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(*instance_, "vkDestroyDebugUtilsMessengerEXT"));
+
+    VkDebugUtilsMessengerCreateInfoEXT messenger_info {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .messageSeverity = severity,
+        .messageType = type,
+        .pfnUserCallback = callback,
+        .pUserData = user_data,
+    };
+
+    VkDebugUtilsMessengerEXT messenger{};
+    auto result = creator(*instance_, &messenger_info, allocator_, &messenger);
+
+    return Result(resource::DebugUtilsMessenger(instance_, std::move(messenger), std::move(destroyer), allocator_), result);
+}
+#endif
 
 }

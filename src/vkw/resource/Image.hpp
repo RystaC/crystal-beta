@@ -13,16 +13,17 @@ class Image final {
     VkImage image_;
     VkDeviceMemory memory_;
     VkFormat format_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkImage;
 
     Image() noexcept {}
-    Image(std::shared_ptr<resource::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format) noexcept : device_(device), image_(image), memory_(memory), format_(format) {}
+    Image(std::shared_ptr<resource::Device> device, VkImage&& image, VkDeviceMemory&& memory, VkFormat format, const VkAllocationCallbacks* allocator) noexcept : device_(device), image_(image), memory_(memory), format_(format), allocator_(allocator) {}
     ~Image() noexcept {
         if(device_) {
-            vkFreeMemory(*device_, memory_, nullptr);
-            vkDestroyImage(*device_, image_, nullptr);
+            vkFreeMemory(*device_, memory_, allocator_);
+            vkDestroyImage(*device_, image_, allocator_);
         }
     }
     Image(const Image& rhs) = delete;
@@ -54,9 +55,9 @@ public:
         };
 
         VkImageView image_view{};
-        auto result = vkCreateImageView(*device_, &view_info, nullptr, &image_view);
+        auto result = vkCreateImageView(*device_, &view_info, allocator_, &image_view);
 
-        return Result(ImageView(device_, std::move(image_view)), result);
+        return Result(ImageView(device_, std::move(image_view), allocator_), result);
     }
 };
 

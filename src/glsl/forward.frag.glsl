@@ -10,9 +10,10 @@ layout(location = 0) out vec4 out_color;
 const vec3 light_pos = vec3(-5.0f);
 
 void main() {
-    // vec3 N = normalize(normal);
-    // vec3 L = normalize(light_pos - position);
-    // float NdotL = max(dot(N, L), 0.0f);
-    // out_color = vec4(vec3(color) * NdotL + vec3(0.1f), 1.0f);
-    out_color = color;
+    vec3 N = normalize(normal);
+    vec3 L = normalize(light_pos - position);
+    float NdotL = max(dot(N, L), 0.0f);
+    // out_color = vec4(vec3(tex_coord, 0.0f) * NdotL + vec3(0.1f), 1.0f);
+    // out_color = vec4(tex_coord, 0.0f, 1.0f);
+    out_color = vec4(1.0f);
 }

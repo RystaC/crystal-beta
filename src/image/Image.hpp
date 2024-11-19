@@ -32,16 +32,16 @@ public:
         int32_t width{}, height{}, stride{};
         uint8_t* data{};
 
-        data = reinterpret_cast<uint8_t*>(stbi_load(src_path.string().c_str(), &width, &height, &stride, 4));
+        data = reinterpret_cast<uint8_t*>(stbi_load(src_path.string().c_str(), &width, &height, &stride, STBI_rgb_alpha));
         if(!data) {
-            throw std::runtime_error(std::format("[image::Image::load()] ERROR: failed to read file: {}", src_path));
+            throw std::runtime_error(std::format("[image::Image::load()] ERROR: failed to read file: {}", src_path.string().c_str()));
         }
 
         return Image(data, width, height);
     }
 
-    static void save_png_rgba(const std::filesystem::path& dst_path, const uint8_t* data, uint8_t width, uint8_t height) {
-        stbi_write_png(dst_path.string().c_str(), width, height, 4, reinterpret_cast<const void*>(data), 0);
+    static void save_png(const std::filesystem::path& dst_path, const uint8_t* data, uint32_t width, uint32_t height) {
+        stbi_write_png(dst_path.string().c_str(), static_cast<int32_t>(width), static_cast<int32_t>(height), STBI_rgb_alpha, reinterpret_cast<const void*>(data), 0);
     }
 };
 

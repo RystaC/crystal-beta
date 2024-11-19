@@ -10,14 +10,15 @@ namespace resource {
 class PipelineCache final {
     std::shared_ptr<resource::Device> device_;
     VkPipelineCache cache_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkPipelineCache;
 
     PipelineCache() noexcept {}
-    PipelineCache(std::shared_ptr<resource::Device> device, VkPipelineCache&& cache) noexcept : device_(device), cache_(cache) {}
+    PipelineCache(std::shared_ptr<resource::Device> device, VkPipelineCache&& cache, const VkAllocationCallbacks* allocator) noexcept : device_(device), cache_(cache), allocator_(allocator) {}
     ~PipelineCache() noexcept {
-        if(device_) vkDestroyPipelineCache(*device_, cache_, nullptr);
+        if(device_) vkDestroyPipelineCache(*device_, cache_, allocator_);
     }
     PipelineCache(const PipelineCache& rhs) = delete;
     auto& operator=(const PipelineCache& rhs) = delete;

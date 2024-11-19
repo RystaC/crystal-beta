@@ -63,36 +63,36 @@ inline constexpr const char* result_to_str(VkResult result) {
             return STR(VK_PIPELINE_COMPILE_REQUIRED);
 #endif
 
-#if defined(VK_KHR_surface)
+#if defined(VK_KHR_SURFACE_EXTENSION_NAME)
         case VK_ERROR_SURFACE_LOST_KHR:
             return STR(VK_ERROR_SURFACE_LOST_KHR);
         case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
             return STR(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
 #endif
 
-#if defined(VK_KHR_swapchain)
+#if defined(VK_KHR_SWAPCHAIN_EXTENSION_NAME)
         case VK_SUBOPTIMAL_KHR:
             return STR(VK_SUBOPTIMAL_KHR);
         case VK_ERROR_OUT_OF_DATE_KHR:
             return STR(VK_ERROR_OUT_OF_DATE_KHR);
 #endif
 
-#if defined(VK_KHR_display_swapchain)
+#if defined(VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME)
         case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
             return STR(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
 #endif
 
-#if defined(VK_EXT_debug_report)
+#if defined(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)
         case VK_ERROR_VALIDATION_FAILED_EXT:
             return STR(VK_ERROR_VALIDATION_FAILED_EXT);
 #endif
 
-#if defined(VK_NV_glsl_shader)
+#if defined(VK_NV_GLSL_SHADER_EXTENSION_NAME)
         case VK_ERROR_INVALID_SHADER_NV:
             return STR(VK_ERROR_INVALID_SHADER_NV);
 #endif
 
-#if defined(VK_KHR_video_queue)
+#if defined(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME)
         case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:
             return STR(VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR);
         case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:
@@ -107,22 +107,22 @@ inline constexpr const char* result_to_str(VkResult result) {
             return STR(VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR);
 #endif
 
-#if defined(VK_EXT_image_drm_format_modifier)
+#if defined(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME)
         case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
             return STR(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 #endif
 
-#if defined(VK_KHR_global_priority)
+#if defined(VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME)
         case VK_ERROR_NOT_PERMITTED_KHR:
             return STR(VK_ERROR_NOT_PERMITTED_KHR);
 #endif
 
-#if defined(VK_EXT_full_screen_exclusive)
+#if defined(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
         case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
             return STR(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
 #endif
 
-#if defined(VK_KHR_deferred_host_operations)
+#if defined(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
         case VK_THREAD_IDLE_KHR:
             return STR(VK_THREAD_IDLE_KHR);
         case VK_THREAD_DONE_KHR:
@@ -133,60 +133,60 @@ inline constexpr const char* result_to_str(VkResult result) {
             return STR(VK_OPERATION_NOT_DEFERRED_KHR);
 #endif
 
-#if defined(VK_KHR_video_encode_queue)
+#if defined(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME)
         case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:
             return STR(VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR);
 #endif
 
-#if defined(VK_EXT_image_compression_control)
+#if defined(VK_EXT_IMAGE_COMPRESSION_CONTROL_EXTENSION_NAME)
         case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
             return STR(VK_ERROR_COMPRESSION_EXHAUSTED_EXT);
 #endif
 
-#if defined(VK_EXT_shader_object)
+#if defined(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
         case VK_INCOMPATIBLE_SHADER_BINARY_EXT:
             return STR(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
 #endif
 
-#if defined(VK_KHR_maintenance1) && !defined(VK_VERSION_1_1)
+#if defined(VK_KHR_MAINTENANCE1_EXTENSION_NAME) && !defined(VK_VERSION_1_1)
         case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
             return STR(VK_ERROR_OUT_OF_POOL_MEMORY_KHR);
 #endif
 
-#if defined(VK_KHR_external_memory) && !defined(VK_VERSION_1_1)
+#if defined(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME) && !defined(VK_VERSION_1_1)
         case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR:
             return STR(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
 #endif
 
-#if defined(VK_EXT_descriptor_indexing) && !defined(VK_VERSION_1_2)
+#if defined(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) && !defined(VK_VERSION_1_2)
         case VK_ERROR_FRAGMENTATION_EXT:
             return STR(VK_ERROR_FRAGMENTATION_EXT);
 #endif
 
-#if defined(VK_EXT_global_priority) && !defined(VK_KHR_global_priority)
+#if defined(VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME) && !defined(VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME)
         case VK_ERROR_NOT_PERMITTED_EXT:
             return STR(VK_ERROR_NOT_PERMITTED_EXT);
 #endif
 
-#if defined(VK_EXT_buffer_device_address) && !defined(VK_VERSION_1_2)
+#if defined(VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) && !defined(VK_VERSION_1_2)
         case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:
             return STR(VK_ERROR_INVALID_DEVICE_ADDRESS_EXT);
 
 #endif
 
-#if defined(VK_KHR_buffer_device_address) && !defined(VK_VERSION_1_2)
+#if defined(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) && !defined(VK_VERSION_1_2)
         case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR:
             return STR(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR);
 #endif
 
-#if defined(VK_EXT_pipeline_creation_cache_control) && !defined(VK_VERSION_1_3)
+#if defined(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME) && !defined(VK_VERSION_1_3)
         case VK_PIPELINE_COMPILE_REQUIRED_EXT:
             return STR(VK_PIPELINE_COMPILE_REQUIRED_EXT);
         case VK_ERROR_PIPELINE_COMPILE_REQUIRED_EXT:
             return STR(VK_ERROR_PIPELINE_COMPILE_REQUIRED_EXT);
 #endif
 
-#if defined(VK_EXT_shader_object) && !defined(VK_EXT_shader_object)
+#if defined(VK_EXT_SHADER_OBJECT_EXTENSION_NAME) && !defined(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
         case VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT:
             return STR(VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 #endif

@@ -14,6 +14,7 @@ class Buffer final {
     std::shared_ptr<resource::Device> device_;
     VkBuffer buffer_;
     VkDeviceMemory memory_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using value_type = T;
@@ -22,11 +23,11 @@ public:
     friend vkw::Device;
 
     Buffer() noexcept {}
-    Buffer(std::shared_ptr<resource::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory) noexcept : device_(device), buffer_(buffer), memory_(memory) {}
+    Buffer(std::shared_ptr<resource::Device> device, VkBuffer&& buffer, VkDeviceMemory&& memory, const VkAllocationCallbacks* allocator) noexcept : device_(device), buffer_(buffer), memory_(memory), allocator_(allocator) {}
     ~Buffer() noexcept {
         if(device_) {
-            vkFreeMemory(*device_, memory_, nullptr);
-            vkDestroyBuffer(*device_, buffer_, nullptr);
+            vkFreeMemory(*device_, memory_, allocator_);
+            vkDestroyBuffer(*device_, buffer_, allocator_);
         }
     }
     Buffer(const Buffer<T>& rhs) = delete;

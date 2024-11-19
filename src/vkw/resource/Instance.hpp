@@ -8,13 +8,14 @@ namespace resource {
 
 class Instance final {
     VkInstance instance_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkInstance;
 
-    Instance(VkInstance&& instance) noexcept : instance_(instance) {}
+    Instance(VkInstance&& instance, const VkAllocationCallbacks* allocator) noexcept : instance_(instance), allocator_(allocator) {}
     ~Instance() noexcept {
-        vkDestroyInstance(instance_, nullptr);
+        vkDestroyInstance(instance_, allocator_);
     }
     Instance(const Instance& rhs) = delete;
     auto& operator=(const Instance& rhs) = delete;

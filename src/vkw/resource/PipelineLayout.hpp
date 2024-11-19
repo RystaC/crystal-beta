@@ -10,14 +10,15 @@ namespace resource {
 class PipelineLayout final {
     std::shared_ptr<resource::Device> device_;
     VkPipelineLayout layout_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkPipelineLayout;
 
     PipelineLayout() noexcept {}
-    PipelineLayout(std::shared_ptr<resource::Device> device, VkPipelineLayout&& layout) noexcept : device_(device), layout_(layout) {}
+    PipelineLayout(std::shared_ptr<resource::Device> device, VkPipelineLayout&& layout, const VkAllocationCallbacks* allocator) noexcept : device_(device), layout_(layout), allocator_(allocator) {}
     ~PipelineLayout() noexcept {
-        if(device_) vkDestroyPipelineLayout(*device_, layout_, nullptr);
+        if(device_) vkDestroyPipelineLayout(*device_, layout_, allocator_);
     }
     PipelineLayout(const PipelineLayout& rhs) = delete;
     auto& operator=(const PipelineLayout& rhs) = delete;

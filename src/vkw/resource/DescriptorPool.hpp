@@ -12,14 +12,15 @@ namespace resource {
 class DescriptorPool final {
     std::shared_ptr<resource::Device> device_;
     VkDescriptorPool pool_;
+    const VkAllocationCallbacks* allocator_;
 
 public:
     using resource_type = VkDescriptorPool;
 
     DescriptorPool() noexcept {}
-    DescriptorPool(std::shared_ptr<resource::Device> device, VkDescriptorPool&& pool) noexcept : device_(device), pool_(pool) {}
+    DescriptorPool(std::shared_ptr<resource::Device> device, VkDescriptorPool&& pool, const VkAllocationCallbacks* allocator) noexcept : device_(device), pool_(pool), allocator_(allocator) {}
     ~DescriptorPool() noexcept {
-        if(device_) vkDestroyDescriptorPool(*device_, pool_, nullptr);
+        if(device_) vkDestroyDescriptorPool(*device_, pool_, allocator_);
     }
     DescriptorPool(const DescriptorPool& rhs) = delete;
     auto& operator=(const DescriptorPool& rhs) = delete;
