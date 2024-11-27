@@ -21,9 +21,9 @@ void main() {
         vec4 eye_space1 = view * model * gl_in[1].gl_Position;
         vec4 eye_space2 = view * model * gl_in[2].gl_Position;
 
-        float distance0 = clamp((abs(eye_space0.z) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
-        float distance1 = clamp((abs(eye_space1.z) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
-        float distance2 = clamp((abs(eye_space2.z) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
+        float distance0 = clamp((length(eye_space0) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
+        float distance1 = clamp((length(eye_space1) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
+        float distance2 = clamp((length(eye_space2) - min_distance) / (max_distance - min_distance), 0.0f, 1.0f);
 
         float tess_level0 = mix(max_tess_level, min_tess_level, distance0);
         float tess_level1 = mix(max_tess_level, min_tess_level, distance1);

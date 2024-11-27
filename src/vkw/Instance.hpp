@@ -4,7 +4,7 @@
 #include "resource/Surface.hpp"
 #include "resource/PhysicalDevice.hpp"
 
-#include "resource/DebugUtilsMessenger.hpp"
+#include "resource/extension/DebugUtilsMessenger.hpp"
 
 namespace vkw {
 

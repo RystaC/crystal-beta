@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../common/common.hpp"
+#include "../../common/common.hpp"
 
 #if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
 
-#include "Instance.hpp"
+#include "../Instance.hpp"
 
 namespace vkw {
 

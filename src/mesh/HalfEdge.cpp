@@ -4,7 +4,6 @@ namespace mesh {
 
 HalfEdge HalfEdge::create_half_edge(const std::vector<uint32_t>& indices) {
     auto index_count = indices.size();
-    auto vertex_count = index_count / 3;
 
     std::map<std::pair<uint32_t, uint32_t>, int32_t> opposites{};
 

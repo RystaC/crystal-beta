@@ -16,11 +16,12 @@
 
 #include "mesh/BasicMesh.hpp"
 #include "mesh/Obj.hpp"
+#include "mesh/PMX.hpp"
 
-// constexpr size_t WINDOW_WIDTH = 1280;
-// constexpr size_t WINDOW_HEIGHT = 720;
-constexpr size_t WINDOW_WIDTH = 512;
-constexpr size_t WINDOW_HEIGHT = 512;
+constexpr size_t WINDOW_WIDTH = 1280;
+constexpr size_t WINDOW_HEIGHT = 720;
+// constexpr size_t WINDOW_WIDTH = 512;
+// constexpr size_t WINDOW_HEIGHT = 512;
 
 struct ForwardConstantData {
     glm::mat4 model, view, projection;
@@ -141,11 +142,20 @@ public:
 };
 
 int main(int argc, char** argv) {
-    auto s = std::chrono::high_resolution_clock::now();
-    auto mesh = mesh::Obj::load("../asset/obj/bunny.obj");
-    auto e = std::chrono::high_resolution_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
-    std::cerr << std::format("mesh::Obj::load(): {} msec", time) << std::endl;
+    // auto s = std::chrono::high_resolution_clock::now();
+    // auto mesh = mesh::Obj::load("../asset/obj/bunny.obj");
+    // auto e = std::chrono::high_resolution_clock::now();
+    // auto time = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
+    // std::cerr << std::format("mesh::Obj::load(): {} msec", time) << std::endl;
+    mesh::PMX pmx{};
+
+    try {
+        pmx = mesh::PMX::load("../asset/mmd/Tda式改変ミク　JKStyle/Tda式改変ミク　JKStyle.pmx");
+    }
+    catch(std::exception& e) {
+        std::cerr << std::format("exception occured. {}", e.what());
+        std::exit(EXIT_FAILURE);
+    }
 
     // auto mesh = mesh::BasicMesh::sphere(8, 8, 1.0f);
 
@@ -306,20 +316,25 @@ int main(int argc, char** argv) {
     }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    auto forward_vertex_shader = device->create_shader_module("spirv/uv_expand.vert.glsl.spirv").unwrap();
-    auto forward_fragment_shader = device->create_shader_module("spirv/uv_expand.frag.glsl.spirv").unwrap();
+    // auto forward_vertex_shader = device->create_shader_module("spirv/uv_expand.vert.glsl.spirv").unwrap();
+    // auto forward_fragment_shader = device->create_shader_module("spirv/uv_expand.frag.glsl.spirv").unwrap();
     // auto forward_vertex_shader = device->create_shader_module("spirv/tessellation_test.vert.glsl.spirv").unwrap();
     // auto forward_fragment_shader = device->create_shader_module("spirv/tessellation_test.frag.glsl.spirv").unwrap();
     // auto forward_tess_cont_shader = device->create_shader_module("spirv/tessellation_test.tesc.glsl.spirv").unwrap();
     // auto forward_tess_eval_shader = device->create_shader_module("spirv/tessellation_test.tese.glsl.spirv").unwrap();
+    auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
+    auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
 
     std::cerr << std::endl << "create buffers..." << std::endl;
-    auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
-    auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    // auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    // auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto vertex_buffer = device->create_buffer_with_data(pmx.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto index_buffer = device->create_buffer_with_data(pmx.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
 
     vkw::pipeline_layout::CreateInfo forward_layout_info{};
     forward_layout_info
-    .add_push_constant_range(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData));
+    // .add_push_constant_range(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData));
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
@@ -334,13 +349,17 @@ int main(int argc, char** argv) {
     .fragment_shader(forward_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions forward_input_bindings{};
     forward_input_bindings
-    .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX);
+    // .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX);
+    .add(0, sizeof(mesh::pmx::Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
     vkw::pipeline::VertexInputAttributeDescriptions forward_input_attributes{};
     forward_input_attributes
-    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
-    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
-    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
-    .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color));
+    // .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
+    // .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
+    // .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
+    // .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color));
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::pmx::Vertex, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::pmx::Vertex, normal))
+    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::pmx::Vertex, uv));
     vkw::pipeline::VertexInputState forward_vertex_input_state(forward_input_bindings, forward_input_attributes);
     vkw::pipeline::InputAssemblyState forward_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     // vkw::pipeline::InputAssemblyState forward_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
@@ -353,10 +372,10 @@ int main(int argc, char** argv) {
         },
         {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
     );
-    // vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_LINE, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
-    vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_LINE, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    // vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
     vkw::pipeline::MultisampleState forward_multisample_state(VK_SAMPLE_COUNT_1_BIT);
-    vkw::pipeline::DepthStencilState forward_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
+    vkw::pipeline::DepthStencilState forward_depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
     vkw::pipeline::ColorBlendAttachmentStates forward_blend_attachment_states{};
     forward_blend_attachment_states
     .add();
@@ -446,11 +465,11 @@ int main(int argc, char** argv) {
             projection[1][1] *= -1;
 
             ForwardConstantData push_constant_data1 {
-                translate1 * model, view, projection,
+                translate1 * rotate *  model, view, projection,
             };
 
             ForwardConstantData push_constant_data2 {
-                translate2 * model, view, projection,
+                translate2 * rotate * model, view, projection,
             };
 
             command_buffer.begin_record(0)
@@ -458,9 +477,11 @@ int main(int argc, char** argv) {
             .begin_render_pass(forward_framebuffers[current_image_index], forward_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, forward_pipeline)
             // .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
             .bind_vertex_buffers(0, {vertex_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT32)
-            .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
+            // .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
+            .draw_indexed(vkw::size_u32(pmx.indices().size()), 1)
             // .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
             // .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
             .end_render_pass()
