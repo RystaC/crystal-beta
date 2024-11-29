@@ -15,7 +15,6 @@ public:
     static BasicMesh cube();
     static BasicMesh sphere(uint32_t row, uint32_t column, float radius = 0.5f);
     static BasicMesh torus(uint32_t row, uint32_t column, float inner_radius, float outer_radius);
-    // static BasicMesh capsule(uint32_t row, uint32_t column, float length);
     static BasicMesh frame();
 
     auto& vertices() const noexcept { return vertices_; }

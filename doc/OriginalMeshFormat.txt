@@ -1,0 +1,93 @@
+拡張子: .cbply
+
+データ型
+i8: 8bit signed integer
+i16: 16bit signed integer
+i32: 32bit signed integer
+
+u8: 8bit unsigned integer
+u16: 16bit unsigned integer
+u32: 32bit unsigned integer
+
+f32: 32bit floating point
+f64: 64bit floating point
+
+vec2f: 2 elements f32 vector
+vec3f: 3 elements f32 vector
+vec4f: 4 elements f32 vector
+
+vec2d: 2 elements f64 vector
+vec3d: 3 elements f64 vector
+vec4d: 4 elements f64 vector
+
+text: u32 text length + UTF8 encoded text data
+
+ポリゴンファイル(.cbply)
+
+<頂点データ>
+u32 number_of_vertices
+
+[number_of_vertices]
+vertex {
+    vertex_attribute * [number_of_vertices]
+}
+
+vertex_attribute :=
+vec3f position
+vec3f normal
+vec2f tex_coord
+i32 bone0
+i32 bone1
+i32 bone2
+i32 bone3
+(ボーンの無効値は-1)
+f32 weight0
+f32 weight1
+f32 weight2
+f32 weight3
+(ボーンが無効の時のウェイトは未定義)
+
+<インデックス>
+u32 number_of_indices
+
+[number_of_indices]
+indices {
+    u32 * [number_of_indices]
+}
+
+<テクスチャテーブル>
+u32 number_of_textures
+u32 number_of_sphere_textures
+u32 number_of_toon_textures
+u32 number_of_normal_textures
+
+texture {
+    text * [number_of_textures]
+}
+sphere {
+    text * [number_of_sphere_textures]
+}
+toon {
+    text * [number_of_toon_textures]
+}
+normal {
+    text * [number_of_normal_textures]
+}
+
+<マテリアル>
+u32 number_of_materials
+
+material {
+    material_attribute * [number_of_materials]
+}
+
+material_attribute :=
+vec4f diffuse
+vec3f specular
+f32 specular_intensity
+vec3f ambient
+i32 texture_index
+i32 sphere_texture_index
+i32 toon_texture_index
+i32 normal_texture_index
+u32 number_of_vertices
