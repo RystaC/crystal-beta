@@ -7,21 +7,23 @@ namespace mesh {
 namespace pmx {
 
 struct Rigid {
-    std::filesystem::path name;
-    std::filesystem::path name_en;
-    int32_t index;
-    uint8_t group;
-    uint16_t group_flag;
-    uint8_t topology;
     glm::vec3 size;
+    int32_t index;
     glm::vec3 position;
-    glm::vec3 rotate_rad;
     float mass;
+    glm::vec3 rotate_rad;
     float trans_atten;
     float rot_atten;
     float repulsion;
     float friction;
+    uint8_t topology;
     uint8_t calc_type;
+    uint16_t group_flag;
+    uint8_t group;
+
+    // mata data
+    std::filesystem::path name;
+    std::filesystem::path name_en;
 };
 
 inline Rigid read_rigid(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8) {
@@ -31,7 +33,7 @@ inline Rigid read_rigid(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf
     rigid.name = std::move(read_text(ifs, is_utf8));
     rigid.name_en = std::move(read_text(ifs, is_utf8));
     // bone index
-    ifs.read(reinterpret_cast<char*>(&rigid.index), bone_index_size);
+    rigid.index = read_index(ifs, bone_index_size);
     // group
     ifs.read(reinterpret_cast<char*>(&rigid.group), sizeof(uint8_t));
     // group flag

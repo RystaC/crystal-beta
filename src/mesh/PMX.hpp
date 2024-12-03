@@ -46,6 +46,13 @@ public:
 
     const auto& vertices() const noexcept { return vertices_; }
     const auto& indices() const noexcept { return indices_; }
+    const auto& textures() const noexcept { return textures_; }
+    const auto& materials() const noexcept { return materials_; }
+    const auto& bones() const noexcept { return bones_; }
+    const auto& morphs() const noexcept { return morphs_; }
+    const auto& frames() const noexcept { return frames_; }
+    const auto& rigids() const noexcept { return rigids_; }
+    const auto& joints() const noexcept { return joints_; }
 };
 
 }

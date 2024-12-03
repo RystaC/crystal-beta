@@ -157,6 +157,21 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
+    std::vector<glm::vec3> bone_points(pmx.bones().size());
+    for(size_t i = 0; i < bone_points.size(); ++i) {
+        bone_points[i] = pmx.bones()[i].position;
+    }
+
+    std::vector<glm::vec3> bone_lines{};
+    for(const auto& bone : pmx.bones()) {
+        if(bone.parent_index != -1) {
+            auto begin = pmx.bones()[bone.parent_index].position;
+            auto end = bone.position;
+            bone_lines.push_back(begin);
+            bone_lines.push_back(end);
+        }
+    }
+
     // auto mesh = mesh::BasicMesh::sphere(8, 8, 1.0f);
 
     auto game = std::make_unique<Game>();
@@ -172,14 +187,14 @@ int main(int argc, char** argv) {
     std::cerr << std::endl << "enumerate instance layers..." << std::endl;
     const auto instance_layers = vkw::Instance::enumerate_layers();
     for(const auto& layer : instance_layers) {
-        std::cerr << layer.layerName << std::endl;
+        // std::cerr << layer.layerName << std::endl;
     }
 
     std::cerr << std::endl << "enumerate default instance extensions..." << std::endl;
     const auto instance_extensions = vkw::Instance::enumerate_extensions();
     bool enable_debug_utils = false;
     for(const auto& extension : instance_extensions) {
-        std::cerr << extension.extensionName << std::endl;
+        // std::cerr << extension.extensionName << std::endl;
         if(std::string(extension.extensionName) == "VK_EXT_debug_utils") {
             enable_debug_utils = true;
         }
@@ -195,7 +210,7 @@ int main(int argc, char** argv) {
         std::cerr << std::endl << "enumerate instance extensions for " << layer.layerName << "..." << std::endl;
         const auto layer_extensions = vkw::Instance::enumerate_extensions(layer.layerName);
         for(const auto& extension : layer_extensions) {
-            std::cerr << extension.extensionName << std::endl;
+            // std::cerr << extension.extensionName << std::endl;
         }
     }
 
@@ -228,20 +243,20 @@ int main(int argc, char** argv) {
     std::cerr << std::endl << "enumerate device layers..." << std::endl;
     const auto device_layers = vkw::Device::enumerate_layers(physical_devices[0]);
     for(const auto& layer : device_layers) {
-        std::cerr << layer.layerName << std::endl;
+        // std::cerr << layer.layerName << std::endl;
     }
 
     std::cerr << std::endl << "enumerate default device extensions..." << std::endl;
     const auto device_extensions = vkw::Device::enumerate_extensions(physical_devices[0]);
     for(const auto& extension : device_extensions) {
-        std::cerr << extension.extensionName << std::endl;
+        // std::cerr << extension.extensionName << std::endl;
     }
 
     for(const auto& layer : device_layers) {
         std::cerr << std::endl << "enumerate device extensions for " << layer.layerName << "..." << std::endl;
         const auto layer_extensions = vkw::Device::enumerate_extensions(physical_devices[0], layer.layerName);
         for(const auto& extension : layer_extensions) {
-            std::cerr << extension.extensionName << std::endl;
+            // std::cerr << extension.extensionName << std::endl;
         }
     }
 
@@ -256,10 +271,9 @@ int main(int argc, char** argv) {
     std::vector<const char*> desired_device_layers = { "VK_LAYER_KHRONOS_validation" };
 
     VkPhysicalDeviceFeatures device_features {
-        .tessellationShader = VK_TRUE,
         .fillModeNonSolid = VK_TRUE,
+        .wideLines = VK_TRUE,
     };
-
     auto device = std::make_unique<vkw::Device>(vkw::Device::init(physical_devices[0], device_features, queue_create_infos, desired_device_extensions, desired_device_layers, nullptr).unwrap());
 
 
@@ -275,6 +289,7 @@ int main(int argc, char** argv) {
     auto depth_buffer = device->create_image(swapchain.extent(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT).unwrap();
     auto depth_buffer_view = depth_buffer.create_image_view(VK_IMAGE_ASPECT_DEPTH_BIT).unwrap();
 
+    std::cerr << std::endl << "create render pass..." << std::endl;
     // forward render pass
     vkw::render_pass::AttachmentDescriptions forward_attachment{};
     forward_attachment
@@ -306,8 +321,51 @@ int main(int argc, char** argv) {
     .output_depth_attachment(forward_depth_ref)
     .end();
 
-    std::cerr << std::endl << "create render pass..." << std::endl;
     auto forward_render_pass = device->create_render_pass(forward_attachment, forward_subpass).unwrap();
+
+    // bone point pass
+    vkw::render_pass::AttachmentDescriptions bone_point_attachment{};
+    bone_point_attachment
+    // attachment 0: swapchain image
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences bone_point_attachment_ref{};
+    bone_point_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions bone_point_subpass{};
+    bone_point_subpass.add()
+    .output_color_attachments(bone_point_attachment_ref)
+    .end();
+
+    auto bone_point_render_pass = device->create_render_pass(bone_point_attachment, bone_point_subpass).unwrap();
+
+    // bone line pass
+    vkw::render_pass::AttachmentDescriptions bone_line_attachment{};
+    bone_line_attachment
+    // attachment 0: swapchain image
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences bone_line_attachment_ref{};
+    bone_line_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions bone_line_subpass{};
+    bone_line_subpass.add()
+    .output_color_attachments(bone_line_attachment_ref)
+    .end();
+
+    auto bone_line_render_pass = device->create_render_pass(bone_line_attachment, bone_line_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     std::vector<vkw::resource::Framebuffer> forward_framebuffers(swapchain.size());
@@ -315,55 +373,72 @@ int main(int argc, char** argv) {
         forward_framebuffers[i] = device->create_framebuffer(forward_render_pass, {swapchain.image_view(i), depth_buffer_view}, swapchain.extent()).unwrap();
     }
 
+    std::vector<vkw::resource::Framebuffer> bone_point_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        bone_point_framebuffers[i] = device->create_framebuffer(bone_point_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    }
+
+    std::vector<vkw::resource::Framebuffer> bone_line_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        bone_line_framebuffers[i] = device->create_framebuffer(bone_line_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    }
+
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    // auto forward_vertex_shader = device->create_shader_module("spirv/uv_expand.vert.glsl.spirv").unwrap();
-    // auto forward_fragment_shader = device->create_shader_module("spirv/uv_expand.frag.glsl.spirv").unwrap();
-    // auto forward_vertex_shader = device->create_shader_module("spirv/tessellation_test.vert.glsl.spirv").unwrap();
-    // auto forward_fragment_shader = device->create_shader_module("spirv/tessellation_test.frag.glsl.spirv").unwrap();
-    // auto forward_tess_cont_shader = device->create_shader_module("spirv/tessellation_test.tesc.glsl.spirv").unwrap();
-    // auto forward_tess_eval_shader = device->create_shader_module("spirv/tessellation_test.tese.glsl.spirv").unwrap();
     auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
     auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
 
+    auto bone_point_vertex_shader = device->create_shader_module("spirv/bone_point.vert.glsl.spirv").unwrap();
+    auto bone_point_fragment_shader = device->create_shader_module("spirv/bone_point.frag.glsl.spirv").unwrap();
+
+    auto bone_line_vertex_shader = device->create_shader_module("spirv/bone_line.vert.glsl.spirv").unwrap();
+    auto bone_line_fragment_shader = device->create_shader_module("spirv/bone_line.frag.glsl.spirv").unwrap();
+
     std::cerr << std::endl << "create buffers..." << std::endl;
-    // auto vertex_buffer = device->create_buffer_with_data(mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
-    // auto index_buffer = device->create_buffer_with_data(mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto vertex_buffer = device->create_buffer_with_data(pmx.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto index_buffer = device->create_buffer_with_data(pmx.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
 
-    vkw::pipeline_layout::CreateInfo forward_layout_info{};
-    forward_layout_info
-    // .add_push_constant_range(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData));
-    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+    auto bone_point_instance_buffer = device->create_buffer_with_data(bone_points, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+
+    auto bone_line_vertex_buffer = device->create_buffer_with_data(bone_lines, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
+    vkw::pipeline_layout::CreateInfo forward_layout_info{};
+    forward_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
+
+    vkw::pipeline_layout::CreateInfo bone_point_layout_info{};
+    bone_point_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+
+    auto bone_point_pipeline_layout = device->create_pipeline_layout(bone_point_layout_info).unwrap();
+
+    vkw::pipeline_layout::CreateInfo bone_line_layout_info{};
+    bone_line_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+
+    auto bone_line_pipeline_layout = device->create_pipeline_layout(bone_line_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
     vkw::pipeline::GraphicsShaderStages forward_shader_stages{};
     forward_shader_stages
     .vertex_shader(forward_vertex_shader)
-    // .tessellation_control_shader(forward_tess_cont_shader)
-    // .tessellation_evaluation_shader(forward_tess_eval_shader)
     .fragment_shader(forward_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions forward_input_bindings{};
     forward_input_bindings
-    // .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX);
     .add(0, sizeof(mesh::pmx::Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
     vkw::pipeline::VertexInputAttributeDescriptions forward_input_attributes{};
     forward_input_attributes
-    // .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
-    // .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
-    // .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
-    // .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color));
     .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::pmx::Vertex, position))
     .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::pmx::Vertex, normal))
-    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::pmx::Vertex, uv));
+    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::pmx::Vertex, uv))
+    .add(3, 0, VK_FORMAT_R32G32B32A32_SINT, offsetof(mesh::pmx::Vertex, bone_indices))
+    .add(4, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::pmx::Vertex, bone_weights))
+    .add(5, 0, VK_FORMAT_R32_SFLOAT, offsetof(mesh::pmx::Vertex, edge_mult));
     vkw::pipeline::VertexInputState forward_vertex_input_state(forward_input_bindings, forward_input_attributes);
     vkw::pipeline::InputAssemblyState forward_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    // vkw::pipeline::InputAssemblyState forward_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
-    // vkw::pipeline::TessellationState forward_tessellation_state(3);
     vkw::pipeline::ViewportState forward_viewport_state(
         {
             .x = 0.0f, .y = 0.0f,
@@ -373,27 +448,107 @@ int main(int argc, char** argv) {
         {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
     );
     vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_LINE, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
-    // vkw::pipeline::RasterizarionState forward_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
     vkw::pipeline::MultisampleState forward_multisample_state(VK_SAMPLE_COUNT_1_BIT);
     vkw::pipeline::DepthStencilState forward_depth_stencil_state(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
     vkw::pipeline::ColorBlendAttachmentStates forward_blend_attachment_states{};
     forward_blend_attachment_states
     .add();
-    vkw::pipeline::ColorBlendState geometory_color_blend_state(forward_blend_attachment_states);
+    vkw::pipeline::ColorBlendState forward_color_blend_state(forward_blend_attachment_states);
 
     vkw::pipeline::GraphicsPipelineStates forward_pipeline_state{};
     forward_pipeline_state
     .shader_stages(forward_shader_stages)
     .vertex_input(forward_vertex_input_state)
     .input_assembly(forward_input_assembly_state)
-    // .tessellation(forward_tessellation_state)
     .viewport(forward_viewport_state)
     .rasterization(forward_rasterization_state)
     .multisample(forward_multisample_state)
     .depth_stencil(forward_depth_stencil_state)
-    .color_blend(geometory_color_blend_state);
+    .color_blend(forward_color_blend_state);
 
     auto forward_pipeline = device->create_pipeline(forward_pipeline_state, forward_pipeline_layout, forward_render_pass, 0).unwrap();
+
+    vkw::pipeline::GraphicsShaderStages bone_point_shader_stages{};
+    bone_point_shader_stages
+    .vertex_shader(bone_point_vertex_shader)
+    .fragment_shader(bone_point_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions bone_point_input_bindings{};
+    bone_point_input_bindings
+    .add(0, sizeof(glm::vec3), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::VertexInputAttributeDescriptions bone_point_input_attributes{};
+    bone_point_input_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
+    vkw::pipeline::VertexInputState bone_point_vertex_input_state(bone_point_input_bindings, bone_point_input_attributes);
+    vkw::pipeline::InputAssemblyState bone_point_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+    vkw::pipeline::ViewportState bone_point_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState bone_point_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    vkw::pipeline::MultisampleState bone_point_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState bone_point_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates bone_point_blend_attachment_states{};
+    bone_point_blend_attachment_states
+    .add();
+    vkw::pipeline::ColorBlendState bone_point_color_blend_state(bone_point_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates bone_point_pipeline_state{};
+    bone_point_pipeline_state
+    .shader_stages(bone_point_shader_stages)
+    .vertex_input(bone_point_vertex_input_state)
+    .input_assembly(bone_point_input_assembly_state)
+    .viewport(bone_point_viewport_state)
+    .rasterization(bone_point_rasterization_state)
+    .multisample(bone_point_multisample_state)
+    .depth_stencil(bone_point_depth_stencil_state)
+    .color_blend(bone_point_color_blend_state);
+
+    auto bone_point_pipeline = device->create_pipeline(bone_point_pipeline_state, bone_point_pipeline_layout, bone_point_render_pass, 0).unwrap();
+
+    vkw::pipeline::GraphicsShaderStages bone_line_shader_stages{};
+    bone_line_shader_stages
+    .vertex_shader(bone_line_vertex_shader)
+    .fragment_shader(bone_line_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions bone_line_input_bindings{};
+    bone_line_input_bindings
+    .add(0, sizeof(glm::vec3), VK_VERTEX_INPUT_RATE_VERTEX);
+    vkw::pipeline::VertexInputAttributeDescriptions bone_line_input_attributes{};
+    bone_line_input_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0);
+    vkw::pipeline::VertexInputState bone_line_vertex_input_state(bone_line_input_bindings, bone_line_input_attributes);
+    vkw::pipeline::InputAssemblyState bone_line_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    vkw::pipeline::ViewportState bone_line_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState bone_line_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 2.0f);
+    vkw::pipeline::MultisampleState bone_line_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState bone_line_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates bone_line_blend_attachment_states{};
+    bone_line_blend_attachment_states
+    .add();
+    vkw::pipeline::ColorBlendState bone_line_color_blend_state(bone_line_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates bone_line_pipeline_state{};
+    bone_line_pipeline_state
+    .shader_stages(bone_line_shader_stages)
+    .vertex_input(bone_line_vertex_input_state)
+    .input_assembly(bone_line_input_assembly_state)
+    .viewport(bone_line_viewport_state)
+    .rasterization(bone_line_rasterization_state)
+    .multisample(bone_line_multisample_state)
+    .depth_stencil(bone_line_depth_stencil_state)
+    .color_blend(bone_line_color_blend_state);
+
+    auto bone_line_pipeline = device->create_pipeline(bone_line_pipeline_state, bone_line_pipeline_layout, bone_line_render_pass, 0).unwrap();
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
@@ -451,7 +606,7 @@ int main(int argc, char** argv) {
                 { .depthStencil = {1.0f, 0} },
             };
 
-            model_rotate += std::numbers::pi_v<float> * game->delta_time();
+            // model_rotate += std::numbers::pi_v<float> * game->delta_time();
 
             glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
             glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), model_rotate, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -476,14 +631,24 @@ int main(int argc, char** argv) {
             // forward pass
             .begin_render_pass(forward_framebuffers[current_image_index], forward_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, forward_pipeline)
-            // .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
             .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
             .bind_vertex_buffers(0, {vertex_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT32)
-            // .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
             .draw_indexed(vkw::size_u32(pmx.indices().size()), 1)
-            // .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(ForwardConstantData), &push_constant_data2)
-            // .draw_indexed(vkw::size_u32(mesh.indices().size()), 1)
+            .end_render_pass()
+            // bone line pass
+            .begin_render_pass(bone_line_framebuffers[current_image_index], bone_line_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, bone_line_pipeline)
+            .push_constants(bone_line_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_vertex_buffers(0, {bone_line_vertex_buffer})
+            .draw(vkw::size_u32(bone_lines.size()), 1)
+            .end_render_pass()
+            // bone point pass
+            .begin_render_pass(bone_point_framebuffers[current_image_index], bone_point_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, bone_point_pipeline)
+            .push_constants(bone_point_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_vertex_buffers(0, {bone_point_instance_buffer})
+            .draw(1, vkw::size_u32(bone_points.size()))
             .end_render_pass()
             .end_record();
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <bit>
 #include <filesystem>
 #include <format>
 #include <fstream>

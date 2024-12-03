@@ -57,7 +57,7 @@ PMX PMX::load(const std::filesystem::path& path) {
     std::cout << std::format("# of indices = {}", index_count) << std::endl;
     pmx.indices_.resize(index_count);
     for(size_t i = 0; i < pmx.indices_.size(); ++i) {
-        ifs.read(reinterpret_cast<char*>(&pmx.indices_[i]), pmx.header_.vertex_index_size);
+        pmx.indices_[i] = pmx::read_index(ifs, pmx.header_.vertex_index_size);
     }
 
     // textures
@@ -77,9 +77,9 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.materials_.resize(material_count);
     for(size_t i = 0; i < pmx.materials_.size(); ++i) {
         pmx.materials_[i] = std::move(pmx::read_material(ifs, pmx.header_.texuture_index_size, pmx.header_.encode));
-        std::cout << pmx.materials_[i].name << std::endl;
-        std::cout << pmx.materials_[i].name_en << std::endl;
-        std::cout << pmx.materials_[i].memo << std::endl;
+        // std::cout << pmx.materials_[i].name << std::endl;
+        // std::cout << pmx.materials_[i].name_en << std::endl;
+        // std::cout << pmx.materials_[i].memo << std::endl;
     }
 
     // bones
@@ -89,8 +89,13 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.bones_.resize(bone_count);
     for(size_t i = 0; i < pmx.bones_.size(); ++i) {
         pmx.bones_[i] = std::move(pmx::read_bone(ifs, pmx.header_.bone_index_size, pmx.header_.encode));
-        std::cout << pmx.bones_[i].name << std::endl;
-        std::cout << pmx.bones_[i].name_en << std::endl;
+        std::cout << pmx.bones_[i].name;
+        if(pmx.bones_[i].parent_index == -1) {
+            std::cout << std::endl;
+        }
+        else {
+            std::cout << " -> " << pmx.bones_[pmx.bones_[i].parent_index].name << std::endl;
+        }
     }
 
     // morphs
@@ -104,8 +109,8 @@ PMX PMX::load(const std::filesystem::path& path) {
             pmx.header_.material_index_size, pmx.header_.morph_index_size,
             pmx.header_.encode
         ));
-        std::cout << pmx.morphs_[i].name << std::endl;
-        std::cout << pmx.morphs_[i].name_en << std::endl;
+        // std::cout << pmx.morphs_[i].name << std::endl;
+        // std::cout << pmx.morphs_[i].name_en << std::endl;
     }
 
     // frames
@@ -115,8 +120,8 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.frames_.resize(frame_count);
     for(size_t i = 0; i < pmx.frames_.size(); ++i) {
         pmx.frames_[i] = std::move(pmx::read_frame(ifs, pmx.header_.bone_index_size, pmx.header_.morph_index_size, pmx.header_.encode));
-        std::cout << pmx.frames_[i].name << std::endl;
-        std::cout << pmx.frames_[i].name_en << std::endl;
+        // std::cout << pmx.frames_[i].name << std::endl;
+        // std::cout << pmx.frames_[i].name_en << std::endl;
     }
 
     // rigids
@@ -126,9 +131,9 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.rigids_.resize(rigid_count);
     for(size_t i = 0; i < pmx.rigids_.size(); ++i) {
         pmx.rigids_[i] = std::move(pmx::read_rigid(ifs, pmx.header_.bone_index_size, pmx.header_.encode));
-        std::cout << pmx.rigids_[i].name << std::endl;
-        std::cout << pmx.rigids_[i].name_en << std::endl;
-        std::cout << std::format("topology: {}" , pmx.rigids_[i].topology) << std::endl;
+        // std::cout << pmx.rigids_[i].name << std::endl;
+        // std::cout << pmx.rigids_[i].name_en << std::endl;
+        // std::cout << std::format("topology: {}" , pmx.rigids_[i].topology) << std::endl;
     }
 
     // joints
@@ -138,8 +143,8 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.joints_.resize(joint_count);
     for(size_t i = 0; i < pmx.joints_.size(); ++i) {
         pmx.joints_[i] = std::move(pmx::read_joint(ifs, pmx.header_.rigid_index_size, pmx.header_.encode));
-        std::cout << pmx.joints_[i].name << std::endl;
-        std::cout << pmx.joints_[i].name_en << std::endl;
+        // std::cout << pmx.joints_[i].name << std::endl;
+        // std::cout << pmx.joints_[i].name_en << std::endl;
     }
 
     return pmx;

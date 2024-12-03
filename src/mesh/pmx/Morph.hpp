@@ -7,15 +7,15 @@ namespace mesh {
 namespace pmx {
 
 struct VertexMorph {
-    int32_t index;
     glm::vec3 offset;
+    int32_t index;
 };
 
 inline VertexMorph read_vertex_morph(std::ifstream& ifs, uint8_t vertex_index_size) {
     VertexMorph morph{};
 
     // index
-    ifs.read(reinterpret_cast<char*>(&morph.index), vertex_index_size);
+    morph.index = read_index(ifs, vertex_index_size);
     // position offset
     ifs.read(reinterpret_cast<char*>(&morph.offset), sizeof(glm::vec3));
 
@@ -23,15 +23,15 @@ inline VertexMorph read_vertex_morph(std::ifstream& ifs, uint8_t vertex_index_si
 }
 
 struct UVMorph {
-    int32_t index;
     glm::vec4 offset;
+    int32_t index;
 };
 
 inline UVMorph read_uv_morph(std::ifstream& ifs, uint8_t vertex_index_size) {
     UVMorph morph{};
     
     // index
-    ifs.read(reinterpret_cast<char*>(&morph.index), vertex_index_size);
+    morph.index = read_index(ifs, vertex_index_size);
     // uv offset
     ifs.read(reinterpret_cast<char*>(&morph.offset), sizeof(glm::vec4));
 
@@ -39,8 +39,8 @@ inline UVMorph read_uv_morph(std::ifstream& ifs, uint8_t vertex_index_size) {
 }
 
 struct BoneMorph {
-    int32_t index;
     glm::vec3 translate;
+    int32_t index;
     glm::vec4 rotate_quat;
 };
 
@@ -48,7 +48,7 @@ inline BoneMorph read_bone_morph(std::ifstream& ifs, uint8_t bone_index_size) {
     BoneMorph morph{};
     
     // index
-    ifs.read(reinterpret_cast<char*>(&morph.index), bone_index_size);
+    morph.index = read_index(ifs, bone_index_size);
     // translate offset
     ifs.read(reinterpret_cast<char*>(&morph.translate), sizeof(glm::vec3));
     // rotate offset
@@ -58,24 +58,24 @@ inline BoneMorph read_bone_morph(std::ifstream& ifs, uint8_t bone_index_size) {
 }
 
 struct MaterialMorph {
-    int32_t index;
-    uint8_t calc_mode;
     glm::vec4 diffuse;
     glm::vec3 specular;
     float specular_intensity;
     glm::vec3 ambient;
-    glm::vec4 edge_color;
     float edge_size;
+    glm::vec4 edge_color;
     glm::vec4 tex_coef;
     glm::vec4 sphere_tex_coef;
     glm::vec4 toon_tex_coef;
+    int32_t index;
+    uint8_t calc_mode;
 };
 
 inline MaterialMorph read_material_morph(std::ifstream& ifs, uint8_t material_index_size) {
     MaterialMorph morph{};
 
     // index
-    ifs.read(reinterpret_cast<char*>(&morph.index), material_index_size);
+    morph.index = read_index(ifs, material_index_size);
     // calculation mode
     ifs.read(reinterpret_cast<char*>(&morph.calc_mode), sizeof(uint8_t));
     // diffuse
@@ -109,7 +109,7 @@ inline GroupMorph read_group_morph(std::ifstream& ifs, uint8_t morph_index_size)
     GroupMorph morph{};
 
     // index
-    ifs.read(reinterpret_cast<char*>(&morph), morph_index_size);
+    morph.index = read_index(ifs, morph_index_size);
     // rate
     ifs.read(reinterpret_cast<char*>(&morph.rate), sizeof(float));
 

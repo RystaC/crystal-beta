@@ -47,26 +47,28 @@ void Game::process_inputs_() {
         is_mouse_relative_ = true;
     }
 
+    constexpr float VELOCITY = 5.0f;
+
     if(curr_key_states_[SDL_SCANCODE_A]) {
-        camera_pos_ -= 2.0f * camera_right_ * delta_time_;
+        camera_pos_ -= VELOCITY * camera_right_ * delta_time_;
     }
     if(curr_key_states_[SDL_SCANCODE_D]) {
-        camera_pos_ += 2.0f * camera_right_ * delta_time_;
+        camera_pos_ += VELOCITY * camera_right_ * delta_time_;
     }
     if(curr_key_states_[SDL_SCANCODE_S]) {
-        camera_pos_ -= 2.0f * camera_dir_ * delta_time_;
+        camera_pos_ -= VELOCITY * camera_dir_ * delta_time_;
     }
     if(curr_key_states_[SDL_SCANCODE_W]) {
-        camera_pos_ += 2.0f * camera_dir_ * delta_time_;
+        camera_pos_ += VELOCITY * camera_dir_ * delta_time_;
     }
     if(get_key_state_(SDL_SCANCODE_LSHIFT) == KeyState::NONE) {
         if(curr_key_states_[SDL_SCANCODE_SPACE]) {
-            camera_pos_ += 2.0f * camera_up_ * delta_time_;
+            camera_pos_ += VELOCITY * camera_up_ * delta_time_;
         }
     }
     else if(get_key_state_(SDL_SCANCODE_LSHIFT) == KeyState::HOLDING) {
         if(curr_key_states_[SDL_SCANCODE_SPACE]) {
-            camera_pos_ -= 2.0f * camera_up_ * delta_time_;
+            camera_pos_ -= VELOCITY * camera_up_ * delta_time_;
         }
     }
 

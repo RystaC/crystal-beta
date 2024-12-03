@@ -8,26 +8,37 @@ namespace mesh {
 namespace pmx {
 
 struct Material {
+    // 0
+    glm::vec4 diffuse;
+    // 16
+    glm::vec3 specular;
+    // 28
+    float specular_intensity;
+    // 32
+    glm::vec3 ambient;
+    // 44
+    float edge_size;
+    // 48
+    glm::vec4 edge_color;
+    // 64
+    // texture / sphere / toon
+    glm::ivec3 texture_indices;
+    // 76
+    uint32_t vertex_count;
+    // 80
+    uint8_t flags;
+    // 84
+    uint8_t sphere_mode;
+
+    // meta data
     std::filesystem::path name;
     std::filesystem::path name_en;
-    glm::vec4 diffuse;
-    glm::vec3 specular;
-    float specular_intensity;
-    glm::vec3 ambient;
-    uint8_t flags;
-    glm::vec4 edge_color;
-    float edge_size;
-    int32_t tex_index;
-    int32_t sphere_tex_index;
-    uint8_t sphere_mode;
-    uint8_t toon_flag;
-    int32_t toon_tex_index;
     std::filesystem::path memo;
-    uint32_t vertex_count;
 };
 
 inline Material read_material(std::ifstream& ifs, uint8_t tex_index_size, bool is_utf8 = false) {
     Material material{};
+    material.texture_indices = glm::ivec3(-1);
     // name
     material.name = std::move(read_text(ifs, is_utf8));
     material.name_en = std::move(read_text(ifs, is_utf8));
@@ -46,20 +57,22 @@ inline Material read_material(std::ifstream& ifs, uint8_t tex_index_size, bool i
     // edge size
     ifs.read(reinterpret_cast<char*>(&material.edge_size), sizeof(float));
     // normal texture index
-    ifs.read(reinterpret_cast<char*>(&material.tex_index), tex_index_size);
+    material.texture_indices.x = read_index(ifs, tex_index_size);
     // sphere texture index
-    ifs.read(reinterpret_cast<char*>(&material.sphere_tex_index), tex_index_size);
+    material.texture_indices.y = read_index(ifs, tex_index_size);
     // sphere mode
     ifs.read(reinterpret_cast<char*>(&material.sphere_mode), sizeof(uint8_t));
     // toon flag
-    ifs.read(reinterpret_cast<char*>(&material.toon_flag), sizeof(uint8_t));
-    if(!material.toon_flag) {
+    uint8_t toon_flag{};
+    ifs.read(reinterpret_cast<char*>(&toon_flag), sizeof(uint8_t));
+    if(!toon_flag) {
         // toon texture index
-        ifs.read(reinterpret_cast<char*>(&material.toon_tex_index), tex_index_size);
+        material.texture_indices.z = read_index(ifs, tex_index_size);
     }
     else {
-        // shared toon index
-        ifs.read(reinterpret_cast<char*>(&material.toon_tex_index), sizeof(uint8_t));
+        // shared toon index (ignore)
+        ifs.seekg(sizeof(uint8_t), std::ios::cur);
+        // ifs.read(reinterpret_cast<char*>(&material.toon_tex_index), sizeof(uint8_t));
     }
     // memo
     material.memo = std::move(read_text(ifs, is_utf8));

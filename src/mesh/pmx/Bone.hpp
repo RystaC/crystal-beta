@@ -17,7 +17,7 @@ inline IKLink read_ik_link(std::ifstream& ifs, uint8_t bone_index_size) {
     IKLink link{};
 
     // bone index
-    ifs.read(reinterpret_cast<char*>(&link.index), bone_index_size);
+    link.index = read_index(ifs, bone_index_size);
     // angle constraint
     ifs.read(reinterpret_cast<char*>(&link.is_limited), sizeof(uint8_t));
     if(link.is_limited) {
@@ -29,28 +29,56 @@ inline IKLink read_ik_link(std::ifstream& ifs, uint8_t bone_index_size) {
     return link;
 }
 
+struct IK {
+    int32_t index;
+    uint32_t loop_count;
+    float constraint_rad;
+    std::vector<IKLink> links;
+};
+
+inline IK read_ik(std::ifstream& ifs, uint8_t bone_index_size) {
+    IK ik{};
+
+    // target bone index
+    ik.index = read_index(ifs, bone_index_size);
+    // loop count
+    ifs.read(reinterpret_cast<char*>(&ik.loop_count), sizeof(uint32_t));
+    // constraint
+    ifs.read(reinterpret_cast<char*>(&ik.constraint_rad), sizeof(float));
+    // link count
+    uint32_t link_count{};
+    ifs.read(reinterpret_cast<char*>(&link_count), sizeof(uint32_t));
+    ik.links.resize(link_count);
+    // links
+    for(size_t i = 0; i < ik.links.size(); ++i) {
+        ik.links[i] = std::move(read_ik_link(ifs, bone_index_size));
+    }
+
+    return ik;
+}
+
 struct Bone {
-    std::filesystem::path name;
-    std::filesystem::path name_en;
     glm::vec3 position;
     int32_t parent_index;
     uint32_t hierarchy;
     uint16_t flags;
-    union Connect {
-        glm::vec3 offset;
-        uint32_t dst_index;
-    } connect;
     uint32_t giving_index;
     float giving_rate;
-    glm::vec3 axis_dir;
-    glm::vec3 x_dir;
-    glm::vec3 z_dir;
     uint32_t key;
-    uint32_t ik_target_index;
-    uint32_t ik_iter_count;
-    float ik_constraint;
-    uint32_t ik_link_count;
-    std::vector<IKLink> ik_link;
+    IK ik;
+
+    // display/control data
+    union Connect {
+        glm::vec3 offset;
+        int32_t dst_index;
+    } connect;
+    glm::vec3 axis_dir;
+    glm::vec3 local_x_axis;
+    glm::vec3 local_z_axis;
+
+    // meta data
+    std::filesystem::path name;
+    std::filesystem::path name_en;
 };
 
 inline Bone read_bone(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8) {
@@ -63,7 +91,7 @@ inline Bone read_bone(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8)
     // position
     ifs.read(reinterpret_cast<char*>(&bone.position), sizeof(glm::vec3));
     // parent index
-    ifs.read(reinterpret_cast<char*>(&bone.parent_index), bone_index_size);
+    bone.parent_index = read_index(ifs, bone_index_size);
     // hierarchy
     ifs.read(reinterpret_cast<char*>(&bone.hierarchy), sizeof(uint32_t));
     // flags
@@ -74,11 +102,11 @@ inline Bone read_bone(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8)
     }
     // connectivity = 1 -> bone index
     else {
-        ifs.read(reinterpret_cast<char*>(&bone.connect.dst_index), bone_index_size);
+        bone.connect.dst_index = read_index(ifs, bone_index_size);
     }
     // rotate | translate giving -> index and giving rate
     if((bone.flags & 0x0100) || (bone.flags & 0x0200)) {
-        ifs.read(reinterpret_cast<char*>(&bone.giving_index), bone_index_size);
+        bone.giving_index = read_index(ifs, bone_index_size);
         ifs.read(reinterpret_cast<char*>(&bone.giving_rate), sizeof(float));
     }
     // axis fixed -> axis direction
@@ -87,8 +115,8 @@ inline Bone read_bone(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8)
     }
     // local axis -> x-axis and z-axis direction
     if(bone.flags & 0x0800) {
-        ifs.read(reinterpret_cast<char*>(&bone.x_dir), sizeof(glm::vec3));
-        ifs.read(reinterpret_cast<char*>(&bone.z_dir), sizeof(glm::vec3));
+        ifs.read(reinterpret_cast<char*>(&bone.local_x_axis), sizeof(glm::vec3));
+        ifs.read(reinterpret_cast<char*>(&bone.local_z_axis), sizeof(glm::vec3));
     }
     // external transform -> key value
     if(bone.flags & 0x2000) {
@@ -96,18 +124,7 @@ inline Bone read_bone(std::ifstream& ifs, uint8_t bone_index_size, bool is_utf8)
     }
     // IK -> IK information
     if(bone.flags & 0x0020) {
-        // target index
-        ifs.read(reinterpret_cast<char*>(&bone.ik_target_index), bone_index_size);
-        // number of iteration
-        ifs.read(reinterpret_cast<char*>(&bone.ik_iter_count), sizeof(uint32_t));
-        // angle constraint
-        ifs.read(reinterpret_cast<char*>(&bone.ik_constraint), sizeof(float));
-        // number of IK links
-        ifs.read(reinterpret_cast<char*>(&bone.ik_link_count), sizeof(uint32_t));
-        bone.ik_link.resize(bone.ik_link_count);
-        for(size_t i = 0; i < bone.ik_link.size(); ++i) {
-            bone.ik_link[i] = std::move(read_ik_link(ifs, bone_index_size));
-        }
+        bone.ik = std::move(read_ik(ifs, bone_index_size));
     }
 
     return bone;
