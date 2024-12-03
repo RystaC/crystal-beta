@@ -172,7 +172,22 @@ int main(int argc, char** argv) {
         }
     }
 
-    // auto mesh = mesh::BasicMesh::sphere(8, 8, 1.0f);
+    std::vector<glm::mat4> rigids(pmx.rigids().size());
+    for(size_t i = 0; i < rigids.size(); ++i) {
+        auto scale = pmx.rigids()[i].size;
+        auto rotate = pmx.rigids()[i].rotate_rad;
+        auto translate = pmx.rigids()[i].position;
+        auto scale_mat = glm::scale(glm::mat4(1.0f), scale);
+        glm::mat4 rotate_mat(1.0f);
+        rotate_mat = glm::rotate(glm::mat4(1.0f), rotate.x, glm::vec3(1.0f, 0.0f, 0.0f)) * rotate_mat;
+        rotate_mat = glm::rotate(glm::mat4(1.0f), rotate.y, glm::vec3(0.0f, 1.0f, 0.0f)) * rotate_mat;
+        rotate_mat = glm::rotate(glm::mat4(1.0f), rotate.z, glm::vec3(0.0f, 0.0f, 1.0f)) * rotate_mat;
+        auto translate_mat = glm::translate(glm::mat4(1.0f), translate);
+
+        rigids[i] = std::move(translate_mat * rotate_mat * scale_mat);
+    }
+
+    auto rigid_mesh = mesh::BasicMesh::cube();
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -184,13 +199,13 @@ int main(int argc, char** argv) {
     auto version = vkw::Instance::version();
     std::cerr << "Vulkan version: " << VK_API_VERSION_MAJOR(version) << "." << VK_API_VERSION_MINOR(version) << "." << VK_API_VERSION_PATCH(version) << ", variant = " << VK_API_VERSION_VARIANT(version) << std::endl;
     
-    std::cerr << std::endl << "enumerate instance layers..." << std::endl;
+    // std::cerr << std::endl << "enumerate instance layers..." << std::endl;
     const auto instance_layers = vkw::Instance::enumerate_layers();
     for(const auto& layer : instance_layers) {
         // std::cerr << layer.layerName << std::endl;
     }
 
-    std::cerr << std::endl << "enumerate default instance extensions..." << std::endl;
+    // std::cerr << std::endl << "enumerate default instance extensions..." << std::endl;
     const auto instance_extensions = vkw::Instance::enumerate_extensions();
     bool enable_debug_utils = false;
     for(const auto& extension : instance_extensions) {
@@ -207,7 +222,7 @@ int main(int argc, char** argv) {
     }
 
     for(const auto& layer : instance_layers) {
-        std::cerr << std::endl << "enumerate instance extensions for " << layer.layerName << "..." << std::endl;
+        // std::cerr << std::endl << "enumerate instance extensions for " << layer.layerName << "..." << std::endl;
         const auto layer_extensions = vkw::Instance::enumerate_extensions(layer.layerName);
         for(const auto& extension : layer_extensions) {
             // std::cerr << extension.extensionName << std::endl;
@@ -240,20 +255,20 @@ int main(int argc, char** argv) {
 
     std::cerr << std::endl << "physical device 0 will be used." << std::endl;
 
-    std::cerr << std::endl << "enumerate device layers..." << std::endl;
+    // std::cerr << std::endl << "enumerate device layers..." << std::endl;
     const auto device_layers = vkw::Device::enumerate_layers(physical_devices[0]);
     for(const auto& layer : device_layers) {
         // std::cerr << layer.layerName << std::endl;
     }
 
-    std::cerr << std::endl << "enumerate default device extensions..." << std::endl;
+    // std::cerr << std::endl << "enumerate default device extensions..." << std::endl;
     const auto device_extensions = vkw::Device::enumerate_extensions(physical_devices[0]);
     for(const auto& extension : device_extensions) {
         // std::cerr << extension.extensionName << std::endl;
     }
 
     for(const auto& layer : device_layers) {
-        std::cerr << std::endl << "enumerate device extensions for " << layer.layerName << "..." << std::endl;
+        // std::cerr << std::endl << "enumerate device extensions for " << layer.layerName << "..." << std::endl;
         const auto layer_extensions = vkw::Device::enumerate_extensions(physical_devices[0], layer.layerName);
         for(const auto& extension : layer_extensions) {
             // std::cerr << extension.extensionName << std::endl;
@@ -367,6 +382,28 @@ int main(int argc, char** argv) {
 
     auto bone_line_render_pass = device->create_render_pass(bone_line_attachment, bone_line_subpass).unwrap();
 
+    // rigid pass
+    vkw::render_pass::AttachmentDescriptions rigid_attachment{};
+    rigid_attachment
+    // attachment 0: swapchain image
+    .add(
+        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    );
+
+    vkw::render_pass::AttachmentReferences rigid_attachment_ref{};
+    rigid_attachment_ref
+    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    vkw::render_pass::SubpassDescriptions rigid_subpass{};
+    rigid_subpass.add()
+    .output_color_attachments(rigid_attachment_ref)
+    .end();
+
+    auto rigid_render_pass = device->create_render_pass(rigid_attachment, rigid_subpass).unwrap();
+
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     std::vector<vkw::resource::Framebuffer> forward_framebuffers(swapchain.size());
     for(size_t i = 0; i < swapchain.size(); ++i) {
@@ -383,6 +420,11 @@ int main(int argc, char** argv) {
         bone_line_framebuffers[i] = device->create_framebuffer(bone_line_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
+    std::vector<vkw::resource::Framebuffer> rigid_framebuffers(swapchain.size());
+    for(size_t i = 0; i < swapchain.size(); ++i) {
+        rigid_framebuffers[i] = device->create_framebuffer(rigid_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    }
+
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
     auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
@@ -393,6 +435,9 @@ int main(int argc, char** argv) {
     auto bone_line_vertex_shader = device->create_shader_module("spirv/bone_line.vert.glsl.spirv").unwrap();
     auto bone_line_fragment_shader = device->create_shader_module("spirv/bone_line.frag.glsl.spirv").unwrap();
 
+    auto rigid_vertex_shader = device->create_shader_module("spirv/rigid.vert.glsl.spirv").unwrap();
+    auto rigid_fragment_shader = device->create_shader_module("spirv/rigid.frag.glsl.spirv").unwrap();
+
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(pmx.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto index_buffer = device->create_buffer_with_data(pmx.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
@@ -400,6 +445,10 @@ int main(int argc, char** argv) {
     auto bone_point_instance_buffer = device->create_buffer_with_data(bone_points, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     auto bone_line_vertex_buffer = device->create_buffer_with_data(bone_lines, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+
+    auto rigid_vertex_buffer = device->create_buffer_with_data(rigid_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+    auto rigid_index_buffer = device->create_buffer_with_data(rigid_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
+    auto rigid_instance_buffer = device->create_buffer_with_data(rigids, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     vkw::pipeline_layout::CreateInfo forward_layout_info{};
@@ -419,6 +468,12 @@ int main(int argc, char** argv) {
     .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
 
     auto bone_line_pipeline_layout = device->create_pipeline_layout(bone_line_layout_info).unwrap();
+
+    vkw::pipeline_layout::CreateInfo rigid_layout_info{};
+    rigid_layout_info
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+
+    auto rigid_pipeline_layout = device->create_pipeline_layout(rigid_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -550,6 +605,55 @@ int main(int argc, char** argv) {
 
     auto bone_line_pipeline = device->create_pipeline(bone_line_pipeline_state, bone_line_pipeline_layout, bone_line_render_pass, 0).unwrap();
 
+    vkw::pipeline::GraphicsShaderStages rigid_shader_stages{};
+    rigid_shader_stages
+    .vertex_shader(rigid_vertex_shader)
+    .fragment_shader(rigid_fragment_shader);
+    vkw::pipeline::VertexInputBindingDescriptions rigid_input_bindings{};
+    rigid_input_bindings
+    .add(0, sizeof(mesh::VertexAttribute), VK_VERTEX_INPUT_RATE_VERTEX)
+    .add(1, sizeof(glm::mat4), VK_VERTEX_INPUT_RATE_INSTANCE);
+    vkw::pipeline::VertexInputAttributeDescriptions rigid_input_attributes{};
+    rigid_input_attributes
+    .add(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, position))
+    .add(1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mesh::VertexAttribute, normal))
+    .add(2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mesh::VertexAttribute, tex_coord))
+    .add(3, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(mesh::VertexAttribute, color))
+    .add(4, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 0)
+    .add(5, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 16)
+    .add(6, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 32)
+    .add(7, 1, VK_FORMAT_R32G32B32A32_SFLOAT, 48);
+    vkw::pipeline::VertexInputState rigid_vertex_input_state(rigid_input_bindings, rigid_input_attributes);
+    vkw::pipeline::InputAssemblyState rigid_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    vkw::pipeline::ViewportState rigid_viewport_state(
+        {
+            .x = 0.0f, .y = 0.0f,
+            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+            .minDepth = 0.0f, .maxDepth = 1.0f
+        },
+        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    );
+    vkw::pipeline::RasterizarionState rigid_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 2.0f);
+    vkw::pipeline::MultisampleState rigid_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    vkw::pipeline::DepthStencilState rigid_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_NEVER, VK_FALSE, VK_FALSE);
+    vkw::pipeline::ColorBlendAttachmentStates rigid_blend_attachment_states{};
+    rigid_blend_attachment_states
+    .add(VK_TRUE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+    vkw::pipeline::ColorBlendState rigid_color_blend_state(rigid_blend_attachment_states);
+
+    vkw::pipeline::GraphicsPipelineStates rigid_pipeline_state{};
+    rigid_pipeline_state
+    .shader_stages(rigid_shader_stages)
+    .vertex_input(rigid_vertex_input_state)
+    .input_assembly(rigid_input_assembly_state)
+    .viewport(rigid_viewport_state)
+    .rasterization(rigid_rasterization_state)
+    .multisample(rigid_multisample_state)
+    .depth_stencil(rigid_depth_stencil_state)
+    .color_blend(rigid_color_blend_state);
+
+    auto rigid_pipeline = device->create_pipeline(rigid_pipeline_state, rigid_pipeline_layout, rigid_render_pass, 0).unwrap();
+
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
 
@@ -649,6 +753,14 @@ int main(int argc, char** argv) {
             .push_constants(bone_point_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
             .bind_vertex_buffers(0, {bone_point_instance_buffer})
             .draw(1, vkw::size_u32(bone_points.size()))
+            .end_render_pass()
+            // rigid pass
+            .begin_render_pass(rigid_framebuffers[current_image_index], rigid_render_pass, render_area, {})
+            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, rigid_pipeline)
+            .push_constants(rigid_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_vertex_buffers(0, {rigid_vertex_buffer, rigid_instance_buffer})
+            .bind_index_buffer(rigid_index_buffer, VK_INDEX_TYPE_UINT16)
+            .draw_indexed(vkw::size_u32(rigid_mesh.indices().size()), vkw::size_u32(rigids.size()))
             .end_render_pass()
             .end_record();
 

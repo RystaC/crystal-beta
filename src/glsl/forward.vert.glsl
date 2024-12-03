@@ -3,6 +3,9 @@
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coord;
+layout(location = 3) in ivec4 bone_indices;
+layout(location = 4) in vec4 bone_weights;
+layout(location = 5) in float edge_multiplier;
 
 layout(location = 0) out vec3 out_position;
 layout(location = 1) out vec3 out_normal;
