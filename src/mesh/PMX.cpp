@@ -89,7 +89,7 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.bones_.resize(bone_count);
     for(size_t i = 0; i < pmx.bones_.size(); ++i) {
         pmx.bones_[i] = std::move(pmx::read_bone(ifs, pmx.header_.bone_index_size, pmx.header_.encode));
-        std::cout << pmx.bones_[i].name;
+        std::cout << "bone #" << i << ": " << pmx.bones_[i].name;
         if(pmx.bones_[i].parent_index == -1) {
             std::cout << std::endl;
         }
@@ -131,8 +131,7 @@ PMX PMX::load(const std::filesystem::path& path) {
     pmx.rigids_.resize(rigid_count);
     for(size_t i = 0; i < pmx.rigids_.size(); ++i) {
         pmx.rigids_[i] = std::move(pmx::read_rigid(ifs, pmx.header_.bone_index_size, pmx.header_.encode));
-        std::cout << pmx.rigids_[i].name << std::endl;
-        std::cout << std::format("size: ({}, {}, {})", pmx.rigids_[i].size.x, pmx.rigids_[i].size.y, pmx.rigids_[i].size.z) << std::endl;
+        // std::cout << pmx.rigids_[i].name << std::endl;
         // std::cout << pmx.rigids_[i].name_en << std::endl;
         // std::cout << std::format("topology: {}" , pmx.rigids_[i].topology) << std::endl;
     }

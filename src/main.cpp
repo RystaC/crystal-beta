@@ -162,13 +162,42 @@ int main(int argc, char** argv) {
         bone_points[i] = pmx.bones()[i].position;
     }
 
+    std::vector<glm::mat4> bone_matrices(pmx.bones().size(), glm::mat4(1.0f));
+    bone_matrices[79] = glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    std::vector<uint32_t> bone_indices(pmx.bones().size());
+    std::iota(bone_indices.begin(), bone_indices.end(), 0);
+    std::sort(bone_indices.begin(), bone_indices.end(),
+        [&pmx](const auto& a, const auto& b) {
+            const bool& after_physics_a = pmx.bones()[a].flags & 0x1000;
+            const bool& after_physics_b = pmx.bones()[b].flags & 0x1000;
+            const uint32_t& hierarchy_a = pmx.bones()[a].hierarchy;
+            const uint32_t& hierarchy_b = pmx.bones()[b].hierarchy;
+            if(after_physics_a != after_physics_b) {
+                return after_physics_a < after_physics_b;
+            }
+            else if(hierarchy_a != hierarchy_b) {
+                return hierarchy_a < hierarchy_b;
+            }
+            else {
+                return a < b;
+            }
+        }
+    );
     std::vector<glm::vec3> bone_lines{};
-    for(const auto& bone : pmx.bones()) {
-        if(bone.parent_index != -1) {
-            auto begin = pmx.bones()[bone.parent_index].position;
-            auto end = bone.position;
-            bone_lines.push_back(begin);
-            bone_lines.push_back(end);
+    for(const auto& bone_index : bone_indices) {
+        const int32_t& parent_index = pmx.bones()[bone_index].parent_index;
+        auto local_matrix = glm::translate(glm::mat4(1.0f), -pmx.bones()[bone_index].position);
+        auto global_matrix = glm::translate(glm::mat4(1.0f), pmx.bones()[bone_index].position);
+        auto transform = global_matrix * bone_matrices[bone_index] * local_matrix;
+        if(parent_index == -1) {
+            bone_matrices[bone_index] = transform;
+            bone_points[bone_index] = glm::vec3(bone_matrices[bone_index] * glm::vec4(bone_points[bone_index], 1.0f));
+        }
+        else {
+            bone_matrices[bone_index] = transform * bone_matrices[parent_index];
+            bone_points[bone_index] = glm::vec3(bone_matrices[bone_index] * glm::vec4(bone_points[bone_index], 1.0f));
+            bone_lines.push_back(bone_points[parent_index]);
+            bone_lines.push_back(bone_points[bone_index]);
         }
     }
 
@@ -426,8 +455,8 @@ int main(int argc, char** argv) {
     }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
-    auto forward_vertex_shader = device->create_shader_module("spirv/forward.vert.glsl.spirv").unwrap();
-    auto forward_fragment_shader = device->create_shader_module("spirv/forward.frag.glsl.spirv").unwrap();
+    auto forward_vertex_shader = device->create_shader_module("spirv/mmd_forward.vert.glsl.spirv").unwrap();
+    auto forward_fragment_shader = device->create_shader_module("spirv/mmd_forward.frag.glsl.spirv").unwrap();
 
     auto bone_point_vertex_shader = device->create_shader_module("spirv/bone_point.vert.glsl.spirv").unwrap();
     auto bone_point_fragment_shader = device->create_shader_module("spirv/bone_point.frag.glsl.spirv").unwrap();
@@ -446,14 +475,37 @@ int main(int argc, char** argv) {
 
     auto bone_line_vertex_buffer = device->create_buffer_with_data(bone_lines, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
+    auto bone_matrices_buffer = device->create_buffer_with_data(bone_matrices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT).unwrap();
+
     auto rigid_vertex_buffer = device->create_buffer_with_data(rigid_mesh.vertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto rigid_index_buffer = device->create_buffer_with_data(rigid_mesh.indices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
     auto rigid_instance_buffer = device->create_buffer_with_data(rigids, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
+    vkw::descriptor::DescriptorSetLayoutBindings bone_matrices_bindings(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    bone_matrices_bindings
+    .add(0, 1, VK_SHADER_STAGE_VERTEX_BIT);
+
+    auto bone_matrices_descriptor_layout = device->create_descriptor_set_layout(bone_matrices_bindings).unwrap();
+
+    auto descriptor_pool = device->create_descriptor_pool({bone_matrices_bindings}).unwrap();
+
+    auto bone_matrices_descriptor_sets = descriptor_pool.allocate_descriptor_sets({bone_matrices_descriptor_layout}).unwrap();
+
+    vkw::descriptor::BufferInfos bone_matrices_buffer_infos{};
+    bone_matrices_buffer_infos
+    .add(bone_matrices_buffer, 0, sizeof(glm::mat4) * bone_matrices.size());
+
+    vkw::descriptor::WriteDescriptorSets descriptor_writer{};
+    descriptor_writer
+    .add(bone_matrices_descriptor_sets[0], 0, 0, bone_matrices_buffer_infos);
+
+    device->update_descriptor_sets(descriptor_writer);
+
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     vkw::pipeline_layout::CreateInfo forward_layout_info{};
     forward_layout_info
-    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData));
+    .add_push_constant_range(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData))
+    .add_descriptor_set_layout(bone_matrices_descriptor_layout);
 
     auto forward_pipeline_layout = device->create_pipeline_layout(forward_layout_info).unwrap();
 
@@ -736,6 +788,7 @@ int main(int argc, char** argv) {
             .begin_render_pass(forward_framebuffers[current_image_index], forward_render_pass, render_area, clear_values)
             .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, forward_pipeline)
             .push_constants(forward_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            .bind_descriptor_sets(VK_PIPELINE_BIND_POINT_GRAPHICS, forward_pipeline_layout, 0, bone_matrices_descriptor_sets)
             .bind_vertex_buffers(0, {vertex_buffer})
             .bind_index_buffer(index_buffer, VK_INDEX_TYPE_UINT32)
             .draw_indexed(vkw::size_u32(pmx.indices().size()), 1)
@@ -755,13 +808,13 @@ int main(int argc, char** argv) {
             .draw(1, vkw::size_u32(bone_points.size()))
             .end_render_pass()
             // rigid pass
-            .begin_render_pass(rigid_framebuffers[current_image_index], rigid_render_pass, render_area, {})
-            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, rigid_pipeline)
-            .push_constants(rigid_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
-            .bind_vertex_buffers(0, {rigid_vertex_buffer, rigid_instance_buffer})
-            .bind_index_buffer(rigid_index_buffer, VK_INDEX_TYPE_UINT16)
-            .draw_indexed(vkw::size_u32(rigid_mesh.indices().size()), vkw::size_u32(rigids.size()))
-            .end_render_pass()
+            // .begin_render_pass(rigid_framebuffers[current_image_index], rigid_render_pass, render_area, {})
+            // .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, rigid_pipeline)
+            // .push_constants(rigid_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ForwardConstantData), &push_constant_data1)
+            // .bind_vertex_buffers(0, {rigid_vertex_buffer, rigid_instance_buffer})
+            // .bind_index_buffer(rigid_index_buffer, VK_INDEX_TYPE_UINT16)
+            // .draw_indexed(vkw::size_u32(rigid_mesh.indices().size()), vkw::size_u32(rigids.size()))
+            // .end_render_pass()
             .end_record();
 
             vkw::queue::SubmitInfos render_submit_info{};

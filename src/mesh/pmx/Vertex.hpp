@@ -91,6 +91,8 @@ inline Vertex read_vertex(std::ifstream& ifs, uint8_t add_uv_count, uint8_t bone
             ifs.read(reinterpret_cast<char*>(&vertex.bone_weights.y), sizeof(float));
             ifs.read(reinterpret_cast<char*>(&vertex.bone_weights.z), sizeof(float));
             ifs.read(reinterpret_cast<char*>(&vertex.bone_weights.w), sizeof(float));
+            // maybe sum of weights is not 1 -> normalize
+            vertex.bone_weights = glm::normalize(vertex.bone_weights);
             break;
         // SDEF
         case 3:
