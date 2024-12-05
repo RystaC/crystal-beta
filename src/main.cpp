@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "Game.hpp"
 
@@ -157,13 +158,23 @@ int main(int argc, char** argv) {
         std::exit(EXIT_FAILURE);
     }
 
-    std::vector<glm::vec3> bone_points(pmx.bones().size());
-    for(size_t i = 0; i < bone_points.size(); ++i) {
-        bone_points[i] = pmx.bones()[i].position;
-    }
+    struct LocalBoneTrans {
+        glm::vec3 translate;
+        glm::quat rotate;
 
-    std::vector<glm::mat4> bone_matrices(pmx.bones().size(), glm::mat4(1.0f));
-    bone_matrices[79] = glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        LocalBoneTrans() : translate(0.0f), rotate(glm::vec3(0.0f)) {}
+
+        explicit operator glm::mat4() const noexcept { return glm::translate(glm::mat4(1.0f), translate) * glm::mat4(rotate); }
+    };
+
+    std::vector<LocalBoneTrans> bone_transforms(pmx.bones().size(), LocalBoneTrans());
+    bone_transforms[60].rotate = glm::quat(glm::vec3(0.0f, 0.0f, glm::radians(60.0f)));
+    bone_transforms[61].rotate = glm::quat(glm::vec3(0.0f, glm::radians(60.0f), 0.0f));
+    bone_transforms[79].rotate = glm::quat(glm::vec3(0.0f, 0.0f, glm::radians(-45.0f)));
+    bone_transforms[80].rotate = glm::quat(glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f));
+    // bone_transforms[81].translate = glm::vec3(0.0f, 1.0f, 0.0f);
+    // bone_transforms[87].translate = glm::vec3(1.0f, 0.0f, 0.0f);
+
     std::vector<uint32_t> bone_indices(pmx.bones().size());
     std::iota(bone_indices.begin(), bone_indices.end(), 0);
     std::sort(bone_indices.begin(), bone_indices.end(),
@@ -183,22 +194,66 @@ int main(int argc, char** argv) {
             }
         }
     );
+    std::vector<glm::mat4> bone_matrices(pmx.bones().size(), glm::mat4(1.0f));
+    std::vector<glm::vec3> bone_points{};
     std::vector<glm::vec3> bone_lines{};
     for(const auto& bone_index : bone_indices) {
-        const int32_t& parent_index = pmx.bones()[bone_index].parent_index;
-        auto local_matrix = glm::translate(glm::mat4(1.0f), -pmx.bones()[bone_index].position);
-        auto global_matrix = glm::translate(glm::mat4(1.0f), pmx.bones()[bone_index].position);
-        auto transform = global_matrix * bone_matrices[bone_index] * local_matrix;
-        if(parent_index == -1) {
-            bone_matrices[bone_index] = transform;
-            bone_points[bone_index] = glm::vec3(bone_matrices[bone_index] * glm::vec4(bone_points[bone_index], 1.0f));
+        const auto& bone = pmx.bones()[bone_index];
+
+        auto offset_matrix = glm::translate(glm::mat4(1.0f), bone.position);
+        auto offset_matrix_inv = glm::translate(glm::mat4(1.0f), -bone.position);
+
+        if(bone.parent_index == -1) {
+            bone_matrices[bone_index] = offset_matrix * glm::mat4(bone_transforms[bone_index]) * offset_matrix_inv;
+
+            bone_points.emplace_back(glm::vec3(bone_matrices[bone_index] * glm::vec4(bone.position, 1.0f)));
         }
         else {
-            bone_matrices[bone_index] = transform * bone_matrices[parent_index];
-            bone_points[bone_index] = glm::vec3(bone_matrices[bone_index] * glm::vec4(bone_points[bone_index], 1.0f));
-            bone_lines.push_back(bone_points[parent_index]);
-            bone_lines.push_back(bone_points[bone_index]);
+            bone_matrices[bone_index] = bone_matrices[bone.parent_index] * offset_matrix * glm::mat4(bone_transforms[bone_index]) * offset_matrix_inv;
+
+            bone_points.emplace_back(glm::vec3(bone_matrices[bone_index] * glm::vec4(bone.position, 1.0f)));
+            
+            bone_lines.emplace_back(bone_points[bone.parent_index]);
+            bone_lines.emplace_back(bone_points[bone_index]);
         }
+
+        // if(bone.flags & 0x0020) {
+        //     std::cout << std::format("IK bone: target index = {}, # of iter = {}, constraint = {}, # of link = {}", bone.ik.index, bone.ik.loop_count, bone.ik.constraint_rad, bone.ik.links.size()) << std::endl;
+        //     for(const auto& link : bone.ik.links) {
+        //         std::cout << std::format("IK link: link index = {}, has constraint = {}", link.index, link.is_limited) << std::endl;
+        //     }
+
+        //     // for(uint32_t i = 0; i < bone.ik.loop_count; ++i) {
+        //     for(uint32_t i = 0; i < 1; ++i) {
+        //         const auto& target_bone = pmx.bones()[bone.ik.index];
+
+        //         for(const auto& link : bone.ik.links) {
+        //             const auto& link_bone = pmx.bones()[link.index];
+
+        //             auto v1 = glm::normalize(glm::vec3(bone_matrices[bone.ik.index] * glm::vec4(target_bone.position, 1.0f)) - glm::vec3(bone_matrices[link.index] * glm::vec4(link_bone.position, 1.0f)));
+        //             auto v2 = glm::normalize(glm::vec3(bone_matrices[bone_index] * glm::vec4(bone.position, 1.0f)) -  glm::vec3(bone_matrices[link.index] * glm::vec4(link_bone.position, 1.0f)));
+
+        //             std::cout << std::format("v1: ({}, {}, {})", v1.x, v1.y, v1.z) << std::endl;
+        //             std::cout << std::format("v2: ({}, {}, {})", v2.x, v2.y, v2.z) << std::endl;
+
+        //             auto axis = glm::cross(v1, v2);
+        //             std::cout << std::format("axis: ({}, {}, {})", axis.x, axis.y, axis.z) << std::endl;
+
+        //             if(axis == glm::vec3(0.0f)) {
+        //                 continue;
+        //             }
+
+        //             auto angle = glm::acos(glm::dot(v1, v2));
+        //             std::cout << std::format("angle = {}", angle) << std::endl;
+
+        //             auto ik_quat = glm::quat(angle, axis);
+        //             auto link_offset_matrix = glm::translate(glm::mat4(1.0f), link_bone.position);
+        //             auto link_offset_matrix_inv = glm::translate(glm::mat4(1.0f), -link_bone.position);
+
+        //             bone_matrices[link.index] =  link_offset_matrix * glm::mat4(ik_quat) * link_offset_matrix_inv * bone_matrices[link.index];
+        //         }
+        //     }
+        // }
     }
 
     std::vector<glm::mat4> rigids(pmx.rigids().size());
