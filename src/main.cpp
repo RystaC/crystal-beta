@@ -96,8 +96,8 @@ int main(int argc, char** argv) {
         std::cerr << std::format("exception occured. {}", e.what());
         std::exit(EXIT_FAILURE);
     }
-    const char32_t* str = U"@";
-    auto [vertices, indices] = ttf.glyph(str[0]);
+    const char32_t* str = U"悪";
+    auto [vertices, indices] = ttf.glyph_tess(str[0]);
     auto points = ttf.point_vertices(str[0]);
 
     auto game = std::make_unique<Game>();
@@ -269,6 +269,8 @@ int main(int argc, char** argv) {
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto line_vertex_shader = device->create_shader_module("spirv/ttf_line.vert.glsl.spirv").unwrap();
+    auto line_tess_cont_shader = device->create_shader_module("spirv/ttf_line.tesc.glsl.spirv").unwrap();
+    auto line_tess_eval_shader = device->create_shader_module("spirv/ttf_line.tese.glsl.spirv").unwrap();
     auto line_fragment_shader = device->create_shader_module("spirv/ttf_line.frag.glsl.spirv").unwrap();
     auto point_vertex_shader = device->create_shader_module("spirv/ttf_point.vert.glsl.spirv").unwrap();
     auto point_fragment_shader = device->create_shader_module("spirv/ttf_point.frag.glsl.spirv").unwrap();
@@ -292,6 +294,8 @@ int main(int argc, char** argv) {
     vkw::pipeline::GraphicsShaderStages line_shader_stages{};
     line_shader_stages
     .vertex_shader(line_vertex_shader)
+    .tessellation_control_shader(line_tess_cont_shader)
+    .tessellation_evaluation_shader(line_tess_eval_shader)
     .fragment_shader(line_fragment_shader);
     vkw::pipeline::VertexInputBindingDescriptions line_input_bindings{};
     line_input_bindings
@@ -300,7 +304,8 @@ int main(int argc, char** argv) {
     line_input_attributes
     .add(0, 0, VK_FORMAT_R32G32_SFLOAT, 0);
     vkw::pipeline::VertexInputState line_vertex_input_state(line_input_bindings, line_input_attributes);
-    vkw::pipeline::InputAssemblyState line_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+    vkw::pipeline::InputAssemblyState line_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST);
+    vkw::pipeline::TessellationState line_tessellation_state(3);
     vkw::pipeline::ViewportState line_viewport_state(
         {
             .x = 0.0f, .y = 0.0f,
@@ -322,6 +327,7 @@ int main(int argc, char** argv) {
     .shader_stages(line_shader_stages)
     .vertex_input(line_vertex_input_state)
     .input_assembly(line_input_assembly_state)
+    .tessellation(line_tessellation_state)
     .viewport(line_viewport_state)
     .rasterization(line_rasterization_state)
     .multisample(line_multisample_state)

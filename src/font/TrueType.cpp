@@ -40,7 +40,7 @@ TrueType TrueType::load(const std::filesystem::path& path) {
     // name
     // post
 
-    // optional header
+    // optional tables
     // cvt
     // fpgm
     // hdmx
@@ -51,7 +51,6 @@ TrueType TrueType::load(const std::filesystem::path& path) {
     ifs.seekg(tables["head"].offset, std::ios::beg);
     auto head = true_type::read_head(ifs);
     tt.head_ = head;
-    std::cerr << std::format("global bounding box = min({}, {}), max({}, {})", head.x_min, head.y_min, head.x_max, head.y_max) << std::endl;
 
     ifs.seekg(tables["maxp"].offset, std::ios::beg);
     auto maxp = true_type::read_maxp(ifs);
