@@ -53,6 +53,15 @@ public:
     const auto& frames() const noexcept { return frames_; }
     const auto& rigids() const noexcept { return rigids_; }
     const auto& joints() const noexcept { return joints_; }
+
+    void print_model_info() const;
+    void print_mesh_info() const;
+    void print_texture_info() const;
+    void print_material_info() const;
+    void print_bone_info() const;
+    void print_morph_info() const;
+    void print_rigid_info() const;
+    void print_joint_info() const;
 };
 
 }

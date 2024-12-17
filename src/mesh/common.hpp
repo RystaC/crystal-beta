@@ -55,12 +55,34 @@ inline glm::vec4 hash_color(uint32_t i) {
     float b = static_cast<float>(i+2);
 
     for(int u = 0; u < 2; ++u) {
-        r = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 257.0f);
-        g = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 1009.0f);
-        b = std::fmodf(87.0f * r + 23.0f * g + 125.0f * b, 21001.0f);
+        r = std::fmod(87.0f * r + 23.0f * g + 125.0f * b, 257.0f);
+        g = std::fmod(87.0f * r + 23.0f * g + 125.0f * b, 1009.0f);
+        b = std::fmod(87.0f * r + 23.0f * g + 125.0f * b, 21001.0f);
     }
 
     return glm::vec4(r / 257.0f, g / 1009.0f, b / 21001.0f, 1.0f);
 }
 
 }
+
+// formatter for glm (maybe used by other components)
+template<>
+struct std::formatter<glm::vec2> : std::formatter<std::string> {
+    auto format(glm::vec2 v, std::format_context& ctx) const {
+        return std::formatter<std::string>::format(std::format("({}, {})", v.x, v.y), ctx);
+    }
+};
+
+template<>
+struct std::formatter<glm::vec3> : std::formatter<std::string> {
+    auto format(glm::vec3 v, std::format_context& ctx) const {
+        return std::formatter<std::string>::format(std::format("({}, {}, {})", v.x, v.y, v.z), ctx);
+    }
+};
+
+template<>
+struct std::formatter<glm::vec4> : std::formatter<std::string> {
+    auto format(glm::vec4 v, std::format_context& ctx) const {
+        return std::formatter<std::string>::format(std::format("({}, {}, {}, {})", v.x, v.y, v.z, v.w), ctx);
+    }
+};
