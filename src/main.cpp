@@ -17,6 +17,8 @@
 
 #include "font/TrueType.hpp"
 
+#include "image/PNG.hpp"
+
 constexpr size_t WINDOW_WIDTH = 512;
 constexpr size_t WINDOW_HEIGHT = 512;
 
@@ -88,6 +90,17 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_utils_callback(VkDebugUtilsMessageSeverityF
 #endif
 
 int main(int argc, char** argv) {
+    image::PNG png{};
+    try {
+        png = std::move(image::PNG::load("../asset/texture/chuunibyou_girl.png"));
+    }
+    catch(std::exception& e) {
+        std::cerr << std::format("exception occured. {}", e.what());
+        std::exit(EXIT_FAILURE);
+    }
+
+    return 0;
+
     font::TrueType ttf{};
     try {
         ttf = std::move(font::TrueType::load("../asset/font/ipag.ttf"));
@@ -96,9 +109,11 @@ int main(int argc, char** argv) {
         std::cerr << std::format("exception occured. {}", e.what());
         std::exit(EXIT_FAILURE);
     }
-    const char32_t* str = U"悪";
-    auto [vertices, indices] = ttf.glyph_tess(str[0]);
-    auto points = ttf.point_vertices(str[0]);
+
+    auto [vertices, indices] = ttf.glyphs(U"監督");
+    // const char32_t* str = U"編";
+    // auto [vertices, indices] = ttf.glyph_tess(str[0]);
+    // auto points = ttf.point_vertices(str[0]);
 
     auto game = std::make_unique<Game>();
     auto result = game->init(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -234,27 +249,27 @@ int main(int argc, char** argv) {
 
     auto line_render_pass = device->create_render_pass(line_attachment, line_subpass).unwrap();
 
-    // point render pass
-    vkw::render_pass::AttachmentDescriptions point_attachment{};
-    point_attachment
-    // attachment 0: swapchain image
-    .add(
-        VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
-        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
-        VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
-    );
+    // // point render pass
+    // vkw::render_pass::AttachmentDescriptions point_attachment{};
+    // point_attachment
+    // // attachment 0: swapchain image
+    // .add(
+    //     VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_1_BIT,
+    //     VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+    //     VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+    //     {VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR}
+    // );
 
-    vkw::render_pass::AttachmentReferences point_attachment_ref{};
-    point_attachment_ref
-    .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    // vkw::render_pass::AttachmentReferences point_attachment_ref{};
+    // point_attachment_ref
+    // .add(0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    vkw::render_pass::SubpassDescriptions point_subpass{};
-    point_subpass.add()
-    .output_color_attachments(point_attachment_ref)
-    .end();
+    // vkw::render_pass::SubpassDescriptions point_subpass{};
+    // point_subpass.add()
+    // .output_color_attachments(point_attachment_ref)
+    // .end();
 
-    auto point_render_pass = device->create_render_pass(point_attachment, point_subpass).unwrap();
+    // auto point_render_pass = device->create_render_pass(point_attachment, point_subpass).unwrap();
 
     std::cerr << std::endl << "create framebuffers..." << std::endl;
     std::vector<vkw::resource::Framebuffer> line_framebuffers(swapchain.size());
@@ -262,32 +277,32 @@ int main(int argc, char** argv) {
         line_framebuffers[i] = device->create_framebuffer(line_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
     }
 
-    std::vector<vkw::resource::Framebuffer> point_framebuffers(swapchain.size());
-    for(size_t i = 0; i < swapchain.size(); ++i) {
-        point_framebuffers[i] = device->create_framebuffer(point_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
-    }
+    // std::vector<vkw::resource::Framebuffer> point_framebuffers(swapchain.size());
+    // for(size_t i = 0; i < swapchain.size(); ++i) {
+    //     point_framebuffers[i] = device->create_framebuffer(point_render_pass, {swapchain.image_view(i)}, swapchain.extent()).unwrap();
+    // }
 
     std::cerr << std::endl << "create shader modules..." << std::endl;
     auto line_vertex_shader = device->create_shader_module("spirv/ttf_line.vert.glsl.spirv").unwrap();
     auto line_tess_cont_shader = device->create_shader_module("spirv/ttf_line.tesc.glsl.spirv").unwrap();
     auto line_tess_eval_shader = device->create_shader_module("spirv/ttf_line.tese.glsl.spirv").unwrap();
     auto line_fragment_shader = device->create_shader_module("spirv/ttf_line.frag.glsl.spirv").unwrap();
-    auto point_vertex_shader = device->create_shader_module("spirv/ttf_point.vert.glsl.spirv").unwrap();
-    auto point_fragment_shader = device->create_shader_module("spirv/ttf_point.frag.glsl.spirv").unwrap();
+
+    // auto point_vertex_shader = device->create_shader_module("spirv/ttf_point.vert.glsl.spirv").unwrap();
+    // auto point_fragment_shader = device->create_shader_module("spirv/ttf_point.frag.glsl.spirv").unwrap();
 
     std::cerr << std::endl << "create buffers..." << std::endl;
     auto vertex_buffer = device->create_buffer_with_data(vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
     auto index_buffer = device->create_buffer_with_data(indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT).unwrap();
-    auto point_buffer = device->create_buffer_with_data(points, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
+
+    // auto point_buffer = device->create_buffer_with_data(points, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT).unwrap();
 
     std::cerr << std::endl << "create pipeline layout..." << std::endl;
     vkw::pipeline_layout::CreateInfo line_layout_info{};
-
     auto line_pipeline_layout = device->create_pipeline_layout(line_layout_info).unwrap();
 
-    vkw::pipeline_layout::CreateInfo point_layout_info{};
-    
-    auto point_pipeline_layout = device->create_pipeline_layout(point_layout_info).unwrap();
+    // vkw::pipeline_layout::CreateInfo point_layout_info{};
+    // auto point_pipeline_layout = device->create_pipeline_layout(point_layout_info).unwrap();
 
     std::cerr << std::endl << "create pipelines..." << std::endl;
 
@@ -336,47 +351,47 @@ int main(int argc, char** argv) {
 
     auto line_pipeline = device->create_pipeline(line_pipeline_state, line_pipeline_layout, line_render_pass, 0).unwrap();
 
-    vkw::pipeline::GraphicsShaderStages point_shader_stages{};
-    point_shader_stages
-    .vertex_shader(point_vertex_shader)
-    .fragment_shader(point_fragment_shader);
-    vkw::pipeline::VertexInputBindingDescriptions point_input_bindings{};
-    point_input_bindings
-    .add(0, sizeof(std::pair<glm::vec2, glm::vec4>), VK_VERTEX_INPUT_RATE_VERTEX);
-    vkw::pipeline::VertexInputAttributeDescriptions point_input_attributes{};
-    point_input_attributes
-    .add(0, 0, VK_FORMAT_R32G32_SFLOAT, 0)
-    .add(1, 0, VK_FORMAT_R32G32B32A32_SFLOAT, sizeof(glm::vec2));
-    vkw::pipeline::VertexInputState point_vertex_input_state(point_input_bindings, point_input_attributes);
-    vkw::pipeline::InputAssemblyState point_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
-    vkw::pipeline::ViewportState point_viewport_state(
-        {
-            .x = 0.0f, .y = 0.0f,
-            .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
-            .minDepth = 0.0f, .maxDepth = 1.0f
-        },
-        {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
-    );
-    vkw::pipeline::RasterizarionState point_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
-    vkw::pipeline::MultisampleState point_multisample_state(VK_SAMPLE_COUNT_1_BIT);
-    vkw::pipeline::DepthStencilState point_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
-    vkw::pipeline::ColorBlendAttachmentStates point_blend_attachment_states{};
-    point_blend_attachment_states
-    .add();
-    vkw::pipeline::ColorBlendState point_color_blend_state(point_blend_attachment_states);
+    // vkw::pipeline::GraphicsShaderStages point_shader_stages{};
+    // point_shader_stages
+    // .vertex_shader(point_vertex_shader)
+    // .fragment_shader(point_fragment_shader);
+    // vkw::pipeline::VertexInputBindingDescriptions point_input_bindings{};
+    // point_input_bindings
+    // .add(0, sizeof(std::pair<glm::vec2, glm::vec4>), VK_VERTEX_INPUT_RATE_VERTEX);
+    // vkw::pipeline::VertexInputAttributeDescriptions point_input_attributes{};
+    // point_input_attributes
+    // .add(0, 0, VK_FORMAT_R32G32_SFLOAT, 0)
+    // .add(1, 0, VK_FORMAT_R32G32B32A32_SFLOAT, sizeof(glm::vec2));
+    // vkw::pipeline::VertexInputState point_vertex_input_state(point_input_bindings, point_input_attributes);
+    // vkw::pipeline::InputAssemblyState point_input_assembly_state(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+    // vkw::pipeline::ViewportState point_viewport_state(
+    //     {
+    //         .x = 0.0f, .y = 0.0f,
+    //         .width = static_cast<float>(WINDOW_WIDTH), .height = static_cast<float>(WINDOW_HEIGHT),
+    //         .minDepth = 0.0f, .maxDepth = 1.0f
+    //     },
+    //     {.offset = {0, 0}, .extent = {WINDOW_WIDTH, WINDOW_HEIGHT}}
+    // );
+    // vkw::pipeline::RasterizarionState point_rasterization_state(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 1.0f);
+    // vkw::pipeline::MultisampleState point_multisample_state(VK_SAMPLE_COUNT_1_BIT);
+    // vkw::pipeline::DepthStencilState point_depth_stencil_state(VK_FALSE, VK_FALSE, VK_COMPARE_OP_LESS, VK_FALSE, VK_FALSE);
+    // vkw::pipeline::ColorBlendAttachmentStates point_blend_attachment_states{};
+    // point_blend_attachment_states
+    // .add();
+    // vkw::pipeline::ColorBlendState point_color_blend_state(point_blend_attachment_states);
 
-    vkw::pipeline::GraphicsPipelineStates point_pipeline_state{};
-    point_pipeline_state
-    .shader_stages(point_shader_stages)
-    .vertex_input(point_vertex_input_state)
-    .input_assembly(point_input_assembly_state)
-    .viewport(point_viewport_state)
-    .rasterization(point_rasterization_state)
-    .multisample(point_multisample_state)
-    .depth_stencil(point_depth_stencil_state)
-    .color_blend(point_color_blend_state);
+    // vkw::pipeline::GraphicsPipelineStates point_pipeline_state{};
+    // point_pipeline_state
+    // .shader_stages(point_shader_stages)
+    // .vertex_input(point_vertex_input_state)
+    // .input_assembly(point_input_assembly_state)
+    // .viewport(point_viewport_state)
+    // .rasterization(point_rasterization_state)
+    // .multisample(point_multisample_state)
+    // .depth_stencil(point_depth_stencil_state)
+    // .color_blend(point_color_blend_state);
 
-    auto point_pipeline = device->create_pipeline(point_pipeline_state, point_pipeline_layout, point_render_pass, 0).unwrap();
+    // auto point_pipeline = device->create_pipeline(point_pipeline_state, point_pipeline_layout, point_render_pass, 0).unwrap();
 
     std::cerr << std::endl << "create command pool..." << std::endl;
     auto command_pool = device->create_command_pool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, main_queues[0].family_index()).unwrap();
@@ -439,11 +454,11 @@ int main(int argc, char** argv) {
             .draw_indexed(vkw::size_u32(indices.size()), 1)
             .end_render_pass()
             // point pass
-            .begin_render_pass(point_framebuffers[current_image_index], point_render_pass, render_area, {})
-            .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, point_pipeline)
-            .bind_vertex_buffers(0, {point_buffer})
-            .draw(vkw::size_u32(points.size()), 1)
-            .end_render_pass()
+            // .begin_render_pass(point_framebuffers[current_image_index], point_render_pass, render_area, {})
+            // .bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, point_pipeline)
+            // .bind_vertex_buffers(0, {point_buffer})
+            // .draw(vkw::size_u32(points.size()), 1)
+            // .end_render_pass()
             .end_record();
 
             vkw::queue::SubmitInfos render_submit_info{};

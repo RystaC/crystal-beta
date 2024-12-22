@@ -93,30 +93,30 @@ class TrueType {
 public:
     static TrueType load(const std::filesystem::path& path);
 
-    std::pair<std::vector<glm::vec2>, std::vector<uint16_t>> glyph(uint32_t char_code) {
-        std::vector<glm::vec2> vertices{};
-        std::vector<uint16_t> indices{};
+    // std::pair<std::vector<glm::vec2>, std::vector<uint16_t>> glyph(uint32_t char_code) {
+    //     std::vector<glm::vec2> vertices{};
+    //     std::vector<uint16_t> indices{};
 
-        auto glyph_index = char_map_.glyph_index(char_code);
-        auto& glyph = glyphs_[glyph_index];
+    //     auto glyph_index = char_map_.glyph_index(char_code);
+    //     auto& glyph = glyphs_[glyph_index];
 
-        auto scale = glm::vec2(float(head_.x_max - head_.x_min), float(head_.y_max - head_.y_min));
+    //     auto scale = glm::vec2(float(head_.x_max - head_.x_min), float(head_.y_max - head_.y_min));
 
-        uint16_t first_point_index = 0;
-        for(size_t i = 0; i < glyph.end_pts_of_contours.size(); ++i) {
-            for(uint16_t j = first_point_index; j <= glyph.end_pts_of_contours[i]; ++j) {
-                auto i0 = j;
-                auto i1 = i0 + 1 > glyph.end_pts_of_contours[i] ? first_point_index : i0 + 1;
-                auto point = glm::vec2(float(glyph.x_coordinates[i0] - head_.x_min) / scale.x, float(glyph.y_coordinates[i0] - head_.y_min) / scale.y);
-                vertices.push_back(point);
-                indices.push_back(i0);
-                indices.push_back(i1);
-            }
-            first_point_index = glyph.end_pts_of_contours[i] + 1;
-        }
+    //     uint16_t first_point_index = 0;
+    //     for(size_t i = 0; i < glyph.end_pts_of_contours.size(); ++i) {
+    //         for(uint16_t j = first_point_index; j <= glyph.end_pts_of_contours[i]; ++j) {
+    //             auto i0 = j;
+    //             auto i1 = i0 + 1 > glyph.end_pts_of_contours[i] ? first_point_index : i0 + 1;
+    //             auto point = glm::vec2(float(glyph.x_coordinates[i0] - head_.x_min) / scale.x, float(glyph.y_coordinates[i0] - head_.y_min) / scale.y);
+    //             vertices.push_back(point);
+    //             indices.push_back(i0);
+    //             indices.push_back(i1);
+    //         }
+    //         first_point_index = glyph.end_pts_of_contours[i] + 1;
+    //     }
 
-        return {vertices, indices};
-    }
+    //     return {vertices, indices};
+    // }
 
     std::pair<std::vector<glm::vec2>, std::vector<uint16_t>> glyph_tess(uint32_t char_code) {
         std::vector<glm::vec2> vertices{};
@@ -197,6 +197,53 @@ public:
         }
 
         return points;
+    }
+
+    std::pair<std::vector<glm::vec2>, std::vector<uint16_t>> glyphs(const char32_t* str) {
+        std::vector<glm::vec2> vertices{};
+        std::vector<uint16_t> indices{};
+
+        auto scale = glm::vec2(float(head_.x_max - head_.x_min), float(head_.y_max - head_.y_min));
+
+        uint16_t first_new_point_index = 0;
+        for(size_t s = 0; str[s] != '\0'; ++s) {
+            const auto& glyph = glyphs_[char_map_.glyph_index(str[s])];
+
+            uint16_t first_point_index = 0;
+            for(size_t i = 0; i < glyph.end_pts_of_contours.size(); ++i) {
+                for(uint16_t j = first_point_index; j <= glyph.end_pts_of_contours[i]; ++j) {
+                    auto i0 = j;
+                    auto i1 = i0 + 1 > glyph.end_pts_of_contours[i] ? first_point_index : i0 + 1;
+                    
+                    auto p0 = glm::vec2(float(glyph.x_coordinates[i0] - head_.x_min) / scale.x, float(glyph.y_coordinates[i0] - head_.y_min) / scale.y);
+                    auto p1 = glm::vec2(float(glyph.x_coordinates[i1] - head_.x_min) / scale.x, float(glyph.y_coordinates[i1] - head_.y_min) / scale.y);
+
+                    // continuous on curve points -> add extra off curve point
+                    if((glyph.flags[i0] & 0x01) && (glyph.flags[i1] & 0x01)) {
+                        auto np = (p0 + p1) / 2.0f;
+                        vertices.push_back(p0);
+                        vertices.push_back(np);
+                    }
+                    // otherwise -> normally
+                    else {
+                        vertices.push_back(p0);
+                    }
+                }
+
+                for(size_t j = first_new_point_index; j < vertices.size(); j += 2) {
+                    auto i0 = static_cast<uint16_t>(j);
+                    auto i1 = i0 + 1;
+                    auto i2 = i1 + 1 >= vertices.size() ? first_new_point_index : i1 + 1;
+                    indices.push_back(i0);
+                    indices.push_back(i1);
+                    indices.push_back(i2);
+                }
+                first_point_index = glyph.end_pts_of_contours[i] + 1;
+                first_new_point_index = static_cast<uint16_t>(vertices.size());
+            }
+        }
+
+        return {vertices, indices};
     }
 };
 
