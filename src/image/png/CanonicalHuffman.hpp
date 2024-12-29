@@ -18,7 +18,6 @@ struct CanonicalHuffman {
         
         for(size_t i = 0; i < code_counts.size(); ++i) {
             code |= bit_stream.read_bits(1, index);
-            // std::cerr << std::format("code = {:b}, first code = {:b}, first index = {}, code - first code = {}, code counts[{}] = {}", code, first_code, first_index, code - first_code, i, code_counts[i]) << std::endl;
             if(code - first_code < code_counts[i]) {
                 return code_lengths[code - first_code + first_index].first;
             }

@@ -5,60 +5,46 @@
 #include "png/IDAT.hpp"
 #include "png/Deflate.hpp"
 #include "png/LZSS.hpp"
+#include "png/FixedHuffman.hpp"
 #include "png/CustomHuffman.hpp"
+#include "png/Image.hpp"
 
 namespace image {
 
 class PNG {
-    template<typename T>
-    static void read_be_(std::ifstream& ifs, T& dst) {
-        if constexpr (sizeof(T) == 1) {
-            uint8_t bytes{};
-            ifs.read(reinterpret_cast<char*>(&bytes), sizeof(T));
-            dst = std::bit_cast<T, uint8_t>(bytes);
+    uint32_t width_;
+    uint32_t height_;
+    uint32_t component_count_;
+    std::vector<uint8_t> data_;
+
+    static uint8_t paeth_predictor_(uint8_t a, uint8_t b, uint8_t c) {
+        auto p = a + b - c;
+        auto pa = std::abs(p - a);
+        auto pb = std::abs(p - b);
+        auto pc = std::abs(p - c);
+        if(pa <= pb && pa <= pc) {
+            return a;
         }
-        else if constexpr(sizeof(T) == 2) {
-            uint16_t bytes{};
-            ifs.read(reinterpret_cast<char*>(&bytes), sizeof(T));
-
-            bytes = (((bytes >> 000) & 0xff) << 010) |
-                    (((bytes >> 010) & 0xff) << 000);
-
-            dst = std::bit_cast<T, uint16_t>(bytes);
-        }
-        else if constexpr(sizeof(T) == 4) {
-            uint32_t bytes{};
-            ifs.read(reinterpret_cast<char*>(&bytes), sizeof(T));
-
-            bytes = (((bytes >> 000) & 0xff) << 030) |
-                    (((bytes >> 010) & 0xff) << 020) |
-                    (((bytes >> 020) & 0xff) << 010) |
-                    (((bytes >> 030) & 0xff) << 000);
-
-            dst = std::bit_cast<T, uint32_t>(bytes);
-        }
-        else if constexpr(sizeof(T) == 8) {
-            uint64_t bytes{};
-            ifs.read(reinterpret_cast<char*>(&bytes), sizeof(T));
-
-            bytes = (((bytes >> 000) & 0xff) << 070) |
-                    (((bytes >> 010) & 0xff) << 060) |
-                    (((bytes >> 020) & 0xff) << 050) |
-                    (((bytes >> 030) & 0xff) << 040) |
-                    (((bytes >> 040) & 0xff) << 030) |
-                    (((bytes >> 050) & 0xff) << 020) |
-                    (((bytes >> 060) & 0xff) << 010) |
-                    (((bytes >> 070) & 0xff) << 000);
-
-            dst = std::bit_cast<T, uint64_t>(bytes);
+        else if(pb <= pc) {
+            return b;
         }
         else {
-            static_assert([]{ return false; }, "[font::TrueType::read_be_] ERROR: unexpeced byte size");
+            return c;
         }
     }
 
+    PNG(std::vector<uint8_t>&& data, uint32_t width, uint32_t height, uint32_t component_count) noexcept :
+        width_(width) , height_(height), component_count_(component_count), data_(data) {}
+
 public:
+    PNG() noexcept = default;
+    
     static PNG load(const std::filesystem::path& path);
+
+    const auto& data() const noexcept { return data_; }
+    auto width() const noexcept { return width_; }
+    auto height() const noexcept { return height_; }
+    auto component_count() const noexcept { return component_count_; }
 };
 
 }

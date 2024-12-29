@@ -176,6 +176,44 @@ Result<resource::Image> Device::create_image(const VkExtent2D& extent_2d, VkForm
     return Result(resource::Image(device_, std::move(image), std::move(device_memory), format, allocator_), result);
 }
 
+Result<resource::Image> Device::create_image_with_data(const std::vector<uint8_t>& image_data, const VkExtent2D& extent_2d, VkFormat format, VkImageUsageFlags usage, VkImageTiling tiling, VkMemoryPropertyFlags desired_properties) {
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = format,
+        .extent = {
+            .width = extent_2d.width,
+            .height = extent_2d.height,
+            .depth = 1,
+        },
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = tiling,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VkImage image{};
+    VkResult result{};
+    result = vkCreateImage(*device_, &image_info, allocator_, &image);
+
+    auto requirements = query_memory_requirements_(image);
+    std::cerr << std::format("size = {}, alignment = {}, prop = {:032b}", requirements.size, requirements.alignment, requirements.memoryTypeBits)<< std::endl;
+    auto device_memory = allocate_memory_with_requirements_(requirements, desired_properties);
+
+    uint8_t* memory_pointer{};
+    result = vkMapMemory(*device_, device_memory, 0, sizeof(uint8_t) * image_data.size(), 0, reinterpret_cast<void**>(&memory_pointer));
+    std::memcpy(memory_pointer, image_data.data(), sizeof(uint8_t) * image_data.size());
+    vkUnmapMemory(*device_, device_memory);
+
+    result = vkBindImageMemory(*device_, image, device_memory, 0);
+
+    return Result(resource::Image(device_, std::move(image), std::move(device_memory), format, allocator_), result);
+}
+
+
 Result<resource::Sampler> Device::create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v) {
     VkSamplerCreateInfo sampler_info = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

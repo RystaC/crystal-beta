@@ -131,6 +131,7 @@ public:
     }
 
     Result<resource::Image> create_image(const VkExtent2D& extent_2d, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    Result<resource::Image> create_image_with_data(const std::vector<uint8_t>& image_data, const VkExtent2D& extent_2d, VkFormat format, VkImageUsageFlags usage, VkImageTiling tiling = VK_IMAGE_TILING_LINEAR, VkMemoryPropertyFlags desired_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     Result<resource::Sampler> create_sampler(VkFilter min_filter, VkFilter mag_filter, VkSamplerAddressMode address_mode_u, VkSamplerAddressMode address_mode_v);
 

@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <cstring>
+
 #include <vulkan/vulkan.h>
 #include <SDL2/SDL_vulkan.h>
 
