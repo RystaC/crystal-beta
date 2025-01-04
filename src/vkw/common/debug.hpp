@@ -143,10 +143,11 @@ inline constexpr const char* result_to_str(VkResult result) {
             return STR(VK_ERROR_COMPRESSION_EXHAUSTED_EXT);
 #endif
 
-#if defined(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
-        case VK_INCOMPATIBLE_SHADER_BINARY_EXT:
-            return STR(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
-#endif
+// TODO: some version may cause error
+// #if defined(VK_EXT_SHADER_OBJECT_EXTENSION_NAME)
+//         case VK_INCOMPATIBLE_SHADER_BINARY_EXT:
+//             return STR(VK_INCOMPATIBLE_SHADER_BINARY_EXT);
+// #endif
 
 #if defined(VK_KHR_MAINTENANCE1_EXTENSION_NAME) && !defined(VK_VERSION_1_1)
         case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:

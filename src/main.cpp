@@ -21,6 +21,7 @@
 #include "image/DDS.hpp"
 #include "image/PPM.hpp"
 #include "image/BMP.hpp"
+#include "image/JPG.hpp"
 
 constexpr size_t WINDOW_WIDTH = 512;
 constexpr size_t WINDOW_HEIGHT = 512;
@@ -93,6 +94,16 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_utils_callback(VkDebugUtilsMessageSeverityF
 #endif
 
 int main(int argc, char** argv) {
+    image::JPG jpg{};
+    try {
+        jpg = std::move(image::JPG::load("../asset/texture/test_tex.jpg"));
+    }
+    catch(std::exception& e) {
+        std::cerr << std::format("exception occured. {}", e.what());
+        std::exit(EXIT_FAILURE);
+    }
+    return 0;
+
     image::BMP bmp{};
     try {
         bmp = std::move(image::BMP::load("../asset/mmd/Tda式改変ミク　JKStyle/nmap1.bmp"));
