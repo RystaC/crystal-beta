@@ -53,6 +53,34 @@ void read_be(std::ifstream& ifs, T& dst) {
     }
 }
 
+struct BitStream {
+    std::vector<uint8_t> data;
+
+    auto size() const noexcept { return data.size() * 8; }
+
+    bool operator[](size_t i) const noexcept { return data[i / 8] & (0x01 << (i % 8)); }
+
+    uint32_t read_bits(size_t bit_count, size_t& index) const noexcept {
+        uint32_t value = 0;
+        for(size_t i = 0; i < bit_count; ++i) {
+            value |= int(this->operator[](index++)) << i;
+        }
+
+        return value;
+    }
+};
+
+constexpr std::array<uint8_t, 64> zigzag_index = {
+    0, 1, 5, 6, 14, 15, 27, 28,
+    2, 4, 7, 13, 16, 26, 29, 42,
+    3, 8, 12, 17, 25, 30, 41, 43,
+    9, 11, 18, 24, 31, 40, 44, 53,
+    10, 19, 23, 32, 39, 45, 52, 54,
+    20, 22, 33, 38, 46, 51, 55, 60,
+    21, 34, 37, 47, 50, 56, 59, 61,
+    35, 36, 48, 49, 57, 58, 62, 63,
+};
+
 }
 
 }

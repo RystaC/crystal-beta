@@ -29,21 +29,21 @@ file(GLOB_RECURSE sources
 )
 
 include_directories(app ${ADDITIONAL_INCLUDE_DIRECTORIES})
-
 add_executable(app ${sources})
-
 target_compile_definitions(app PRIVATE _CRT_SECURE_NO_WARNINGS)
-
 target_include_directories(app PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(app ${SDL2_LIBRARIES})
 target_include_directories(app PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(app ${Vulkan_LIBRARIES})
-
 # change subsystem to console (maybe debug build only)
 set_target_properties(app PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
 # suppress warnings
 set_target_properties(app PROPERTIES LINK_FLAGS "/NODEFAULTLIB:library")
 set_target_properties(app PROPERTIES LINK_FLAGS "/IGNORE:4099")
+
+add_executable(server network/server.cpp)
+
+add_executable(client network/client.cpp)
 
 # shader compile
 set(glslc "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
