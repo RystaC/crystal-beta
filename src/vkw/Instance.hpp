@@ -1,55 +1,79 @@
 #pragma once
 
-#include "common/common.hpp"
-#include "resource/Surface.hpp"
-#include "resource/PhysicalDevice.hpp"
-
-#include "resource/extension/DebugUtilsMessenger.hpp"
+#include "common.hpp"
+#include "handle.hpp"
 
 namespace vkw {
 
 class Instance {
-    std::shared_ptr<resource::Instance> instance_;
+    std::shared_ptr<handle::Instance> instance_;
     const VkAllocationCallbacks* allocator_;
 
-    Instance() noexcept {}
+    Instance(std::shared_ptr<handle::Instance>&& instance, const VkAllocationCallbacks* allocator) noexcept : instance_(instance), allocator_(allocator) {}
 
 public:
-    static uint32_t version() {
-        uint32_t version{};
+    Instance() noexcept = default;
+    ~Instance() noexcept = default;
+    Instance(const Instance&) = delete;
+    Instance& operator=(const Instance&) = delete;
+    Instance(Instance&&) = default;
+    Instance& operator=(Instance&&) = default;
 
-        vkEnumerateInstanceVersion(&version);
+    const auto& operator*() const noexcept { return *instance_; }
 
-        return version;
+    // initialize
+    static auto create(const VkInstanceCreateInfo& instance_info, Instance& instance, const VkAllocationCallbacks* allocator = nullptr) {
+        VkInstance inst{};
+        auto result = vkCreateInstance(&instance_info, allocator, &inst);
+        if(result != VK_SUCCESS) {
+            return result;
+        }
+
+        instance = Instance(std::make_shared<handle::Instance>(std::move(inst), allocator), allocator);
+
+        return result;
     }
 
-    static std::vector<VkLayerProperties> enumerate_layers() {
+    // function pointer
+    auto get_proc_addr(const char* name) {
+        return vkGetInstanceProcAddr(*instance_, name);
+    }
+
+    // physical device
+    auto enumerate_physical_devices(std::vector<VkPhysicalDevice>& physical_devices) const {
         uint32_t count{};
-        vkEnumerateInstanceLayerProperties(&count, nullptr);
-        std::vector<VkLayerProperties> layers(count);
-        vkEnumerateInstanceLayerProperties(&count, layers.data());
-
-        return layers;
+        auto result = vkEnumeratePhysicalDevices(*instance_, &count, nullptr);
+        if(result != VK_SUCCESS) {
+            return result;
+        }
+        physical_devices.resize(count);
+        return vkEnumeratePhysicalDevices(*instance_, &count, physical_devices.data());
     }
 
-    static std::vector<VkExtensionProperties> enumerate_extensions(const char* layer_name = nullptr) {
+    auto enumerate_physical_device_groups(std::vector<VkPhysicalDeviceGroupProperties>& group_properties) {
         uint32_t count{};
-        vkEnumerateInstanceExtensionProperties(layer_name, &count, nullptr);
-        std::vector<VkExtensionProperties> extensions(count);
-        vkEnumerateInstanceExtensionProperties(layer_name, &count, extensions.data());
-
-        return extensions;
+        auto result = vkEnumeratePhysicalDeviceGroups(*instance_, &count, nullptr);
+        if(result != VK_SUCCESS) {
+            return result;
+        }
+        group_properties.resize(count);
+        return vkEnumeratePhysicalDeviceGroups(*instance_, &count, group_properties.data());
     }
 
-    static Result<Instance> init(const std::vector<const char*>& extensions, const std::vector<const char*>& layers, const VkAllocationCallbacks* allocator);
-
-    std::vector<resource::PhysicalDevice> enum_physical_devices() const;
-
-    Result<resource::Surface> create_surface_SDL(SDL_Window* window) const;
-
-#if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-    Result<resource::DebugUtilsMessenger> create_debug_utils_messenger(VkDebugUtilsMessageSeverityFlagsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const PFN_vkDebugUtilsMessengerCallbackEXT& callback, void* user_data);
+    // surface for each platform
+#if defined(VK_KHR_WIN32_SURFACE_EXTENSION_NAME)
+    auto create_surface(const VkWin32SurfaceCreateInfoKHR& surface_info, VkSurfaceKHR& surface) {
+        return vkCreateWin32SurfaceKHR(*instance_, &surface_info, allocator_, &surface);
+    }
 #endif
+
+    // debug utils
+#if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+    auto create_debug_utils_messenger(const VkDebugUtilsMessengerCreateInfoEXT& messenger_info, VkDebugUtilsMessengerEXT& messenger) {
+        return vkCreateDebugUtilsMessengerEXT(*instance_, &messenger_info, allocator_, &messenger);
+    }
+#endif
+
 };
 
 }

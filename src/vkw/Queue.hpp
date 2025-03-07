@@ -5,11 +5,12 @@
 namespace vkw {
 
 class Queue {
-    const VkQueue& queue_;
+    VkQueue queue_;
     uint32_t family_index_;
     uint32_t queue_index_;
 
 public:
+    Queue() noexcept = default;
     Queue(const VkQueue& queue, uint32_t family_index, uint32_t queue_index) noexcept : queue_(queue), family_index_(family_index), queue_index_(queue_index) {}
     ~Queue() noexcept = default;
 

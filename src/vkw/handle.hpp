@@ -12,15 +12,23 @@ class PrimaryHandle {
 public:
     using entity_type = T;
 
-    PrimaryHandle(T&& entity, const VkAllocationCallbacks* allocator = nullptr) noexcept : entity_(entiry), allocator_(allocator) {}
-    ~PrimaryHandle() noexept {
+    PrimaryHandle() noexcept = default;
+    PrimaryHandle(T&& entity, const VkAllocationCallbacks* allocator = nullptr) noexcept : entity_(entity), allocator_(allocator) {}
+    ~PrimaryHandle() noexcept {
         Destroyer(entity_, allocator_);
     }
 
     PrimaryHandle(const PrimaryHandle&) = delete;
     auto& operator=(const PrimaryHandle&) = delete;
-    PrimaryHandle(PrimaryHandle&&) = default;
-    auto& operator=(PrimaryHandle&&) = default;
+    PrimaryHandle(PrimaryHandle&& rhs) {
+        (*this) = rhs;
+    }
+    auto& operator=(PrimaryHandle&& rhs) {
+        *this->entity_ = rhs.entity_;
+        *this->allocator_ = rhs.allocator_;
+
+        return *this;
+    }
 
     operator entity_type() const noexcept { return entity_; }
 };
@@ -34,6 +42,7 @@ class Handle {
 public:
     using entity_type = T;
 
+    Handle() noexcept = default;
     Handle(std::shared_ptr<Parent> parent_ptr, T&& entity, const VkAllocationCallbacks* allocator = nullptr) noexcept : parent_ptr_(parent_ptr), entity_(entity), allocator_(allocator) {}
     ~Handle() noexcept {
         if(parent_ptr_) {
@@ -43,8 +52,16 @@ public:
 
     Handle(const Handle&) = delete;
     auto& operator=(const Handle&) = delete;
-    Handle(Handle&&) = default;
-    auto& operator=(Handle&&) = default;
+    Handle(Handle&& rhs) {
+        (*this) = rhs;
+    }
+    auto& operator=(Handle&& rhs) {
+        this->parent_ptr_ = std::move(rhs.parent_ptr_);
+        this->entity_ = rhs.entity_;
+        this->allocator_ = rhs.allocator_;
+
+        return *this;
+    }
 
     operator entity_type() const noexcept { return entity_; }
 };
@@ -60,9 +77,6 @@ using Device = PrimaryHandle<VkDevice, vkDestroyDevice>;
 
 #if defined(VK_KHR_SURFACE_EXTENSION_NAME)
 using Surface = Handle<Instance, VkSurfaceKHR, vkDestroySurfaceKHR>;
-#endif
-#if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
-using DebugUtilsMessenger = Handle<Instance, VkDebugUtilsMessengerEXT, vkDestroyDebugUtilsMessengerEXT>;
 #endif
 
 // from device

@@ -5,9 +5,10 @@
 namespace vkw {
 
 class CommandBuffer {
-    const VkCommandBuffer& command_buffer_;
+    VkCommandBuffer command_buffer_;
 
 public:
+    CommandBuffer() noexcept = default;
     CommandBuffer(const VkCommandBuffer& command_buffer) noexcept : command_buffer_(command_buffer) {}
     ~CommandBuffer() noexcept = default;
 

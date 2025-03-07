@@ -5,9 +5,10 @@
 namespace vkw {
 
 class PhysicalDevice {
-    const VkPhysicalDevice& physical_device_;
+    VkPhysicalDevice physical_device_;
 
 public:
+    PhysicalDevice() noexcept = default;
     PhysicalDevice(const VkPhysicalDevice& physical_device) noexcept : physical_device_(physical_device) {}
     ~PhysicalDevice() noexcept = default;
 
@@ -43,7 +44,7 @@ public:
     auto get_queue_family_properties(std::vector<VkQueueFamilyProperties2>& queue_family_properties) {
         uint32_t count{};
         vkGetPhysicalDeviceQueueFamilyProperties2(physical_device_, &count, nullptr);
-        queue_family_properties.resize(count);
+        queue_family_properties.resize(count, {.sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2});
         vkGetPhysicalDeviceQueueFamilyProperties2(physical_device_, &count, queue_family_properties.data());
     }
 

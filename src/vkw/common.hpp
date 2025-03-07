@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -22,10 +23,15 @@
 
 namespace vkw {
 
-// utility functions
 template<typename T>
-inline uint32_t size_u32(T sized) {
-    return static_cast<uint32_t>(s.size());
+concept Sized = requires(const T& v) {
+    v.size();
+};
+
+// utility functions
+template<Sized T>
+inline uint32_t size_u32(const T& v) {
+    return static_cast<uint32_t>(v.size());
 }
 
 }

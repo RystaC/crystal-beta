@@ -41,9 +41,9 @@ set_target_properties(app PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
 set_target_properties(app PROPERTIES LINK_FLAGS "/NODEFAULTLIB:library")
 set_target_properties(app PROPERTIES LINK_FLAGS "/IGNORE:4099")
 
-add_executable(server network/server.cpp)
+# add_executable(server network/server.cpp)
 
-add_executable(client network/client.cpp)
+# add_executable(client network/client.cpp)
 
 # shader compile
 set(glslc "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
